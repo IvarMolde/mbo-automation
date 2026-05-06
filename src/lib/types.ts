@@ -1,11 +1,18 @@
 export type CefrNivaa = "A2" | "B1";
 
+export interface CefrCanDo {
+  resepsjon: string[];
+  samhandling: string[];
+  produksjon: string[];
+}
+
 export interface Kapittel {
   nummer: number;
   yrke: string;
   grammatikk: string;
   arbeidsnorskTema: string;
   cefrNivaa: CefrNivaa;
+  cefrCanDo: CefrCanDo;
 }
 
 export interface Lesetekst {

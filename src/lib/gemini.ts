@@ -28,6 +28,11 @@ const arbeidshefteSchema = z.object({
 
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const ordGrense = kapittel.cefrNivaa === "A2" ? "4-10 ord" : "8-18 ord";
+  const canDoSnippet = [
+    ...kapittel.cefrCanDo.resepsjon.slice(0, 1),
+    ...kapittel.cefrCanDo.samhandling.slice(0, 1),
+    ...kapittel.cefrCanDo.produksjon.slice(0, 1)
+  ].join(" ");
   return {
     lesetekster: [
       {
@@ -43,7 +48,7 @@ function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
       { tittel: "Leseforståelse", innhold: "Hva er hovedtema i teksten?" },
       { tittel: "Skriveoppgave", innhold: `Skriv 5-8 setninger med setningslengde på ca. ${ordGrense}.` }
     ],
-    presentasjonTekst: `Kapittel ${kapittel.nummer}: ${kapittel.yrke}`
+    presentasjonTekst: `Kapittel ${kapittel.nummer}: ${kapittel.yrke}. ${canDoSnippet}`
   };
 }
 
@@ -107,6 +112,10 @@ Tema: ${kapittel.arbeidsnorskTema}
 Grammatikk: ${kapittel.grammatikk}
 Nivå: ${kapittel.cefrNivaa}
 ${getCefrInstruction(kapittel)}
+Can-do mål for dette kapittelet:
+- Resepsjon: ${kapittel.cefrCanDo.resepsjon.join(" ")}
+- Samhandling: ${kapittel.cefrCanDo.samhandling.join(" ")}
+- Produksjon: ${kapittel.cefrCanDo.produksjon.join(" ")}
 
 Krav:
 - Innholdet skal være trygt, realistisk og arbeidslivsnært.
