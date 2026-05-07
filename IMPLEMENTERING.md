@@ -1,5 +1,7 @@
 # 🚀 MBO-AUTOMATISERING: KOMPLETT OPPSETTSVEILEDNING
 
+> Statusoppdatering (mai 2026): Løsningen er migrert til TypeScript (`src/`), med API-responskontrakter i Zod, CI-workflow og grunnleggende sikkerhetsherding (CORS allowlist + rate limiting). Se `README.md` for oppdatert driftssannhet.
+
 **Laget 6. mai 2026**  
 **For:** Ivar Molde, Molde voksenopplæringssenter  
 **Status:** ✅ Klart for Vercel-deployment  

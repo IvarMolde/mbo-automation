@@ -18,7 +18,12 @@ npm run dev
 ```bash
 npm run check
 npm run test
+npm run verify
 ```
+
+`CORS_ALLOWED_ORIGINS` kan settes til kommaseparerte origin-domener i produksjon,
+for eksempel `https://example.no,https://admin.example.no`.
+Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUESTS`.
 
 ## Endepunkter
 
@@ -34,9 +39,16 @@ npm run test
 - Ingen hemmeligheter i kode.
 - Input-validering med `zod`.
 - Cron-endepunkt krever `Authorization: Bearer <CRON_SECRET>`.
+- CORS kan begrenses med `CORS_ALLOWED_ORIGINS`.
+- API-ruter har enkel IP-basert rate limiting.
+- Feilrespons i produksjon er sanitert for å unngå lekkasje av intern detaljinformasjon.
 
 ## CEFR-styring
 
 - Alle kapitler inneholder CEFR-nivå (`A2`/`B1`) og `can-do` deskriptorer.
 - `gemini`-prompten inkluderer deskriptorer for resepsjon, samhandling og produksjon.
 - Innhold valideres strukturelt før det brukes til dokumentgenerering.
+
+## CI
+
+- Pull requests og push til `main`/`master` kjører automatisk typecheck og tester via GitHub Actions.

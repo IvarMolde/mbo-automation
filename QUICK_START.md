@@ -1,5 +1,7 @@
 # ⚡ QUICK START - MBO-AUTOMATISERING
 
+> Statusoppdatering (mai 2026): Primær runtime er TypeScript under `src/`, og oppdatert standardflyt er `npm run verify` før push.
+
 **TL;DR:** Fra 0 til automatisert hefte-sending på 1 time.
 
 ---
@@ -112,11 +114,11 @@ PROFIT 📧
 ```bash
 # Generer hefte manuelt
 POST /api/generer
-Body: {"kapitelNummer": 1, "uke": 34}
+Body: {"kapittelNummer": 1, "uke": 34}
 
 # Send til elev
 POST /api/send
-Body: {"kapitelNummer": 1, "uke": 34, "motaker": "student@email.no"}
+Body: {"kapittelNummer": 1, "uke": 34, "motaker": "student@email.no"}
 
 # Se alle kapitler
 GET /api/kapitler

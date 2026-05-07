@@ -1,5 +1,8 @@
 # 🏗️ TEKNISK OVERSIKT - MBO-AUTOMATISERING
 
+> Statusoppdatering (mai 2026): Aktiv kodebase er nå TypeScript-basert under `src/` (`src/server.ts`, `src/routes/api.ts`, `src/lib/*`).
+> Denne filen inneholder historisk arkitekturkontekst, mens `README.md` er primærkilde for gjeldende oppsett, scripts og sikkerhetskonfig.
+
 ---
 
 ## 📐 ARKITEKTUR
