@@ -6,6 +6,9 @@ dotenv.config();
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  CORS_ALLOWED_ORIGINS: z.string().optional(),
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().default(120),
   GCP_PROJECT_ID: z.string().optional(),
   GCP_LOCATION: z.string().default("europe-north1"),
   GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
