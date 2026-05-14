@@ -1,30 +1,7 @@
 import { VertexAI } from "@google-cloud/vertexai";
-import { z } from "zod";
 import { env } from "./config.js";
+import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
 import type { ArbeidshefteData, Kapittel, PresentasjonData } from "./types.js";
-
-const arbeidshefteSchema = z.object({
-  lesetekster: z.array(
-    z.object({
-      tittel: z.string().min(3),
-      tekst: z.string().min(40)
-    })
-  ).min(1).max(5),
-  ordliste: z.array(
-    z.object({
-      ord: z.string().min(1),
-      forklaring: z.string().min(3),
-      eksempel: z.string().min(6)
-    })
-  ).min(8).max(25),
-  oppgaver: z.array(
-    z.object({
-      tittel: z.string().min(3),
-      innhold: z.string().min(15)
-    })
-  ).min(4).max(12),
-  presentasjonTekst: z.string().min(20)
-});
 
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const ordGrense = kapittel.cefrNivaa === "A2" ? "4-10 ord" : "8-18 ord";
@@ -138,7 +115,7 @@ Returner kun gyldig JSON med feltene:
 
     const json = extractJsonCandidate(content);
     const parsed = JSON.parse(json);
-    const validated = arbeidshefteSchema.parse(parsed);
+    const validated = arbeidshefteDataSchema.parse(parsed);
     return validated;
   } catch {
     return createFallbackArbeidshefte(kapittel);

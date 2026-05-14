@@ -1,5 +1,9 @@
-import PptxGenJS from "pptxgenjs";
+import pptxgenFactory from "pptxgenjs";
 import type { Kapittel, PresentasjonData } from "./types.js";
+
+type PptxInstance = import("pptxgenjs").default;
+
+const PptxGenJS = pptxgenFactory as unknown as new () => PptxInstance;
 
 export async function genererPPTX(
   kapittel: Kapittel,
