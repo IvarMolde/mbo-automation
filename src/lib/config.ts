@@ -15,7 +15,9 @@ const envSchema = z.object({
   GMAIL_USER: z.string().email().optional(),
   GMAIL_APP_PASSWORD: z.string().min(8).optional(),
   RECIPIENT_EMAIL: z.string().email().optional(),
-  CRON_SECRET: z.string().min(12).optional()
+  CRON_SECRET: z.string().min(12).optional(),
+  ARSPLAN_JSON_PATH: z.string().min(1).optional(),
+  CEFR_MARKDOWN_PATH: z.string().min(1).optional()
 });
 
 export const env = envSchema.parse(process.env);

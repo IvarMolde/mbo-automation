@@ -2,6 +2,11 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
 import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
 import type { ArbeidshefteData, Kapittel, PresentasjonData } from "./types.js";
+import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
+
+export type GenererArbeidshefteOptions = {
+  laererTilleggsinstruks?: string;
+};
 
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const ordGrense = kapittel.cefrNivaa === "A2" ? "4-10 ord" : "8-18 ord";
@@ -71,7 +76,10 @@ function extractJsonCandidate(raw: string): string {
   return cleaned;
 }
 
-export async function genererArbeidshefte(kapittel: Kapittel): Promise<ArbeidshefteData> {
+export async function genererArbeidshefte(
+  kapittel: Kapittel,
+  options?: GenererArbeidshefteOptions
+): Promise<ArbeidshefteData> {
   if (!env.GCP_PROJECT_ID) {
     return createFallbackArbeidshefte(kapittel);
   }
@@ -82,6 +90,15 @@ export async function genererArbeidshefte(kapittel: Kapittel): Promise<Arbeidshe
       location: env.GCP_LOCATION
     });
     const model = vertex.getGenerativeModel({ model: env.GEMINI_MODEL });
+    const cefrMd = getCefrNivaMarkdownTekst();
+    const cefrMdBlock = cefrMd
+      ? `\nFaglig kontekst om norsknivå (A1–B1), utdrag fra kuratert dokument:\n${cefrMd}\n`
+      : "";
+    const laererNote = options?.laererTilleggsinstruks?.trim();
+    const laererBlock = laererNote
+      ? `\nTillegg fra lærer (følg når det ikke strider mot trygghet, faktasjekk eller likeverd):\n${laererNote}\n`
+      : "";
+
     const prompt = `Du er fagutvikler i norskopplaring for voksne og skal lage CEFR-tilpasset undervisningsinnhold.
 Generer et norskopplæringshefte som STRICT JSON for kapittel ${kapittel.nummer}.
 Yrke: ${kapittel.yrke}
@@ -93,7 +110,7 @@ Can-do mål for dette kapittelet:
 - Resepsjon: ${kapittel.cefrCanDo.resepsjon.join(" ")}
 - Samhandling: ${kapittel.cefrCanDo.samhandling.join(" ")}
 - Produksjon: ${kapittel.cefrCanDo.produksjon.join(" ")}
-
+${cefrMdBlock}${laererBlock}
 Krav:
 - Innholdet skal være trygt, realistisk og arbeidslivsnært.
 - Bruk tydelige "kan"-mål i oppgaver.

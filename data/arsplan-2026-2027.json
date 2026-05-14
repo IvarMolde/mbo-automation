@@ -1,0 +1,2280 @@
+{
+  "metadata": {
+    "tittel": "Årsplan 2026-2027",
+    "kurs": "Arbeid og norsk - MBO - A2-B1",
+    "organisasjon": "Molde voksenopplæringssenter",
+    "samarbeidspartner": "NAV Molde",
+    "skolear": "2026-2027",
+    "periode": "August 2026 - Juni 2027",
+    "malgruppe": "Voksne innvandrere i MBO-programmet",
+    "norskniva": [
+      "A2",
+      "B1"
+    ],
+    "antallKapitler": 22,
+    "kilde": "https://github.com/IvarMolde/mbo-automation/blob/main/mboplan2627.docx",
+    "konvertertFra": "mboplan2627.docx",
+    "konvertertTidspunkt": "2026-05-10T13:11:39.703168+00:00",
+    "notat": "Uker for kapitler i samme periode er fordelt maskinelt og bør kontrolleres pedagogisk ved behov."
+  },
+  "perioder": [
+    {
+      "maned": "August",
+      "ukeStart": 34,
+      "ukeSlutt": 35,
+      "uker": [
+        34,
+        35
+      ],
+      "kapitler": [
+        1
+      ],
+      "fokus": "Oppstart: bli kjent, grunnleggende norsk, personlige egenskaper"
+    },
+    {
+      "maned": "September",
+      "ukeStart": 36,
+      "ukeSlutt": 39,
+      "uker": [
+        36,
+        37,
+        38,
+        39
+      ],
+      "kapitler": [
+        2,
+        3
+      ],
+      "fokus": "Setningsbygging, presens, jobbsøking og NAV"
+    },
+    {
+      "maned": "Oktober",
+      "ukeStart": 40,
+      "ukeSlutt": 44,
+      "uker": [
+        40,
+        41,
+        42,
+        43,
+        44
+      ],
+      "kapitler": [
+        4,
+        5,
+        6
+      ],
+      "fokus": "Substantiv og adjektiv, CV-skriving, åpen søknad"
+    },
+    {
+      "maned": "November",
+      "ukeStart": 45,
+      "ukeSlutt": 48,
+      "uker": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "kapitler": [
+        7,
+        8
+      ],
+      "fokus": "Preteritum, pekeord, nettverk og kollegaer"
+    },
+    {
+      "maned": "Desember",
+      "ukeStart": 49,
+      "ukeSlutt": 51,
+      "uker": [
+        49,
+        50,
+        51
+      ],
+      "kapitler": [
+        9,
+        10
+      ],
+      "fokus": "Pronomen, bindeord, pausesnakk og rettigheter"
+    },
+    {
+      "maned": "Januar",
+      "ukeStart": 2,
+      "ukeSlutt": 5,
+      "uker": [
+        2,
+        3,
+        4,
+        5
+      ],
+      "kapitler": [
+        11,
+        12
+      ],
+      "fokus": "Refleksiv form, indirekte tale, fravær og fagforeninger"
+    },
+    {
+      "maned": "Februar",
+      "ukeStart": 6,
+      "ukeSlutt": 9,
+      "uker": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "kapitler": [
+        13,
+        14
+      ],
+      "fokus": "Possessiver, perfektum, velferd og skatt"
+    },
+    {
+      "maned": "Mars",
+      "ukeStart": 10,
+      "ukeSlutt": 13,
+      "uker": [
+        10,
+        11,
+        12,
+        13
+      ],
+      "kapitler": [
+        15,
+        16
+      ],
+      "fokus": "Imperativ, refleksive eiendomsord, HMS og redskaper"
+    },
+    {
+      "maned": "April",
+      "ukeStart": 14,
+      "ukeSlutt": 17,
+      "uker": [
+        14,
+        15,
+        16,
+        17
+      ],
+      "kapitler": [
+        17,
+        18,
+        19
+      ],
+      "fokus": "Sammensatte ord, indirekte tale, arbeidsmiljø"
+    },
+    {
+      "maned": "Mai-Juni",
+      "ukeStart": 18,
+      "ukeSlutt": 24,
+      "uker": [
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24
+      ],
+      "kapitler": [
+        20,
+        21,
+        22
+      ],
+      "fokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    }
+  ],
+  "uker": [
+    {
+      "uke": 2,
+      "kapittel": 11,
+      "maned": "Januar",
+      "periodeFokus": "Refleksiv form, indirekte tale, fravær og fagforeninger"
+    },
+    {
+      "uke": 3,
+      "kapittel": 11,
+      "maned": "Januar",
+      "periodeFokus": "Refleksiv form, indirekte tale, fravær og fagforeninger"
+    },
+    {
+      "uke": 4,
+      "kapittel": 12,
+      "maned": "Januar",
+      "periodeFokus": "Refleksiv form, indirekte tale, fravær og fagforeninger"
+    },
+    {
+      "uke": 5,
+      "kapittel": 12,
+      "maned": "Januar",
+      "periodeFokus": "Refleksiv form, indirekte tale, fravær og fagforeninger"
+    },
+    {
+      "uke": 6,
+      "kapittel": 13,
+      "maned": "Februar",
+      "periodeFokus": "Possessiver, perfektum, velferd og skatt"
+    },
+    {
+      "uke": 7,
+      "kapittel": 13,
+      "maned": "Februar",
+      "periodeFokus": "Possessiver, perfektum, velferd og skatt"
+    },
+    {
+      "uke": 8,
+      "kapittel": 14,
+      "maned": "Februar",
+      "periodeFokus": "Possessiver, perfektum, velferd og skatt"
+    },
+    {
+      "uke": 9,
+      "kapittel": 14,
+      "maned": "Februar",
+      "periodeFokus": "Possessiver, perfektum, velferd og skatt"
+    },
+    {
+      "uke": 10,
+      "kapittel": 15,
+      "maned": "Mars",
+      "periodeFokus": "Imperativ, refleksive eiendomsord, HMS og redskaper"
+    },
+    {
+      "uke": 11,
+      "kapittel": 15,
+      "maned": "Mars",
+      "periodeFokus": "Imperativ, refleksive eiendomsord, HMS og redskaper"
+    },
+    {
+      "uke": 12,
+      "kapittel": 16,
+      "maned": "Mars",
+      "periodeFokus": "Imperativ, refleksive eiendomsord, HMS og redskaper"
+    },
+    {
+      "uke": 13,
+      "kapittel": 16,
+      "maned": "Mars",
+      "periodeFokus": "Imperativ, refleksive eiendomsord, HMS og redskaper"
+    },
+    {
+      "uke": 14,
+      "kapittel": 17,
+      "maned": "April",
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø"
+    },
+    {
+      "uke": 15,
+      "kapittel": 17,
+      "maned": "April",
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø"
+    },
+    {
+      "uke": 16,
+      "kapittel": 18,
+      "maned": "April",
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø"
+    },
+    {
+      "uke": 17,
+      "kapittel": 19,
+      "maned": "April",
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø"
+    },
+    {
+      "uke": 18,
+      "kapittel": 20,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 19,
+      "kapittel": 20,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 20,
+      "kapittel": 20,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 21,
+      "kapittel": 21,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 22,
+      "kapittel": 21,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 23,
+      "kapittel": 22,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 24,
+      "kapittel": 22,
+      "maned": "Mai-Juni",
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning"
+    },
+    {
+      "uke": 34,
+      "kapittel": 1,
+      "maned": "August",
+      "periodeFokus": "Oppstart: bli kjent, grunnleggende norsk, personlige egenskaper"
+    },
+    {
+      "uke": 35,
+      "kapittel": 1,
+      "maned": "August",
+      "periodeFokus": "Oppstart: bli kjent, grunnleggende norsk, personlige egenskaper"
+    },
+    {
+      "uke": 36,
+      "kapittel": 2,
+      "maned": "September",
+      "periodeFokus": "Setningsbygging, presens, jobbsøking og NAV"
+    },
+    {
+      "uke": 37,
+      "kapittel": 2,
+      "maned": "September",
+      "periodeFokus": "Setningsbygging, presens, jobbsøking og NAV"
+    },
+    {
+      "uke": 38,
+      "kapittel": 3,
+      "maned": "September",
+      "periodeFokus": "Setningsbygging, presens, jobbsøking og NAV"
+    },
+    {
+      "uke": 39,
+      "kapittel": 3,
+      "maned": "September",
+      "periodeFokus": "Setningsbygging, presens, jobbsøking og NAV"
+    },
+    {
+      "uke": 40,
+      "kapittel": 4,
+      "maned": "Oktober",
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad"
+    },
+    {
+      "uke": 41,
+      "kapittel": 4,
+      "maned": "Oktober",
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad"
+    },
+    {
+      "uke": 42,
+      "kapittel": 5,
+      "maned": "Oktober",
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad"
+    },
+    {
+      "uke": 43,
+      "kapittel": 5,
+      "maned": "Oktober",
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad"
+    },
+    {
+      "uke": 44,
+      "kapittel": 6,
+      "maned": "Oktober",
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad"
+    },
+    {
+      "uke": 45,
+      "kapittel": 7,
+      "maned": "November",
+      "periodeFokus": "Preteritum, pekeord, nettverk og kollegaer"
+    },
+    {
+      "uke": 46,
+      "kapittel": 7,
+      "maned": "November",
+      "periodeFokus": "Preteritum, pekeord, nettverk og kollegaer"
+    },
+    {
+      "uke": 47,
+      "kapittel": 8,
+      "maned": "November",
+      "periodeFokus": "Preteritum, pekeord, nettverk og kollegaer"
+    },
+    {
+      "uke": 48,
+      "kapittel": 8,
+      "maned": "November",
+      "periodeFokus": "Preteritum, pekeord, nettverk og kollegaer"
+    },
+    {
+      "uke": 49,
+      "kapittel": 9,
+      "maned": "Desember",
+      "periodeFokus": "Pronomen, bindeord, pausesnakk og rettigheter"
+    },
+    {
+      "uke": 50,
+      "kapittel": 9,
+      "maned": "Desember",
+      "periodeFokus": "Pronomen, bindeord, pausesnakk og rettigheter"
+    },
+    {
+      "uke": 51,
+      "kapittel": 10,
+      "maned": "Desember",
+      "periodeFokus": "Pronomen, bindeord, pausesnakk og rettigheter"
+    }
+  ],
+  "kapitler": [
+    {
+      "nummer": 1,
+      "tittel": "Renholder",
+      "maned": "August",
+      "ukeStart": 34,
+      "ukeSlutt": 35,
+      "uker": [
+        34,
+        35
+      ],
+      "periodeFokus": "Oppstart: bli kjent, grunnleggende norsk, personlige egenskaper",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Setningsstruktur, personlige pronomen, spørresetninger og spørreord",
+      "yrke": "Renholder",
+      "arbeidsnorskTema": "Personlige egenskaper",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Vi blir kjent",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Renholder – Personlige egenskaper",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Personlige egenskaper",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Det flerkulturelle Norge",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som renholder",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 2,
+      "tittel": "Butikkmedarbeider (matbutikk)",
+      "maned": "September",
+      "ukeStart": 36,
+      "ukeSlutt": 37,
+      "uker": [
+        36,
+        37
+      ],
+      "periodeFokus": "Setningsbygging, presens, jobbsøking og NAV",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "V2-regelen, inversjon, «ikke», tall, klokka",
+      "yrke": "Butikkmedarbeider (matbutikk)",
+      "arbeidsnorskTema": "Samarbeid mellom meg og NAV",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Hvordan går det?",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Butikkmedarbeider (matbutikk) – Samarbeid mellom meg og NAV",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Samarbeid mellom meg og NAV",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Veien til arbeid i et nytt land",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som butikkmedarbeider (matbutikk). Å kunne klokka",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 3,
+      "tittel": "Maler",
+      "maned": "September",
+      "ukeStart": 38,
+      "ukeSlutt": 39,
+      "uker": [
+        38,
+        39
+      ],
+      "periodeFokus": "Setningsbygging, presens, jobbsøking og NAV",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Verb i presens, ordstilling, subjekt/verbal/adverbial",
+      "yrke": "Maler",
+      "arbeidsnorskTema": "Jobbsøkstrategier",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Familie og fritid",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Maler – Jobbsøkstrategier",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Jobbsøkstrategier",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Barn og ungdom",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som maler",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 4,
+      "tittel": "Snekker",
+      "maned": "Oktober",
+      "ukeStart": 40,
+      "ukeSlutt": 41,
+      "uker": [
+        40,
+        41
+      ],
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Modale hjelpeverb (kan/vil/skal/må/bør), substantiv entall og flertall",
+      "yrke": "Snekker",
+      "arbeidsnorskTema": "CV og søknader",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "En vanlig dag",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Snekker – CV og søknader",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "CV og søknader",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Livets gang",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som snekker",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 5,
+      "tittel": "Elektriker",
+      "maned": "Oktober",
+      "ukeStart": 42,
+      "ukeSlutt": 43,
+      "uker": [
+        42,
+        43
+      ],
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Substantiv bestemt og ubestemt form, tidsuttrykk",
+      "yrke": "Elektriker",
+      "arbeidsnorskTema": "Registrere søknader på aktivitetsplanen (nav.no)",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Hvordan er været?",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Elektriker – Registrere søknader på aktivitetsplanen (nav.no)",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Registrere søknader på aktivitetsplanen (nav.no)",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Bolig og privatøkonomi",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som elektriker",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 6,
+      "tittel": "Barnehageassistent",
+      "maned": "Oktober",
+      "ukeStart": 44,
+      "ukeSlutt": 44,
+      "uker": [
+        44
+      ],
+      "periodeFokus": "Substantiv og adjektiv, CV-skriving, åpen søknad",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Adjektiv og substantiv, samsvarsbøyning, ordenstall, preposisjoner",
+      "yrke": "Barnehageassistent",
+      "arbeidsnorskTema": "Å lage en åpen søknad",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Hva gjorde du i går?",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Barnehageassistent – Å lage en åpen søknad",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Å lage en åpen søknad",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Kunnskap, skole og utdanning",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som barnehageassistent",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 7,
+      "tittel": "Fabrikkmedarbeider (fiskefabrikk)",
+      "maned": "November",
+      "ukeStart": 45,
+      "ukeSlutt": 46,
+      "uker": [
+        45,
+        46
+      ],
+      "periodeFokus": "Preteritum, pekeord, nettverk og kollegaer",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Verb i preteritum, tidsuttrykk, datoer og årstall",
+      "yrke": "Fabrikkmedarbeider (fiskefabrikk)",
+      "arbeidsnorskTema": "Å bruke nettverket for å finne jobb",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "God tur!",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Fabrikkmedarbeider (fiskefabrikk) – Å bruke nettverket for å finne jobb",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Å bruke nettverket for å finne jobb",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Jobbsøking",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som fabrikkmedarbeider (fiskefabrikk)",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 8,
+      "tittel": "SFO-medarbeider",
+      "maned": "November",
+      "ukeStart": 47,
+      "ukeSlutt": 48,
+      "uker": [
+        47,
+        48
+      ],
+      "periodeFokus": "Preteritum, pekeord, nettverk og kollegaer",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Adjektiv (farger), pekeord, setninger med korte svar",
+      "yrke": "SFO-medarbeider",
+      "arbeidsnorskTema": "Å bli kjent med nye kollegaer",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "På handletur",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "SFO-medarbeider – Å bli kjent med nye kollegaer",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Å bli kjent med nye kollegaer",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "I arbeid",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som sfo-medarbeider",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 9,
+      "tittel": "Lagermedarbeider",
+      "maned": "Desember",
+      "ukeStart": 49,
+      "ukeSlutt": 50,
+      "uker": [
+        49,
+        50
+      ],
+      "periodeFokus": "Pronomen, bindeord, pausesnakk og rettigheter",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Personlig pronomen subjekts- og objektsform, verb i futurum",
+      "yrke": "Lagermedarbeider",
+      "arbeidsnorskTema": "Pausesnakk – lær norsk i pausene",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Her bor jeg!",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Lagermedarbeider – Pausesnakk – lær norsk i pausene",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Pausesnakk – lær norsk i pausene",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Helse og livsstil",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som lagermedarbeider",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 10,
+      "tittel": "Sjåfør",
+      "maned": "Desember",
+      "ukeStart": 51,
+      "ukeSlutt": 51,
+      "uker": [
+        51
+      ],
+      "periodeFokus": "Pronomen, bindeord, pausesnakk og rettigheter",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Bindeordene og/eller/men/for/så, mål og vekt",
+      "yrke": "Sjåfør",
+      "arbeidsnorskTema": "Rettigheter og plikter på jobb",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Det må vi feire!",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Sjåfør – Rettigheter og plikter på jobb",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Rettigheter og plikter på jobb",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Klima og miljø",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som sjåfør",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 11,
+      "tittel": "Bakerimedarbeider",
+      "maned": "Januar",
+      "ukeStart": 2,
+      "ukeSlutt": 3,
+      "uker": [
+        2,
+        3
+      ],
+      "periodeFokus": "Refleksiv form, indirekte tale, fravær og fagforeninger",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Personlige pronomen i refleksiv form",
+      "yrke": "Bakerimedarbeider",
+      "arbeidsnorskTema": "Fravær fra jobb",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Det er typisk norsk",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Bakerimedarbeider – Fravær fra jobb",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Fravær fra jobb",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Velferd",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som bakerimedarbeider",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 12,
+      "tittel": "Servitør",
+      "maned": "Januar",
+      "ukeStart": 4,
+      "ukeSlutt": 5,
+      "uker": [
+        4,
+        5
+      ],
+      "periodeFokus": "Refleksiv form, indirekte tale, fravær og fagforeninger",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Setninger med indirekte tale",
+      "yrke": "Servitør",
+      "arbeidsnorskTema": "Fagforeninger i Norge",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Kosthold og helse",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Servitør – Fagforeninger i Norge",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Fagforeninger i Norge",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Menneskerettigheter og likeverd",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som servitør",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 13,
+      "tittel": "Fastfood-medarbeider",
+      "maned": "Februar",
+      "ukeStart": 6,
+      "ukeSlutt": 7,
+      "uker": [
+        6,
+        7
+      ],
+      "periodeFokus": "Possessiver, perfektum, velferd og skatt",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Possessiver og eiendomsord, adjektiv gradbøyning",
+      "yrke": "Fastfood-medarbeider",
+      "arbeidsnorskTema": "Velferdssamfunnet",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Utdanning for alle",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Fastfood-medarbeider – Velferdssamfunnet",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Velferdssamfunnet",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Medier",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som fastfood-medarbeider",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 14,
+      "tittel": "Pleieassistent",
+      "maned": "Februar",
+      "ukeStart": 8,
+      "ukeSlutt": 9,
+      "uker": [
+        8,
+        9
+      ],
+      "periodeFokus": "Possessiver, perfektum, velferd og skatt",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Verb i perfektum",
+      "yrke": "Pleieassistent",
+      "arbeidsnorskTema": "Å betale skatt",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Jeg vil finne en jobb!",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Pleieassistent – Å betale skatt",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Å betale skatt",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Norges historie",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som pleieassistent",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 15,
+      "tittel": "Housekeeping",
+      "maned": "Mars",
+      "ukeStart": 10,
+      "ukeSlutt": 11,
+      "uker": [
+        10,
+        11
+      ],
+      "periodeFokus": "Imperativ, refleksive eiendomsord, HMS og redskaper",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Substantiv og adjektiv, tidsadverb",
+      "yrke": "Housekeeping",
+      "arbeidsnorskTema": "Svart arbeid",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Innvandrer i Norge",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Housekeeping – Svart arbeid",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Svart arbeid",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Kultur",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som housekeeping",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 16,
+      "tittel": "Bartender",
+      "maned": "Mars",
+      "ukeStart": 12,
+      "ukeSlutt": 13,
+      "uker": [
+        12,
+        13
+      ],
+      "periodeFokus": "Imperativ, refleksive eiendomsord, HMS og redskaper",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Verb i imperativ, bindeordene derfor/fordi, før–nå, først–så, når",
+      "yrke": "Bartender",
+      "arbeidsnorskTema": "Helse, miljø og sikkerhet (HMS)",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Vi blir kjent (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Bartender – Helse, miljø og sikkerhet (HMS)",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Helse, miljø og sikkerhet (HMS)",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Det flerkulturelle Norge (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som bartender",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 17,
+      "tittel": "Baker",
+      "maned": "April",
+      "ukeStart": 14,
+      "ukeSlutt": 15,
+      "uker": [
+        14,
+        15
+      ],
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Refleksive eiendomsord",
+      "yrke": "Baker",
+      "arbeidsnorskTema": "Redskaper man bruker på jobb",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Hvordan går det? (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Baker – Redskaper man bruker på jobb",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Redskaper man bruker på jobb",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Veien til arbeid (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som baker",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 18,
+      "tittel": "Taxisjåfør",
+      "maned": "April",
+      "ukeStart": 16,
+      "ukeSlutt": 16,
+      "uker": [
+        16
+      ],
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Sammensatte ord, som-setninger, bindeordene hvis/fordi",
+      "yrke": "Taxisjåfør",
+      "arbeidsnorskTema": "Taushetsplikt",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Familie og fritid (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Taxisjåfør – Taushetsplikt",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Taushetsplikt",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Barn og ungdom (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som taxisjåfør",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 19,
+      "tittel": "Fiberinstallatør",
+      "maned": "April",
+      "ukeStart": 17,
+      "ukeSlutt": 17,
+      "uker": [
+        17
+      ],
+      "periodeFokus": "Sammensatte ord, indirekte tale, arbeidsmiljø",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Indirekte tale: synes/tror/spør/sier/lurer på/forteller",
+      "yrke": "Fiberinstallatør",
+      "arbeidsnorskTema": "Arbeidsmiljø",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "En vanlig dag (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Fiberinstallatør – Arbeidsmiljø",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Arbeidsmiljø",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Livets gang (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som fiberinstallatør",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 20,
+      "tittel": "Bilmekaniker",
+      "maned": "Mai-Juni",
+      "ukeStart": 18,
+      "ukeSlutt": 20,
+      "uker": [
+        18,
+        19,
+        20
+      ],
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Det-setninger",
+      "yrke": "Bilmekaniker",
+      "arbeidsnorskTema": "Kompetanseutvikling",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Hvordan er været? (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Bilmekaniker – Kompetanseutvikling",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Kompetanseutvikling",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Bolig og privatøkonomi (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som bilmekaniker",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 21,
+      "tittel": "Gulvlegger",
+      "maned": "Mai-Juni",
+      "ukeStart": 21,
+      "ukeSlutt": 22,
+      "uker": [
+        21,
+        22
+      ],
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Bindeord, leddsetninger og helsetninger",
+      "yrke": "Gulvlegger",
+      "arbeidsnorskTema": "Arbeidstid og avtaler",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "Hva gjorde du i går? (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Gulvlegger – Arbeidstid og avtaler",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Arbeidstid og avtaler",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Kunnskap, skole og utdanning (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som gulvlegger",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    },
+    {
+      "nummer": 22,
+      "tittel": "Rørlegger",
+      "maned": "Mai-Juni",
+      "ukeStart": 23,
+      "ukeSlutt": 24,
+      "uker": [
+        23,
+        24
+      ],
+      "periodeFokus": "Oppsummering: bindeord, adjektiv, avtaler, avslutning",
+      "cefrNivaa": [
+        "A2",
+        "B1"
+      ],
+      "standardNiva": "A2",
+      "grammatikk": "Adjektiv gradbøyning (full gjennomgang)",
+      "yrke": "Rørlegger",
+      "arbeidsnorskTema": "Å gi informasjon",
+      "tematekster": [
+        {
+          "nummer": 1,
+          "tittel": "God tur! (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 2,
+          "tittel": "Rørlegger – Å gi informasjon",
+          "type": "yrke_arbeidsnorsk"
+        },
+        {
+          "nummer": 3,
+          "tittel": "Å gi informasjon",
+          "type": "arbeidsnorsk"
+        },
+        {
+          "nummer": 4,
+          "tittel": "Jobbsøking (fordypning)",
+          "type": "lareverk"
+        },
+        {
+          "nummer": 5,
+          "tittel": "En dag som rørlegger",
+          "type": "hverdagssituasjon"
+        }
+      ],
+      "oppgavestruktur": [
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "beskrivelse": "Leseforståelse (a-e), spørsmål til teksten"
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "beskrivelse": "Variert oppgave, for eksempel flervalg, sant/usant eller finn par"
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "beskrivelse": "Fyll inn / setningsstruktur med ordbank"
+        },
+        {
+          "nummer": 4,
+          "type": "skriveoppgave",
+          "beskrivelse": "Skriveoppgave / oppsummering"
+        },
+        {
+          "nummer": 5,
+          "type": "muntlig",
+          "beskrivelse": "Muntlig øvelse, rollespill eller parøvelse"
+        }
+      ],
+      "ordliste": {
+        "antall": 20,
+        "beskrivelse": "20 nøkkelord fra kapittelet: grammatikk, yrke og arbeidsnorsk"
+      },
+      "kapitteltest": {
+        "antallOppgaver": 10,
+        "poengPerOppgave": 1,
+        "totalPoeng": 10
+      },
+      "fasit": "Svar på alle lukkede oppgaver og eksempelsvar på åpne oppgaver"
+    }
+  ]
+}

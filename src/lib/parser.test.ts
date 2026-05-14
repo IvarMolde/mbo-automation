@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAllKapitler, getKapittel, getKapittelForUke } from "./parser.js";
+import { getAllKapitler, getKapittel, getKapittelForUkeModulo } from "./parser.js";
 
 describe("parser", () => {
   it("contains 22 chapters", () => {
@@ -15,10 +15,10 @@ describe("parser", () => {
     expect(kapittel?.cefrNivaa).toBe("B1");
   });
 
-  it("maps week to chapter deterministically", () => {
-    expect(getKapittelForUke(1).nummer).toBe(1);
-    expect(getKapittelForUke(22).nummer).toBe(22);
-    expect(getKapittelForUke(23).nummer).toBe(1);
+  it("maps week to chapter deterministically (modulo-reserve)", () => {
+    expect(getKapittelForUkeModulo(1).nummer).toBe(1);
+    expect(getKapittelForUkeModulo(22).nummer).toBe(22);
+    expect(getKapittelForUkeModulo(23).nummer).toBe(1);
   });
 
   it("includes CEFR can-do descriptors", () => {

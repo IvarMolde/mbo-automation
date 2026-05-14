@@ -34,6 +34,17 @@ export async function sendHefte(
   });
 }
 
+export async function sendMissingArsplanUkeEmail(motaker: string, isoUke: number): Promise<void> {
+  const transporter = getTransporter();
+  await transporter.sendMail({
+    from: env.GMAIL_USER,
+    to: motaker,
+    subject: `MBO: mangler årsplan for ISO-uke ${isoUke}`,
+    html: `<p>Den automatiske ukentlige jobben fant ingen rad for ISO-uke <strong>${isoUke}</strong> i den innleste årsplanen.</p>
+<p>Ingen hefte ble generert eller sendt. Oppdater årsplan-JSON eller kjør manuell generering.</p>`
+  });
+}
+
 function getTransporter() {
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
     throw new Error("Mangler GMAIL_USER/GMAIL_APP_PASSWORD i miljøvariabler.");

@@ -2,7 +2,9 @@ import express from "express";
 import request from "supertest";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 
-const { mockArbeidshefte } = vi.hoisted(() => ({
+import type { Kapittel } from "../lib/types.js";
+
+const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
   mockArbeidshefte: {
     lesetekster: [{ tittel: "Tittel", tekst: "x".repeat(40) }],
     ordliste: Array.from({ length: 8 }, (_, i) => ({
@@ -15,12 +17,30 @@ const { mockArbeidshefte } = vi.hoisted(() => ({
       innhold: "i".repeat(15)
     })),
     presentasjonTekst: "p".repeat(20)
-  }
+  },
+  mockCronKapittel: {
+    nummer: 1,
+    yrke: "Renholder",
+    grammatikk: "Presens og preteritum",
+    arbeidsnorskTema: "Arbeidsrutiner og hygiene",
+    cefrNivaa: "A2",
+    cefrCanDo: {
+      resepsjon: ["r"],
+      samhandling: ["s"],
+      produksjon: ["p"]
+    }
+  } satisfies Kapittel
 }));
 
 vi.mock("../lib/emailSender.js", () => ({
   sendHefte: vi.fn().mockResolvedValue(undefined),
-  sendTestEmail: vi.fn().mockResolvedValue(undefined)
+  sendTestEmail: vi.fn().mockResolvedValue(undefined),
+  sendMissingArsplanUkeEmail: vi.fn().mockResolvedValue(undefined)
+}));
+
+vi.mock("../lib/arsplanResolve.js", () => ({
+  resolveKapittelForIsoUke: vi.fn(() => ({ type: "arsplan", kapittel: mockCronKapittel })),
+  resetArsplanCache: vi.fn()
 }));
 
 vi.mock("../lib/gemini.js", () => ({

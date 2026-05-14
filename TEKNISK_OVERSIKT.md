@@ -115,7 +115,8 @@ AARPLAN = {
 ```
 
 **Funksjoner:**
-- `getKapittelForUke(uke)` - Hent kapittel basert på uke
+- `resolveKapittelForIsoUke(isoUke)` - Oppslag i årsplan-JSON (fallback: modulo)
+- `getKapittelForUkeModulo(uke)` - Reservekartlegging når årsplan mangler
 - `getKapittel(nummer)` - Hent spesifikk kapittel
 - `getAllKapitler()` - List alle
 

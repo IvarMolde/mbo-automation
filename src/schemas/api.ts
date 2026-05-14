@@ -1,8 +1,12 @@
 import { z } from "zod";
 
 export const genererSchema = z.object({
-  kapittelNummer: z.number().int().positive(),
-  uke: z.number().int().min(1).max(53)
+  /** Utelates for å bruke årsplan-rad for gitt ISO-uke. */
+  kapittelNummer: z.number().int().positive().max(500).optional(),
+  uke: z.number().int().min(1).max(53),
+  /** Tvinger innhold fra dette kapittelet (yrke/grammatikk fra katalog), uavhengig av årsplan. */
+  overstyrKapittelNummer: z.number().int().positive().max(500).optional(),
+  laererTilleggsinstruks: z.string().max(4000).optional()
 });
 
 export const sendSchema = genererSchema.extend({

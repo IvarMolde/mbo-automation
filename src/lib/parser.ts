@@ -1,4 +1,4 @@
-import type { Kapittel } from "./types.js";
+import type { CefrCanDo, CefrNivaa, Kapittel } from "./types.js";
 
 const CEFR_A2 = {
   resepsjon: [
@@ -69,7 +69,17 @@ export function getKapittel(nummer: number): Kapittel | undefined {
   return KAPITLER.find((k) => k.nummer === nummer);
 }
 
-export function getKapittelForUke(uke: number): Kapittel {
+/** Modulo-fallback når årsplan ikke er tilgjengelig (utvikling / reserve). */
+export function getKapittelForUkeModulo(uke: number): Kapittel {
   const index = (Math.abs(uke) - 1) % KAPITLER.length;
   return KAPITLER[index]!;
+}
+
+export function getCefrCanDoForNivaa(nivaa: CefrNivaa): CefrCanDo {
+  const src = nivaa === "B1" ? CEFR_B1 : CEFR_A2;
+  return {
+    resepsjon: [...src.resepsjon],
+    samhandling: [...src.samhandling],
+    produksjon: [...src.produksjon]
+  };
 }
