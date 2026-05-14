@@ -32,7 +32,12 @@ Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUEST
 - `POST /api/generer` - generer hefte/PPTX (uten e-post)
 - `POST /api/send` - generer og send vedlegg på e-post
 - `POST /api/test-email` - test SMTP-oppsett
-- `POST /api/cron` - sikker cron-trigger (Bearer `CRON_SECRET`)
+- `GET /api/cron` og `POST /api/cron` - ukentlig jobb (Bearer `CRON_SECRET`). **Vercel Cron** kaller med **GET** og setter `Authorization: Bearer`-header når `CRON_SECRET` er konfigurert i prosjektet.
+
+## Cron og tidssone
+
+- I [`vercel.json`](vercel.json) er uttrykket i **UTC** (standard for Vercel), f.eks. `0 11 * * WED` = onsdag 11:00 UTC.
+- I **Norge** tilsvarer det **12:00 om vinteren (CET)** og **13:00 om sommeren (CEST)** med samme cron-uttrykk. Juster minutt/time i UTC ved behov, eller bruk ekstern scheduler med `Europe/Oslo` om du trenger fast lokal tid året rundt.
 
 ## Sikkerhet
 

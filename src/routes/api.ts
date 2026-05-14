@@ -1,4 +1,4 @@
-import { type Response, Router } from "express";
+import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { env } from "../lib/config.js";
 import { sendHefte, sendTestEmail } from "../lib/emailSender.js";
@@ -64,7 +64,8 @@ apiRouter.post("/send", async (req, res) => {
   }
 });
 
-apiRouter.post("/cron", async (req, res) => {
+/** Vercel Cron bruker GET; manuell kjøring kan bruke POST. Samme sikkerhetssjekk. */
+const cronHandler = async (req: Request, res: Response): Promise<void> => {
   try {
     if (!env.CRON_SECRET) {
       throw new ApiError(500, "CRON_SECRET er ikke konfigurert.");
@@ -92,7 +93,10 @@ apiRouter.post("/cron", async (req, res) => {
   } catch (error) {
     handleError(res, error);
   }
-});
+};
+
+apiRouter.get("/cron", cronHandler);
+apiRouter.post("/cron", cronHandler);
 
 class ApiError extends Error {
   constructor(public readonly statusCode: number, message: string) {
