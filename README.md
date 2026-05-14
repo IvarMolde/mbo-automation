@@ -45,6 +45,7 @@ Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUEST
 
 ## CEFR-styring
 
+- Kuraterte nivåbeskrivelser som Markdown: [`docs/beskrivelser_norskniva_A1_B1.md`](docs/beskrivelser_norskniva_A1_B1.md).
 - Alle kapitler inneholder CEFR-nivå (`A2`/`B1`) og `can-do` deskriptorer.
 - `gemini`-prompten inkluderer deskriptorer for resepsjon, samhandling og produksjon.
 - Innhold valideres strukturelt før det brukes til dokumentgenerering.
