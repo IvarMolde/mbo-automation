@@ -23,6 +23,8 @@ describe("getServiceAccountCredentials", () => {
     const creds = getServiceAccountCredentials();
     expect(creds?.client_email).toBe("sa@example.iam.gserviceaccount.com");
     expect(creds?.project_id).toBe("demo");
+    expect(creds?.private_key).toContain("\nABC\n");
+    expect(creds?.private_key).not.toContain("\\n");
   });
 
   it("throws on invalid JSON", async () => {

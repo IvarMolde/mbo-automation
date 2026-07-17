@@ -88,12 +88,19 @@ function extractJsonCandidate(raw: string): string {
   return cleaned;
 }
 
+export type GenererArbeidshefteResult = {
+  data: ArbeidshefteData;
+  source: "gemini" | "fallback";
+  errorMessage?: string;
+};
+
 export async function genererArbeidshefte(
   kapittel: Kapittel,
   options?: GenererArbeidshefteOptions
-): Promise<ArbeidshefteData> {
+): Promise<GenererArbeidshefteResult> {
   if (!env.GCP_PROJECT_ID) {
-    return createFallbackArbeidshefte(kapittel);
+    console.warn("[gemini] GCP_PROJECT_ID mangler — bruker fallback.");
+    return { data: createFallbackArbeidshefte(kapittel), source: "fallback", errorMessage: "GCP_PROJECT_ID mangler" };
   }
 
   try {
@@ -120,7 +127,10 @@ Can-do mål for dette kapittelet:
 - Samhandling: ${kapittel.cefrCanDo.samhandling.join(" ")}
 - Produksjon: ${kapittel.cefrCanDo.produksjon.join(" ")}
 ${cefrMdBlock}${laererBlock}
-Krav:
+Krav (må oppfylles eksakt):
+- 3 til 5 lesetekster (hver tekst minst 80 ord, realistisk arbeidssituasjon).
+- 15 til 20 ord i ordlisten (ord, forklaring, eksempelsetning).
+- 5 basisoppgaver + 3 ekstra utfordringer (totalt 8 oppgaver).
 - Innholdet skal være trygt, realistisk og arbeidslivsnært.
 - Bruk tydelige "kan"-mål i oppgaver.
 - Integrer grammatikkfokus naturlig i lesetekst og oppgaver.
@@ -137,14 +147,27 @@ Returner kun gyldig JSON med feltene:
     const response = await model.generateContent(prompt);
     const text = response.response.candidates?.[0]?.content?.parts?.[0];
     const content = typeof text === "object" && "text" in text ? text.text : "";
-    if (!content) return createFallbackArbeidshefte(kapittel);
+    if (!content) {
+      console.error("[gemini] Tom respons fra modellen.");
+      return {
+        data: createFallbackArbeidshefte(kapittel),
+        source: "fallback",
+        errorMessage: "Tom respons fra Gemini"
+      };
+    }
 
     const json = extractJsonCandidate(content);
     const parsed = JSON.parse(json);
     const validated = arbeidshefteDataSchema.parse(parsed);
-    return validated;
-  } catch {
-    return createFallbackArbeidshefte(kapittel);
+    return { data: validated, source: "gemini" };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[gemini] Feilet, bruker fallback:", errorMessage);
+    return {
+      data: createFallbackArbeidshefte(kapittel),
+      source: "fallback",
+      errorMessage
+    };
   }
 }
 

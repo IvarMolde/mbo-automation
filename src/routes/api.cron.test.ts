@@ -44,7 +44,7 @@ vi.mock("../lib/arsplanResolve.js", () => ({
 }));
 
 vi.mock("../lib/gemini.js", () => ({
-  genererArbeidshefte: vi.fn().mockResolvedValue(mockArbeidshefte),
+  genererArbeidshefte: vi.fn().mockResolvedValue({ data: mockArbeidshefte, source: "gemini" }),
   genererPresentasjon: vi.fn().mockResolvedValue({
     slides: [
       { tittel: "S1", innhold: "innhold1" },

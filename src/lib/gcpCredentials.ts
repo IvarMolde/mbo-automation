@@ -35,5 +35,8 @@ export function getServiceAccountCredentials(): ServiceAccountCredentials | unde
     );
   }
 
-  return parsed as ServiceAccountCredentials;
+  const credentials = parsed as ServiceAccountCredentials;
+  // Vercel/env often stores private_key with literal \n instead of real newlines.
+  credentials.private_key = credentials.private_key.replace(/\\n/g, "\n");
+  return credentials;
 }

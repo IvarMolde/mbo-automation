@@ -45,6 +45,7 @@ apiRouter.post("/generer", async (req, res) => {
       success: true,
       kapittel: kapittel.nummer,
       uke,
+      contentSource: files.contentSource,
       files: { wordBytes: files.word.length, pptxBytes: files.pptx.length }
     });
   } catch (error) {
@@ -59,7 +60,13 @@ apiRouter.post("/send", async (req, res) => {
     const files = await genererFilerForKapittel(kapittel, uke, { laererTilleggsinstruks });
     await sendHefte(motaker, kapittel, files.word, files.pptx, uke);
 
-    sendValidatedJson(res, successMessageResponseSchema, { success: true, message: "Hefte sendt." });
+    sendValidatedJson(res, successMessageResponseSchema, {
+      success: true,
+      message: files.contentSource === "gemini"
+        ? "Hefte sendt (generert med Gemini)."
+        : "Hefte sendt (fallback — Gemini feilet; sjekk Vercel Logs).",
+      contentSource: files.contentSource
+    });
   } catch (error) {
     handleError(res, error);
   }
@@ -92,9 +99,12 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
 
     sendValidatedJson(res, cronResponseSchema, {
       success: true,
-      message: "Cron-kjoring fullfort.",
+      message: files.contentSource === "gemini"
+        ? "Cron-kjoring fullfort."
+        : "Cron-kjoring fullfort med fallback (Gemini feilet).",
       kapittel: kapittel.nummer,
-      uke
+      uke,
+      contentSource: files.contentSource
     });
   } catch (error) {
     handleError(res, error);
@@ -145,12 +155,12 @@ async function genererFilerForKapittel(
   kapittel: Kapittel,
   uke: number,
   opts?: { laererTilleggsinstruks?: string }
-): Promise<{ word: Buffer; pptx: Buffer }> {
-  const arbeidshefte = await genererArbeidshefte(kapittel, { laererTilleggsinstruks: opts?.laererTilleggsinstruks });
-  const presentasjon = await genererPresentasjon(kapittel, arbeidshefte);
-  const word = await genererWordHefte(kapittel, arbeidshefte, uke);
+): Promise<{ word: Buffer; pptx: Buffer; contentSource: "gemini" | "fallback" }> {
+  const generated = await genererArbeidshefte(kapittel, { laererTilleggsinstruks: opts?.laererTilleggsinstruks });
+  const presentasjon = await genererPresentasjon(kapittel, generated.data);
+  const word = await genererWordHefte(kapittel, generated.data, uke);
   const pptx = await genererPPTX(kapittel, presentasjon, uke);
-  return { word, pptx };
+  return { word, pptx, contentSource: generated.source };
 }
 
 function handleError(res: Response, error: unknown) {

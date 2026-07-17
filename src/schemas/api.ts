@@ -21,6 +21,7 @@ export const genererResponseSchema = z.object({
   success: z.literal(true),
   kapittel: z.number().int().positive(),
   uke: z.number().int().min(1).max(53),
+  contentSource: z.enum(["gemini", "fallback"]),
   files: z.object({
     wordBytes: z.number().int().nonnegative(),
     pptxBytes: z.number().int().nonnegative()
@@ -29,12 +30,14 @@ export const genererResponseSchema = z.object({
 
 export const successMessageResponseSchema = z.object({
   success: z.literal(true),
-  message: z.string().min(1)
+  message: z.string().min(1),
+  contentSource: z.enum(["gemini", "fallback"]).optional()
 });
 
 export const cronResponseSchema = successMessageResponseSchema.extend({
   kapittel: z.number().int().positive(),
-  uke: z.number().int().min(1).max(53)
+  uke: z.number().int().min(1).max(53),
+  contentSource: z.enum(["gemini", "fallback"])
 });
 
 export const errorResponseSchema = z.object({
