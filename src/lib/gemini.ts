@@ -1,5 +1,6 @@
 import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
+import { getServiceAccountCredentials } from "./gcpCredentials.js";
 import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
 import type { ArbeidshefteData, Kapittel, PresentasjonData } from "./types.js";
 import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
@@ -7,6 +8,17 @@ import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
 export type GenererArbeidshefteOptions = {
   laererTilleggsinstruks?: string;
 };
+
+function createVertexClient(): VertexAI {
+  const credentials = getServiceAccountCredentials();
+  return new VertexAI({
+    project: env.GCP_PROJECT_ID!,
+    location: env.GCP_LOCATION,
+    ...(credentials
+      ? { googleAuthOptions: { credentials } }
+      : {})
+  });
+}
 
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const ordGrense = kapittel.cefrNivaa === "A2" ? "4-10 ord" : "8-18 ord";
@@ -85,10 +97,7 @@ export async function genererArbeidshefte(
   }
 
   try {
-    const vertex = new VertexAI({
-      project: env.GCP_PROJECT_ID,
-      location: env.GCP_LOCATION
-    });
+    const vertex = createVertexClient();
     const model = vertex.getGenerativeModel({ model: env.GEMINI_MODEL });
     const cefrMd = getCefrNivaMarkdownTekst();
     const cefrMdBlock = cefrMd

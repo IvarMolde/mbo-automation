@@ -45,10 +45,14 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   res.status(500).json({ success: false, error: message });
 });
 
-app.listen(env.PORT, () => {
-  // Avoid leaking secrets; print only runtime metadata.
-  console.log(`Server kjører på port ${env.PORT}`);
-});
+export default app;
+
+if (!process.env.VERCEL) {
+  app.listen(env.PORT, () => {
+    // Avoid leaking secrets; print only runtime metadata.
+    console.log(`Server kjører på port ${env.PORT}`);
+  });
+}
 
 function apiRateLimit(req: express.Request, res: express.Response, next: express.NextFunction): void {
   const now = Date.now();

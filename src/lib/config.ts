@@ -12,6 +12,8 @@ const envSchema = z.object({
   GCP_PROJECT_ID: z.string().optional(),
   GCP_LOCATION: z.string().default("europe-north1"),
   GEMINI_MODEL: z.string().default("gemini-2.5-flash"),
+  /** Full service-account JSON as a single string (for Vercel / serverless). */
+  GOOGLE_SERVICE_ACCOUNT_JSON: z.string().min(2).optional(),
   GMAIL_USER: z.string().email().optional(),
   GMAIL_APP_PASSWORD: z.string().min(8).optional(),
   RECIPIENT_EMAIL: z.string().email().optional(),
