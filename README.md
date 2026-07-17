@@ -36,7 +36,7 @@ Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUEST
 
 ## Cron og tidssone
 
-- I [`vercel.json`](vercel.json) er uttrykket i **UTC** (standard for Vercel), f.eks. `0 11 * * WED` = onsdag 11:00 UTC.
+- I [`vercel.json`](vercel.json) er uttrykket i **UTC** (standard for Vercel), f.eks. `0 11 * * 3` = onsdag 11:00 UTC (Vercel krever tall 0–6, ikke `WED`).
 - I **Norge** tilsvarer det **12:00 om vinteren (CET)** og **13:00 om sommeren (CEST)** med samme cron-uttrykk. Juster minutt/time i UTC ved behov, eller bruk ekstern scheduler med `Europe/Oslo` om du trenger fast lokal tid året rundt.
 
 ## Sikkerhet
