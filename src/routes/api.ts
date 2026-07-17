@@ -171,12 +171,31 @@ function handleError(res: Response, error: unknown) {
     return;
   }
 
-  const message = env.NODE_ENV === "development" && error instanceof Error
-    ? error.message
-    : "Uventet feil.";
+  // Always log server-side (visible in Vercel Runtime Logs); never echo secrets.
+  if (error instanceof Error) {
+    console.error("[api]", error.message);
+  } else {
+    console.error("[api]", error);
+  }
+
+  const raw = error instanceof Error ? error.message : "";
+  const isConfigHint =
+    /GMAIL_USER|GMAIL_APP_PASSWORD|RECIPIENT_EMAIL|CRON_SECRET|GOOGLE_SERVICE_ACCOUNT/i.test(raw);
+  const isMailAuth =
+    /Invalid login|EAUTH|Username and Password not accepted|BadCredentials/i.test(raw);
+
+  let clientMessage = "Uventet feil.";
+  if (env.NODE_ENV === "development" && raw) {
+    clientMessage = raw;
+  } else if (isConfigHint) {
+    clientMessage = "Mangler eller ugyldig e-postkonfigurasjon (GMAIL_USER / GMAIL_APP_PASSWORD).";
+  } else if (isMailAuth) {
+    clientMessage = "Gmail avviste innlogging. Sjekk App Password (uten mellomrom) og 2FA.";
+  }
+
   sendValidatedJson(res.status(500), errorResponseSchema, {
     success: false,
-    error: message
+    error: clientMessage
   });
 }
 

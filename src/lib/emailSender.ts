@@ -50,11 +50,14 @@ function getTransporter() {
     throw new Error("Mangler GMAIL_USER/GMAIL_APP_PASSWORD i miljøvariabler.");
   }
 
+  // App passwords are often copied with spaces; Gmail expects 16 chars without spaces.
+  const pass = env.GMAIL_APP_PASSWORD.replace(/\s+/g, "");
+
   return nodemailer.createTransport({
     service: "gmail",
     auth: {
       user: env.GMAIL_USER,
-      pass: env.GMAIL_APP_PASSWORD
+      pass
     }
   });
 }
