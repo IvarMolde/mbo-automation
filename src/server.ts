@@ -39,7 +39,9 @@ app.get("/", (_req, res) => {
       recipientEmail: Boolean(env.RECIPIENT_EMAIL),
       cronSecret: Boolean(env.CRON_SECRET),
       gcpProjectId: Boolean(env.GCP_PROJECT_ID),
-      googleServiceAccountJson: Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON)
+      googleServiceAccountJson: Boolean(
+        env.GOOGLE_SERVICE_ACCOUNT_JSON || env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+      )
     }
   });
 });

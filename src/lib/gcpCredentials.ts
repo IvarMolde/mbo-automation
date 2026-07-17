@@ -12,7 +12,7 @@ export type ServiceAccountCredentials = {
  * Returns undefined when unset so local ADC / key file can still be used.
  */
 export function getServiceAccountCredentials(): ServiceAccountCredentials | undefined {
-  const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON ?? env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   if (!raw) {
     return undefined;
   }

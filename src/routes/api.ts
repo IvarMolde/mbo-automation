@@ -46,6 +46,7 @@ apiRouter.post("/generer", async (req, res) => {
       kapittel: kapittel.nummer,
       uke,
       contentSource: files.contentSource,
+      geminiError: files.contentSource === "fallback" ? sanitizeGeminiError(files.geminiError) : undefined,
       files: { wordBytes: files.word.length, pptxBytes: files.pptx.length }
     });
   } catch (error) {
@@ -65,7 +66,8 @@ apiRouter.post("/send", async (req, res) => {
       message: files.contentSource === "gemini"
         ? "Hefte sendt (generert med Gemini)."
         : "Hefte sendt (fallback — Gemini feilet; sjekk Vercel Logs).",
-      contentSource: files.contentSource
+      contentSource: files.contentSource,
+      geminiError: files.contentSource === "fallback" ? sanitizeGeminiError(files.geminiError) : undefined
     });
   } catch (error) {
     handleError(res, error);
@@ -155,12 +157,22 @@ async function genererFilerForKapittel(
   kapittel: Kapittel,
   uke: number,
   opts?: { laererTilleggsinstruks?: string }
-): Promise<{ word: Buffer; pptx: Buffer; contentSource: "gemini" | "fallback" }> {
+): Promise<{
+  word: Buffer;
+  pptx: Buffer;
+  contentSource: "gemini" | "fallback";
+  geminiError?: string;
+}> {
   const generated = await genererArbeidshefte(kapittel, { laererTilleggsinstruks: opts?.laererTilleggsinstruks });
   const presentasjon = await genererPresentasjon(kapittel, generated.data);
   const word = await genererWordHefte(kapittel, generated.data, uke);
   const pptx = await genererPPTX(kapittel, presentasjon, uke);
-  return { word, pptx, contentSource: generated.source };
+  return {
+    word,
+    pptx,
+    contentSource: generated.source,
+    geminiError: generated.errorMessage
+  };
 }
 
 function handleError(res: Response, error: unknown) {
@@ -212,4 +224,13 @@ function handleError(res: Response, error: unknown) {
 function sendValidatedJson<T>(res: Response, schema: z.ZodType<T>, payload: T): void {
   const parsedPayload = schema.parse(payload);
   res.json(parsedPayload);
+}
+
+/** Strip secrets/paths from Vertex errors before returning to clients. */
+function sanitizeGeminiError(message: string | undefined): string | undefined {
+  if (!message) return "Ukjent Gemini-feil (ingen melding).";
+  return message
+    .replace(/-----BEGIN[\s\S]*?-----END [^-]+-----/g, "[REDACTED_KEY]")
+    .replace(/private_key[^,]*/gi, "private_key:[REDACTED]")
+    .slice(0, 1500);
 }
