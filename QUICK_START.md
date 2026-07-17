@@ -73,7 +73,7 @@ git push -u origin main
 
 4. Deploy
 
-`vercel.json` setter `maxDuration: 60` for Gemini + Word/PPTX, og cron `0 11 * * WED` (onsdag 11:00 UTC). Når `CRON_SECRET` er satt, sender Vercel Cron automatisk `Authorization: Bearer <CRON_SECRET>` til `/api/cron`.
+`vercel.json` setter `maxDuration: 60` for Gemini + Word/PPTX, og cron `0 11 * * 3` (onsdag 11:00 UTC; Vercel krever tall, ikke `WED`). Når `CRON_SECRET` er satt, sender Vercel Cron automatisk `Authorization: Bearer <CRON_SECRET>` til `/api/cron`.
 
 ### 3. Verifiser
 
