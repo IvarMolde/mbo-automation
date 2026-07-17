@@ -32,17 +32,40 @@ app.get("/", (_req, res) => {
   res.json({
     status: "ok",
     service: "mbo-automation",
-    env: env.NODE_ENV
+    env: env.NODE_ENV,
+    config: {
+      gmailUser: Boolean(env.GMAIL_USER),
+      gmailAppPassword: Boolean(env.GMAIL_APP_PASSWORD),
+      recipientEmail: Boolean(env.RECIPIENT_EMAIL),
+      cronSecret: Boolean(env.CRON_SECRET),
+      gcpProjectId: Boolean(env.GCP_PROJECT_ID),
+      googleServiceAccountJson: Boolean(env.GOOGLE_SERVICE_ACCOUNT_JSON)
+    }
   });
 });
 
 app.use("/api", apiRateLimit, apiRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  const message = env.NODE_ENV === "development" && err instanceof Error
-    ? err.message
-    : "Uventet serverfeil.";
-  res.status(500).json({ success: false, error: message });
+  const raw = err instanceof Error ? err.message : String(err);
+  console.error("[express]", raw);
+
+  if (res.headersSent) {
+    return;
+  }
+
+  let clientMessage = "Uventet serverfeil.";
+  if (env.NODE_ENV === "development" && raw) {
+    clientMessage = raw;
+  } else if (/GMAIL_USER|GMAIL_APP_PASSWORD/i.test(raw)) {
+    clientMessage = "Mangler eller ugyldig e-postkonfigurasjon (GMAIL_USER / GMAIL_APP_PASSWORD).";
+  } else if (/Invalid login|EAUTH|Username and Password not accepted/i.test(raw)) {
+    clientMessage = "Gmail avviste innlogging. Sjekk App Password (uten mellomrom) og 2FA.";
+  } else if (err instanceof SyntaxError && "body" in err) {
+    clientMessage = "Ugyldig JSON i forespørsel.";
+  }
+
+  res.status(500).json({ success: false, error: clientMessage });
 });
 
 export default app;
