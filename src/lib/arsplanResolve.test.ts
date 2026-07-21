@@ -83,6 +83,42 @@ describe("arsplanResolve", () => {
       expect(r.kapittel.nummer).toBe(1);
       expect(r.kapittel.yrke).toBe("Testyrke");
       expect(r.kapittel.arbeidsnorskTema).toBe("Testtema");
+      expect(r.kapittel.periodeFokus).toBe("kapittelfokus");
+      expect(r.kapittel.ordlisteAntall).toBe(20);
+      expect(r.kapittel.kapitteltestAntall).toBe(10);
+    }
+  });
+
+  it("tar med tematekster og oppgavestruktur fra årsplan", () => {
+    writeFileSync(
+      jsonPath,
+      JSON.stringify({
+        ...minimalArsplan(34, 1),
+        kapitler: [
+          {
+            ...minimalArsplan(34, 1).kapitler[0],
+            tematekster: [
+              { nummer: 1, tittel: "Vi blir kjent", type: "lareverk" },
+              { nummer: 2, tittel: "Renholder", type: "yrke_arbeidsnorsk" }
+            ],
+            oppgavestruktur: [
+              { nummer: 1, type: "leseforstaelse", beskrivelse: "a-e" },
+              { nummer: 2, type: "variert", beskrivelse: "flervalg" }
+            ],
+            ordliste: { antall: 20 },
+            kapitteltest: { antallOppgaver: 10 },
+            fasit: "Svar på lukkede oppgaver"
+          }
+        ]
+      })
+    );
+    resetArsplanCache();
+    const r = resolveKapittelForIsoUke(34);
+    expect(r.type).toBe("arsplan");
+    if (r.type === "arsplan") {
+      expect(r.kapittel.tematekster).toHaveLength(2);
+      expect(r.kapittel.oppgavestruktur?.[0]?.type).toBe("leseforstaelse");
+      expect(r.kapittel.fasitInstruks).toBe("Svar på lukkede oppgaver");
     }
   });
 

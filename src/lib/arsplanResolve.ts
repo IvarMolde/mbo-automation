@@ -70,7 +70,21 @@ function mapArsplanKapitelTilKapittel(ch: ArsplanKapitel): Kapittel {
       resepsjon: [...cefrCanDo.resepsjon],
       samhandling: [...cefrCanDo.samhandling],
       produksjon: [...cefrCanDo.produksjon]
-    }
+    },
+    periodeFokus: ch.periodeFokus,
+    tematekster: ch.tematekster?.map((t) => ({
+      nummer: t.nummer,
+      tittel: t.tittel,
+      type: t.type
+    })),
+    oppgavestruktur: ch.oppgavestruktur?.map((o) => ({
+      nummer: o.nummer,
+      type: o.type,
+      beskrivelse: o.beskrivelse
+    })),
+    ordlisteAntall: ch.ordliste?.antall ?? 20,
+    kapitteltestAntall: ch.kapitteltest?.antallOppgaver ?? 10,
+    fasitInstruks: ch.fasit
   };
 }
 

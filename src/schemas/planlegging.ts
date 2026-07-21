@@ -27,7 +27,31 @@ export const kapittelSchema = z.object({
   grammatikk: z.string().min(1).max(2000),
   arbeidsnorskTema: z.string().min(1).max(500),
   cefrNivaa: cefrNivaaKapittelSchema,
-  cefrCanDo: cefrCanDoSchema
+  cefrCanDo: cefrCanDoSchema,
+  periodeFokus: z.string().max(2000).optional(),
+  tematekster: z
+    .array(
+      z.object({
+        nummer: z.number().int().positive(),
+        tittel: z.string().max(500),
+        type: z.string().max(120)
+      })
+    )
+    .max(50)
+    .optional(),
+  oppgavestruktur: z
+    .array(
+      z.object({
+        nummer: z.number().int().positive(),
+        type: z.string().max(120),
+        beskrivelse: z.string().max(2000)
+      })
+    )
+    .max(30)
+    .optional(),
+  ordlisteAntall: z.number().int().nonnegative().optional(),
+  kapitteltestAntall: z.number().int().nonnegative().optional(),
+  fasitInstruks: z.string().max(5000).optional()
 });
 
 export type KapittelValidated = z.infer<typeof kapittelSchema>;
@@ -195,17 +219,24 @@ export type CefrCanDoSamling = z.infer<typeof cefrCanDoSamlingSchema>;
 
 // ── Generert undervisningsopplegg (Gemini → validering → dokumenter) ───────
 
-/** Samme kontrakt som Vertex/Gemini forventes å returnere (se gemini.ts-prompt). */
+/** Gemini-kontrakt: følger årsplanens tematekster + oppgavestruktur. */
+export const arbeidshefteOppgaveSchema = z.object({
+  nummer: z.number().int().positive().max(20),
+  type: z.string().min(1).max(120),
+  tittel: z.string().min(3).max(500),
+  innhold: z.string().min(15).max(20_000)
+});
+
+export const arbeidshefteTekstSeksjonSchema = z.object({
+  nummer: z.number().int().positive().max(20),
+  type: z.string().min(1).max(120),
+  tittel: z.string().min(3).max(500),
+  tekst: z.string().min(40).max(80_000),
+  oppgaver: z.array(arbeidshefteOppgaveSchema).min(3).max(6)
+});
+
 export const arbeidshefteDataSchema = z.object({
-  lesetekster: z
-    .array(
-      z.object({
-        tittel: z.string().min(3).max(500),
-        tekst: z.string().min(40).max(80_000)
-      })
-    )
-    .min(1)
-    .max(5),
+  tekstSeksjoner: z.array(arbeidshefteTekstSeksjonSchema).min(3).max(6),
   ordliste: z
     .array(
       z.object({
@@ -214,17 +245,18 @@ export const arbeidshefteDataSchema = z.object({
         eksempel: z.string().min(6).max(4000)
       })
     )
-    .min(8)
+    .min(15)
     .max(25),
-  oppgaver: z
+  kapitteltest: z
     .array(
       z.object({
-        tittel: z.string().min(3).max(500),
-        innhold: z.string().min(15).max(20_000)
+        nummer: z.number().int().positive().max(20),
+        innhold: z.string().min(10).max(20_000)
       })
     )
-    .min(4)
+    .min(5)
     .max(12),
+  fasit: z.string().min(20).max(100_000),
   presentasjonTekst: z.string().min(20).max(20_000)
 });
 

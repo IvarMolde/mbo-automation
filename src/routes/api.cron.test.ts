@@ -6,16 +6,30 @@ import type { Kapittel } from "../lib/types.js";
 
 const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
   mockArbeidshefte: {
-    lesetekster: [{ tittel: "Tittel", tekst: "x".repeat(40) }],
-    ordliste: Array.from({ length: 8 }, (_, i) => ({
+    tekstSeksjoner: [
+      {
+        nummer: 1,
+        type: "lareverk",
+        tittel: "Tittel",
+        tekst: "x".repeat(40),
+        oppgaver: Array.from({ length: 3 }, (_, i) => ({
+          nummer: i + 1,
+          type: "leseforstaelse",
+          tittel: `Oppgave ${i}`,
+          innhold: "i".repeat(15)
+        }))
+      }
+    ],
+    ordliste: Array.from({ length: 15 }, (_, i) => ({
       ord: `ord${i}`,
       forklaring: "forklar",
       eksempel: "eksempel"
     })),
-    oppgaver: Array.from({ length: 4 }, (_, i) => ({
-      tittel: `Oppgave ${i}`,
-      innhold: "i".repeat(15)
+    kapitteltest: Array.from({ length: 5 }, (_, i) => ({
+      nummer: i + 1,
+      innhold: "test".repeat(3)
     })),
+    fasit: "f".repeat(20),
     presentasjonTekst: "p".repeat(20)
   },
   mockCronKapittel: {
@@ -28,7 +42,13 @@ const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
       resepsjon: ["r"],
       samhandling: ["s"],
       produksjon: ["p"]
-    }
+    },
+    tematekster: [{ nummer: 1, tittel: "Vi blir kjent", type: "lareverk" }],
+    oppgavestruktur: [
+      { nummer: 1, type: "leseforstaelse", beskrivelse: "Leseforståelse (a-e)" }
+    ],
+    ordlisteAntall: 20,
+    kapitteltestAntall: 10
   } satisfies Kapittel
 }));
 
