@@ -29,8 +29,7 @@ const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
       nummer: i + 1,
       innhold: "test".repeat(3)
     })),
-    fasit: "f".repeat(20),
-    presentasjonTekst: "p".repeat(20)
+    fasit: "f".repeat(20)
   },
   mockCronKapittel: {
     nummer: 1,
@@ -64,21 +63,11 @@ vi.mock("../lib/arsplanResolve.js", () => ({
 }));
 
 vi.mock("../lib/gemini.js", () => ({
-  genererArbeidshefte: vi.fn().mockResolvedValue({ data: mockArbeidshefte, source: "gemini" }),
-  genererPresentasjon: vi.fn().mockResolvedValue({
-    slides: [
-      { tittel: "S1", innhold: "innhold1" },
-      { tittel: "S2", innhold: "innhold2" }
-    ]
-  })
+  genererArbeidshefte: vi.fn().mockResolvedValue({ data: mockArbeidshefte, source: "gemini" })
 }));
 
 vi.mock("../lib/wordGenerator.js", () => ({
   genererWordHefte: vi.fn().mockResolvedValue(Buffer.from("docx"))
-}));
-
-vi.mock("../lib/pptxGenerator.js", () => ({
-  genererPPTX: vi.fn().mockResolvedValue(Buffer.from("pptx"))
 }));
 
 describe("api cron", () => {

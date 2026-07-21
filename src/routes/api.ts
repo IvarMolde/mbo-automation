@@ -2,12 +2,11 @@ import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { env } from "../lib/config.js";
 import { sendHefte, sendMissingArsplanUkeEmail, sendTestEmail } from "../lib/emailSender.js";
-import { genererArbeidshefte, genererPresentasjon } from "../lib/gemini.js";
+import { genererArbeidshefte } from "../lib/gemini.js";
 import { type Kapittel } from "../lib/types.js";
 import { getIsoWeekNumber } from "../lib/week.js";
 import { resolveKapittelForIsoUke } from "../lib/arsplanResolve.js";
 import { getAllKapitler, getKapittel } from "../lib/parser.js";
-import { genererPPTX } from "../lib/pptxGenerator.js";
 import { genererWordHefte } from "../lib/wordGenerator.js";
 import {
   cronResponseSchema,
@@ -47,7 +46,7 @@ apiRouter.post("/generer", async (req, res) => {
       uke,
       contentSource: files.contentSource,
       geminiError: files.contentSource === "fallback" ? sanitizeGeminiError(files.geminiError) : undefined,
-      files: { wordBytes: files.word.length, pptxBytes: files.pptx.length }
+      files: { wordBytes: files.word.length }
     });
   } catch (error) {
     handleError(res, error);
@@ -59,7 +58,7 @@ apiRouter.post("/send", async (req, res) => {
     const { kapittelNummer, uke, overstyrKapittelNummer, laererTilleggsinstruks, motaker } = sendSchema.parse(req.body);
     const kapittel = resolveKapittelFromRequest({ kapittelNummer, uke, overstyrKapittelNummer });
     const files = await genererFilerForKapittel(kapittel, uke, { laererTilleggsinstruks });
-    await sendHefte(motaker, kapittel, files.word, files.pptx, uke);
+    await sendHefte(motaker, kapittel, files.word, uke);
 
     sendValidatedJson(res, successMessageResponseSchema, {
       success: true,
@@ -97,7 +96,7 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
     }
     const kapittel = resolution.kapittel;
     const files = await genererFilerForKapittel(kapittel, uke);
-    await sendHefte(env.RECIPIENT_EMAIL, kapittel, files.word, files.pptx, uke);
+    await sendHefte(env.RECIPIENT_EMAIL, kapittel, files.word, uke);
 
     sendValidatedJson(res, cronResponseSchema, {
       success: true,
@@ -159,17 +158,13 @@ async function genererFilerForKapittel(
   opts?: { laererTilleggsinstruks?: string }
 ): Promise<{
   word: Buffer;
-  pptx: Buffer;
   contentSource: "gemini" | "fallback";
   geminiError?: string;
 }> {
   const generated = await genererArbeidshefte(kapittel, { laererTilleggsinstruks: opts?.laererTilleggsinstruks });
-  const presentasjon = await genererPresentasjon(kapittel, generated.data);
   const word = await genererWordHefte(kapittel, generated.data, uke);
-  const pptx = await genererPPTX(kapittel, presentasjon, uke);
   return {
     word,
-    pptx,
     contentSource: generated.source,
     geminiError: generated.errorMessage
   };

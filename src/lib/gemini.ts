@@ -2,7 +2,7 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
 import { getServiceAccountCredentials } from "./gcpCredentials.js";
 import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
-import type { ArbeidshefteData, Kapittel, OppgaveMal, PresentasjonData, TematekstMal } from "./types.js";
+import type { ArbeidshefteData, Kapittel, OppgaveMal, TematekstMal } from "./types.js";
 import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
 
 export type GenererArbeidshefteOptions = {
@@ -83,8 +83,7 @@ function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
     })),
     fasit:
       kapittel.fasitInstruks ??
-      "Fasit: svar på lukkede oppgaver og eksempelsvar på åpne oppgaver (midlertidig fallback).",
-    presentasjonTekst: `Kapittel ${kapittel.nummer}: ${kapittel.yrke}. Tema: ${kapittel.arbeidsnorskTema}. Grammatikk: ${kapittel.grammatikk}.`
+      "Fasit: svar på lukkede oppgaver og eksempelsvar på åpne oppgaver (midlertidig fallback)."
   };
 }
 
@@ -224,12 +223,6 @@ function normalizeGeminiPayload(raw: unknown): unknown {
     }
   }
 
-  if (typeof data.presentasjonTekst !== "string" || data.presentasjonTekst.length < 20) {
-    data.presentasjonTekst = String(
-      data.presentasjonTekst ?? "Presentasjon: kapittelgjennomgang med tekster, oppgaver og ordliste."
-    );
-  }
-
   return data;
 }
 
@@ -304,8 +297,7 @@ Returner kun gyldig JSON:
   ],
   "ordliste": [{ "ord": "string", "forklaring": "string", "eksempel": "string" }],
   "kapitteltest": [{ "nummer": 1, "innhold": "string" }],
-  "fasit": "string",
-  "presentasjonTekst": "string"
+  "fasit": "string"
 }`;
 
     const response = await model.generateContent(prompt);
@@ -334,24 +326,4 @@ Returner kun gyldig JSON:
       errorMessage
     };
   }
-}
-
-export async function genererPresentasjon(
-  kapittel: Kapittel,
-  arbeidshefte: ArbeidshefteData
-): Promise<PresentasjonData> {
-  const slides = [
-    { tittel: `Kapittel ${kapittel.nummer}`, innhold: arbeidshefte.presentasjonTekst },
-    { tittel: "Yrke og tema", innhold: `${kapittel.yrke} – ${kapittel.arbeidsnorskTema}` },
-    { tittel: "Grammatikk", innhold: kapittel.grammatikk }
-  ];
-
-  for (const seksjon of arbeidshefte.tekstSeksjoner.slice(0, 5)) {
-    slides.push({
-      tittel: seksjon.tittel,
-      innhold: seksjon.tekst.slice(0, 400)
-    });
-  }
-
-  return { slides };
 }

@@ -29,7 +29,7 @@ Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUEST
 
 - `GET /` - health check
 - `GET /api/kapitler` - liste over kapitler
-- `POST /api/generer` - generer hefte/PPTX (uten e-post)
+- `POST /api/generer` - generer Word-hefte (uten e-post)
 - `POST /api/send` - generer og send vedlegg på e-post
 - `POST /api/test-email` - test SMTP-oppsett
 - `GET /api/cron` og `POST /api/cron` - ukentlig jobb (Bearer `CRON_SECRET`). **Vercel Cron** kaller med **GET** og setter `Authorization: Bearer`-header når `CRON_SECRET` er konfigurert i prosjektet.

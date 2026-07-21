@@ -16,7 +16,6 @@ export async function sendHefte(
   motaker: string,
   kapittel: Kapittel,
   wordBuffer: Buffer,
-  pptxBuffer: Buffer,
   uke: number
 ): Promise<void> {
   const transporter = getTransporter();
@@ -26,11 +25,8 @@ export async function sendHefte(
     from: env.GMAIL_USER,
     to: motaker,
     subject: `MBO-hefte uke ${uke}: ${kapittel.yrke}`,
-    html: `<p>Vedlagt finner du hefte og presentasjon for uke ${uke}.</p>`,
-    attachments: [
-      { filename: `${base}.docx`, content: wordBuffer },
-      { filename: `${base}.pptx`, content: pptxBuffer }
-    ]
+    html: `<p>Vedlagt finner du arbeidsheftet for uke ${uke}.</p>`,
+    attachments: [{ filename: `${base}.docx`, content: wordBuffer }]
   });
 }
 

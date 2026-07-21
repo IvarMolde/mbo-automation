@@ -8,7 +8,7 @@ export type CefrNivaaKapittel = z.infer<typeof cefrNivaaKapittelSchema>;
 export const cefrNivaaFullSchema = z.enum(["A1", "A2", "B1", "B2", "C1", "C2"]);
 export type CefrNivaaFull = z.infer<typeof cefrNivaaFullSchema>;
 
-export const dokumentFormatSchema = z.enum(["docx", "pptx"]);
+export const dokumentFormatSchema = z.enum(["docx"]);
 export type DokumentFormat = z.infer<typeof dokumentFormatSchema>;
 
 // ── Kapittel + CEFR can-do (matcher src/lib/types.ts) ───────────────────────
@@ -256,26 +256,13 @@ export const arbeidshefteDataSchema = z.object({
     )
     .min(5)
     .max(12),
-  fasit: z.string().min(20).max(100_000),
-  presentasjonTekst: z.string().min(20).max(20_000)
+  fasit: z.string().min(20).max(100_000)
 });
 
 export type ArbeidshefteDataValidated = z.infer<typeof arbeidshefteDataSchema>;
 
-export const presentasjonSlideSchema = z.object({
-  tittel: z.string().min(1).max(500),
-  innhold: z.string().min(1).max(20_000)
-});
-
-export const presentasjonDataSchema = z.object({
-  slides: z.array(presentasjonSlideSchema).min(1).max(40)
-});
-
-export type PresentasjonDataValidated = z.infer<typeof presentasjonDataSchema>;
-
 export const generertUndervisningsoppleggSchema = z.object({
   arbeidshefte: arbeidshefteDataSchema,
-  presentasjon: presentasjonDataSchema,
   ukeKontekst: arsplanUkeKontekstSchema.optional(),
   kapittel: kapittelSchema.optional(),
   generertTidspunktIso: z.string().max(40).optional(),

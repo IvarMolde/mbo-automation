@@ -68,12 +68,4 @@ export interface ArbeidshefteData {
   ordliste: OrdlisteOrd[];
   kapitteltest: KapitteltestOppgave[];
   fasit: string;
-  presentasjonTekst: string;
-}
-
-export interface PresentasjonData {
-  slides: Array<{
-    tittel: string;
-    innhold: string;
-  }>;
 }

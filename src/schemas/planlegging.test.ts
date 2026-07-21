@@ -3,8 +3,7 @@ import { getAllKapitler } from "../lib/parser.js";
 import {
   arbeidshefteDataSchema,
   generertUndervisningsoppleggSchema,
-  kapittelSchema,
-  presentasjonDataSchema
+  kapittelSchema
 } from "./planlegging.js";
 
 function sampleArbeidshefte() {
@@ -30,8 +29,7 @@ function sampleArbeidshefte() {
       nummer: i + 1,
       innhold: "a".repeat(10)
     })),
-    fasit: "a".repeat(20),
-    presentasjonTekst: "a".repeat(20)
+    fasit: "a".repeat(20)
   };
 }
 
@@ -47,23 +45,9 @@ describe("planlegging schemas", () => {
     expect(parsed.success).toBe(true);
   });
 
-  it("aksepterer generertUndervisningsopplegg med arbeidshefte + presentasjon", () => {
-    const arbeidshefte = sampleArbeidshefte();
-    const presentasjon = {
-      slides: [
-        { tittel: "S1", innhold: "Innhold" },
-        { tittel: "S2", innhold: "Mer" }
-      ]
-    };
+  it("aksepterer generertUndervisningsopplegg med arbeidshefte", () => {
     expect(
-      generertUndervisningsoppleggSchema.safeParse({ arbeidshefte, presentasjon }).success
+      generertUndervisningsoppleggSchema.safeParse({ arbeidshefte: sampleArbeidshefte() }).success
     ).toBe(true);
-  });
-
-  it("validerer presentasjonDataSchema", () => {
-    const p = presentasjonDataSchema.parse({
-      slides: [{ tittel: "A", innhold: "B" }]
-    });
-    expect(p.slides).toHaveLength(1);
   });
 });

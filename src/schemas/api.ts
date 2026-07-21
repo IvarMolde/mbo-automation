@@ -24,8 +24,7 @@ export const genererResponseSchema = z.object({
   contentSource: z.enum(["gemini", "fallback"]),
   geminiError: z.string().max(2000).optional(),
   files: z.object({
-    wordBytes: z.number().int().nonnegative(),
-    pptxBytes: z.number().int().nonnegative()
+    wordBytes: z.number().int().nonnegative()
   })
 });
 
