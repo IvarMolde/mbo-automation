@@ -128,9 +128,40 @@ Under HVER tematekst skal du lage disse oppgavetypene:
 ${oppgaveLinjer}
 
 Ordliste: nøyaktig ${ordAntall} nøkkelord (grammatikk, yrke, arbeidsnorsk) med forklaring og eksempel.
+  Pedagogisk form i feltet «ord»:
+  - Verb i infinitiv MED «å» foran (f.eks. «å rydde», «å stabilisere»).
+  - Substantiv MED riktig artikkel en/ei/et (f.eks. «en kollega», «ei hylle», «et lager»).
+  - Adjektiv og andre ord uten artikkel (f.eks. «hyggelig»).
 Kapitteltest: nøyaktig ${testAntall} oppsummerende oppgaver.
 Fasit: ${kapittel.fasitInstruks ?? "Svar på alle lukkede oppgaver + eksempelsvar på åpne oppgaver."}
 `.trim();
+}
+
+/**
+ * Normalize lemma casing for pedagogical ordliste forms (å / en / ei / et).
+ * Does not invent missing articles — Gemini must supply correct gender.
+ */
+export function normalizeOrdlisteOrd(ord: string, forklaring = ""): string {
+  let o = ord.trim().replace(/\s+/g, " ");
+  if (!o) return o;
+
+  o = o
+    .replace(/^Å\s+/u, "å ")
+    .replace(/^En\s+/u, "en ")
+    .replace(/^Ei\s+/u, "ei ")
+    .replace(/^Et\s+/u, "et ")
+    .replace(/^å\s+å\s+/iu, "å ");
+
+  const tip = forklaring.toLowerCase();
+  const looksLikeVerb = /\bverb\b/.test(tip) || /\binfinitiv\b/.test(tip);
+  const hasParticle = /^(å|en|ei|et)\s+/iu.test(o);
+
+  // If marked as verb but missing «å», add it (never invent articles for nouns).
+  if (looksLikeVerb && !hasParticle && !/\s/.test(o)) {
+    o = `å ${o}`;
+  }
+
+  return o;
 }
 
 function extractJsonCandidate(raw: string): string {
@@ -194,10 +225,11 @@ function normalizeGeminiPayload(raw: unknown): unknown {
         };
       }
       const o = item as Record<string, unknown>;
-      const ord = String(o.ord ?? `ord${i + 1}`);
+      const forklaring = String(o.forklaring ?? o.betydning ?? "forklaring mangler");
+      const ord = normalizeOrdlisteOrd(String(o.ord ?? `ord${i + 1}`), forklaring);
       return {
         ord,
-        forklaring: String(o.forklaring ?? o.betydning ?? "forklaring mangler"),
+        forklaring,
         eksempel: String(o.eksempel ?? `Eksempel: ${ord} brukes på jobb.`)
       };
     });
@@ -279,6 +311,7 @@ Krav:
 - Marker ALLE deloppgaver med oppgavenummer + bokstav: 1a, 1b, 1c, 1d, 2a, 2b, 2c osv. (ikke bare a) b) c)).
 - Hver deloppgave/alternativ på egen linje. Fasit skal bruke samme merking (1a, 1b, …).
 - Ordliste: nøyaktig ${ordAntall} ord.
+- Ordliste «ord»-feltet MÅ være i lærbar form: verb som «å + infinitiv» (f.eks. «å rydde»); substantiv med riktig artikkel en/ei/et (f.eks. «en pause», «ei hylle», «et lager»); adjektiv uten artikkel.
 - Kapitteltest: nøyaktig ${testAntall} oppgaver.
 - Hvert ordliste-element MÅ ha feltene ord, forklaring og eksempel (alle tre obligatoriske).
 - Integrer grammatikk naturlig i tekster og oppgaver.
@@ -297,7 +330,11 @@ Returner kun gyldig JSON:
       ]
     }
   ],
-  "ordliste": [{ "ord": "string", "forklaring": "string", "eksempel": "string" }],
+  "ordliste": [
+    { "ord": "å rydde", "forklaring": "verb: gjøre rent / ordne", "eksempel": "Jeg liker å rydde på lageret." },
+    { "ord": "et lager", "forklaring": "substantiv: sted der varer oppbevares", "eksempel": "Varene står på et lager." },
+    { "ord": "en kollega", "forklaring": "substantiv: person du jobber med", "eksempel": "En kollega hjelper meg." }
+  ],
   "kapitteltest": [{ "nummer": 1, "innhold": "string" }],
   "fasit": "string"
 }`;

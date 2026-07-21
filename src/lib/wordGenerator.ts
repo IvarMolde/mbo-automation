@@ -582,7 +582,7 @@ export async function genererWordHefte(
 
   children.push(sectionTitle("Ordliste"));
   children.push(
-    bodyText("Viktige ord fra kapittelet. Les, øv og bruk dem i egne setninger.", {
+    bodyText("Viktige ord fra kapittelet. Verb står med «å», substantiv med riktig artikkel (en/ei/et).", {
       italics: true,
       color: C.teal,
       size: 20
