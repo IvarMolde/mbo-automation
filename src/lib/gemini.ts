@@ -276,7 +276,8 @@ Krav:
 - Lag nøyaktig ${tematekster.length} objekter i tekstSeksjoner (samme nummer, type og tittel som i årsplan-malen).
 - Hver tekst skal være 80–150 ord, realistisk og arbeidslivsnær, med naturlig bruk av grammatikkfokus.
 - Under hver tekst: nøyaktig ${oppgavestruktur.length} oppgaver (samme nummer/type som i malen).
-- For leseforståelse og lignende: skriv alternativene a) b) c) d) e) med HVERT alternativ på egen linje.
+- Marker ALLE deloppgaver med oppgavenummer + bokstav: 1a, 1b, 1c, 1d, 2a, 2b, 2c osv. (ikke bare a) b) c)).
+- Hver deloppgave/alternativ på egen linje. Fasit skal bruke samme merking (1a, 1b, …).
 - Ordliste: nøyaktig ${ordAntall} ord.
 - Kapitteltest: nøyaktig ${testAntall} oppgaver.
 - Hvert ordliste-element MÅ ha feltene ord, forklaring og eksempel (alle tre obligatoriske).

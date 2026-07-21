@@ -56,6 +56,18 @@ describe("splitOppgaveInnhold", () => {
     expect(lines).toContain("b) Mat");
     expect(lines).toContain("e) Reise");
   });
+
+  it("merker deloppgaver som 1a, 1b, 2a", () => {
+    const lines1 = splitOppgaveInnhold("Hva er tema? a) Hygiene b) Mat c) Sport d) Musikk", 1);
+    expect(lines1).toContain("1a Hygiene");
+    expect(lines1).toContain("1b Mat");
+    expect(lines1).toContain("1d Musikk");
+
+    const lines2 = splitOppgaveInnhold("Velg riktig. 2a) Ja 2b) Nei 2c) Vet ikke", 2);
+    expect(lines2).toContain("2a Ja");
+    expect(lines2).toContain("2b Nei");
+    expect(lines2).toContain("2c Vet ikke");
+  });
 });
 
 describe("wordGenerator", () => {

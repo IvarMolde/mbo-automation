@@ -346,25 +346,46 @@ function writingLines(count: number): Paragraph[] {
 }
 
 /**
- * Split task body so a)/b)/c)/d)/e) (and similar) always start on their own line.
+ * Split task body so deloppgaver always start on their own line.
+ * When oppgaveNummer is set, lettered parts become 1a, 1b, 2a, … (not plain a)/b)).
  */
-export function splitOppgaveInnhold(raw: string): string[] {
+export function splitOppgaveInnhold(raw: string, oppgaveNummer?: number): string[] {
   let text = raw.replace(/\r\n/g, "\n").trim();
-  // Force lettered/numbered options onto new lines even if Gemini put them inline.
-  text = text.replace(/(?:^|[ \t]+)([a-eA-E])\s*[\)\.]\s+/gm, "\n$1) ");
+  // Already labeled: "1a)", "1a.", "1a " → placeholder
+  text = text.replace(/(?:^|[ \t]+)(\d{1,2})([a-eA-E])\s*[\)\.]?\s+/gm, "\n§$2§ ");
+  // Plain letters: "a)", "b." → placeholder
+  text = text.replace(/(?:^|[ \t]+)([a-eA-E])\s*[\)\.]\s+/gm, "\n§$1§ ");
+  // Mid-sentence: "...tekst. a) ..." or "...tekst. 1a) ..."
+  text = text.replace(/([.!?:,;])\s*(?:\d{1,2})?([a-eA-E])\s*[\)\.]?\s+/g, "$1\n§$2§ ");
+  // Numbered list items (1) 2) …) that are not lettered deloppgaver
   text = text.replace(/(?:^|[ \t]+)(\d{1,2})\s*[\)\.]\s+/gm, "\n$1) ");
-  // Also split when options are jammed mid-sentence: "...tekst. a) ..."
-  text = text.replace(/([.!?:,;])\s*([a-eA-E])\s*[\)\.]\s+/g, "$1\n$2) ");
+
   return text
     .split("\n")
-    .map((line) => line.trim())
+    .map((line) => {
+      const trimmed = line.trim();
+      const lettered = trimmed.match(/^§([a-eA-E])§\s*(.*)$/);
+      if (lettered) {
+        const letter = lettered[1].toLowerCase();
+        const rest = lettered[2].trim();
+        if (oppgaveNummer != null) {
+          return rest ? `${oppgaveNummer}${letter} ${rest}` : `${oppgaveNummer}${letter}`;
+        }
+        return rest ? `${letter}) ${rest}` : `${letter})`;
+      }
+      return trimmed;
+    })
     .filter(Boolean);
 }
 
-function oppgaveContentParagraphs(innhold: string): Paragraph[] {
-  const lines = splitOppgaveInnhold(innhold);
+function isDeloppgaveLine(line: string): boolean {
+  return /^\d{1,2}[a-eA-E]\b/.test(line) || /^[a-eA-E]\)\s/.test(line);
+}
+
+function oppgaveContentParagraphs(innhold: string, oppgaveNummer: number): Paragraph[] {
+  const lines = splitOppgaveInnhold(innhold, oppgaveNummer);
   return lines.map((line, index) => {
-    const isOption = /^[a-eA-E1-9]\d?\)\s/.test(line);
+    const isOption = isDeloppgaveLine(line);
     const isLast = index === lines.length - 1;
     return new Paragraph({
       spacing: { after: isOption ? 140 : 120, line: 300 },
@@ -377,7 +398,7 @@ function oppgaveContentParagraphs(innhold: string): Paragraph[] {
           color: C.night,
           size: 21,
           font: "Calibri",
-          bold: isOption && /^[a-eA-E]\)/.test(line)
+          bold: isOption
         })
       ]
     });
@@ -440,7 +461,7 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
                     })
                   ]
                 }),
-                ...oppgaveContentParagraphs(oppgave.innhold),
+                ...oppgaveContentParagraphs(oppgave.innhold, oppgave.nummer),
                 ...(needsLines ? writingLines(4) : []),
                 spacer(80)
               ],
