@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { genererWordHefte } from "./wordGenerator.js";
+import { genererWordHefte, splitOppgaveInnhold } from "./wordGenerator.js";
 import type { ArbeidshefteData, Kapittel } from "./types.js";
 
 const kapittel: Kapittel = {
@@ -28,7 +28,7 @@ const hefte: ArbeidshefteData = {
           nummer: 1,
           type: "leseforstaelse",
           tittel: "Les og svar",
-          innhold: "Hva er hovedtema i teksten?"
+          innhold: "Hva er hovedtema? a) Hygiene b) Mat c) Sport d) Musikk e) Reise"
         },
         {
           nummer: 2,
@@ -48,11 +48,20 @@ const hefte: ArbeidshefteData = {
   fasit: "a".repeat(30)
 };
 
+describe("splitOppgaveInnhold", () => {
+  it("splitter a-e til egne linjer", () => {
+    const lines = splitOppgaveInnhold("Hva er tema? a) Hygiene b) Mat c) Sport d) Musikk e) Reise");
+    expect(lines[0]).toMatch(/Hva er tema/);
+    expect(lines).toContain("a) Hygiene");
+    expect(lines).toContain("b) Mat");
+    expect(lines).toContain("e) Reise");
+  });
+});
+
 describe("wordGenerator", () => {
   it("bygger et gyldig docx-buffer med designmal", async () => {
     const buf = await genererWordHefte(kapittel, hefte, 34);
     expect(buf.byteLength).toBeGreaterThan(2000);
-    // docx files are zip archives starting with PK
     expect(buf.subarray(0, 2).toString("utf8")).toBe("PK");
   });
 });

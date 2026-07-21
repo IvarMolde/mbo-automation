@@ -333,7 +333,7 @@ function textBox(seksjon: TekstSeksjon): Table {
 function writingLines(count: number): Paragraph[] {
   return Array.from({ length: count }, () =>
     new Paragraph({
-      spacing: { before: 80, after: 80 },
+      spacing: { before: 100, after: 100 },
       border: {
         bottom: { style: BorderStyle.SINGLE, size: 6, color: C.line, space: 1 }
       },
@@ -342,12 +342,47 @@ function writingLines(count: number): Paragraph[] {
   );
 }
 
+/**
+ * Split task body so a)/b)/c)/d)/e) (and similar) always start on their own line.
+ */
+export function splitOppgaveInnhold(raw: string): string[] {
+  let text = raw.replace(/\r\n/g, "\n").trim();
+  // Force lettered/numbered options onto new lines even if Gemini put them inline.
+  text = text.replace(/(?:^|[ \t]+)([a-eA-E])\s*[\)\.]\s+/gm, "\n$1) ");
+  text = text.replace(/(?:^|[ \t]+)(\d{1,2})\s*[\)\.]\s+/gm, "\n$1) ");
+  // Also split when options are jammed mid-sentence: "...tekst. a) ..."
+  text = text.replace(/([.!?:,;])\s*([a-eA-E])\s*[\)\.]\s+/g, "$1\n$2) ");
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function oppgaveContentParagraphs(innhold: string): Paragraph[] {
+  return splitOppgaveInnhold(innhold).map((line) => {
+    const isOption = /^[a-eA-E1-9]\d?\)\s/.test(line);
+    return new Paragraph({
+      spacing: { after: isOption ? 140 : 120, line: 300 },
+      indent: isOption ? { left: 160 } : undefined,
+      children: [
+        new TextRun({
+          text: line,
+          color: C.night,
+          size: 21,
+          font: "Calibri",
+          bold: isOption && /^[a-eA-E]\)/.test(line)
+        })
+      ]
+    });
+  });
+}
+
 function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
   const needsLines = /skriv|muntlig|oppsummer/i.test(`${oppgave.type} ${oppgave.tittel}`);
   const num = String(oppgave.nummer).padStart(2, "0");
 
   const block: Array<Paragraph | Table> = [
-    spacer(100),
+    spacer(280),
     new Table({
       width: { size: CONTENT_WIDTH, type: WidthType.DXA },
       columnWidths: [720, CONTENT_WIDTH - 720],
@@ -369,7 +404,7 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
             cell(
               [
                 new Paragraph({
-                  spacing: { after: 40 },
+                  spacing: { after: 60 },
                   children: [
                     new TextRun({
                       text: oppgave.tittel,
@@ -381,7 +416,7 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
                   ]
                 }),
                 new Paragraph({
-                  spacing: { after: 80 },
+                  spacing: { after: 120 },
                   children: [
                     new TextRun({
                       text: typeLabel(oppgave.type),
@@ -392,15 +427,9 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
                     })
                   ]
                 }),
-                ...oppgave.innhold.split(/\n+/).filter(Boolean).map((line) =>
-                  new Paragraph({
-                    spacing: { after: 80, line: 276 },
-                    children: [
-                      new TextRun({ text: line.trim(), color: C.night, size: 21, font: "Calibri" })
-                    ]
-                  })
-                ),
-                ...(needsLines ? writingLines(4) : [])
+                ...oppgaveContentParagraphs(oppgave.innhold),
+                ...(needsLines ? writingLines(4) : []),
+                spacer(80)
               ],
               CONTENT_WIDTH - 720,
               {
@@ -417,7 +446,8 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
           ]
         })
       ]
-    })
+    }),
+    spacer(160)
   ];
 
   return block;
