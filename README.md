@@ -1,8 +1,34 @@
 # MBO Automation (TypeScript)
 
-TypeScript-basert API for generering og utsending av arbeidshefter.
+TypeScript-basert API for generering og utsending av arbeidshefter, pluss nettside for årsplanoversikt.
 
-## Kom i gang
+## Årsplan-nettside (GitHub Pages)
+
+Nettsiden viser hele årsplanen uke for uke (kompakt oversikt + «Åpne detaljer»).
+
+- **Kode:** [`web/`](web/)
+- **Lokal utvikling:** `npm run dev:web` (åpner Vite på localhost)
+- **Produksjon:** GitHub Pages etter push til `main`
+
+**URL (når Pages er aktivert):**  
+https://ivarmolde.github.io/mbo-automation/
+
+### Aktiver GitHub Pages (engangsjobb)
+
+1. GitHub → repo **Settings** → **Pages**
+2. **Source:** GitHub Actions
+3. Vent til workflow **Deploy GitHub Pages** er grønn etter push
+
+### Navigasjon på nettsiden
+
+- **Oversikt** — alle uker, gruppert i perioder
+- **Denne uken** — zoom på inneværende ISO-uke
+- **Perioder** — hopp til en måned
+- **Om planen** — metadata
+
+Senere faser: låse ferieuker, forskyve plan, administrere e-postmottakere (Vercel API + database).
+
+## Kom i gang (API)
 
 1. Kopier `.env.example` til `.env`
 2. Fyll ut nødvendige miljøvariabler
@@ -19,6 +45,7 @@ npm run dev
 npm run check
 npm run test
 npm run verify
+npm run build:web
 ```
 
 `CORS_ALLOWED_ORIGINS` kan settes til kommaseparerte origin-domener i produksjon,

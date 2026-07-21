@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:web": "npm --prefix web run dev",
     "build": "tsc -p tsconfig.json",
+    "build:web": "npm --prefix web run build",
     "start": "node dist/server.js",
     "check": "tsc --noEmit",
     "test": "vitest run",
