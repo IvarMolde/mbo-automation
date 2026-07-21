@@ -25,6 +25,12 @@ const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
       forklaring: "forklar",
       eksempel: "eksempel"
     })),
+    grammatikkForklaring: {
+      tittel: "Presens og preteritum",
+      forklaring: "x".repeat(80),
+      eksempler: ["Eksempel en her.", "Eksempel to her.", "Eksempel tre her.", "Eksempel fire her."],
+      huskeregel: "Husk tidsformene godt."
+    },
     kapitteltest: Array.from({ length: 5 }, (_, i) => ({
       nummer: i + 1,
       innhold: "test".repeat(3)

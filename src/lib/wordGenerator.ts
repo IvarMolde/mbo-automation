@@ -16,7 +16,7 @@ import {
   VerticalAlign,
   WidthType
 } from "docx";
-import type { ArbeidshefteData, Kapittel, Oppgave, TekstSeksjon } from "./types.js";
+import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, Oppgave, TekstSeksjon } from "./types.js";
 
 /** MBO design tokens (pedagogisk Word-mal 2026). */
 const C = {
@@ -267,6 +267,112 @@ function learningGoals(kapittel: Kapittel): Array<Paragraph | Table> {
         })
     ),
     spacer(120)
+  ];
+}
+
+function grammatikkSection(g: GrammatikkForklaring): Array<Paragraph | Table> {
+  const forklaringParas = g.forklaring
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map(
+      (p) =>
+        new Paragraph({
+          spacing: { after: 120, line: 300 },
+          keepLines: true,
+          children: [new TextRun({ text: p, color: C.night, size: 21, font: "Calibri" })]
+        })
+    );
+
+  const eksempelParas = g.eksempler.map(
+    (ex, i) =>
+      new Paragraph({
+        spacing: { after: 80, line: 276 },
+        indent: { left: 120 },
+        keepLines: true,
+        children: [
+          new TextRun({ text: `${i + 1}. `, bold: true, color: C.teal, size: 20, font: "Calibri" }),
+          new TextRun({ text: ex, color: C.night, size: 20, font: "Calibri" })
+        ]
+      })
+  );
+
+  const tipParas = g.huskeregel
+    ? [
+        new Paragraph({
+          spacing: { before: 120, after: 60 },
+          keepNext: true,
+          children: [
+            new TextRun({ text: "Huskeregel", bold: true, color: C.amber, size: 18, font: "Calibri" })
+          ]
+        }),
+        new Paragraph({
+          spacing: { after: 40 },
+          keepLines: true,
+          children: [new TextRun({ text: g.huskeregel, color: C.night, size: 20, font: "Calibri" })]
+        })
+      ]
+    : [];
+
+  return [
+    sectionTitle("Grammatikk"),
+    new Table({
+      width: { size: CONTENT_WIDTH, type: WidthType.DXA },
+      columnWidths: [CONTENT_WIDTH],
+      rows: [
+        new TableRow({
+          cantSplit: true,
+          children: [
+            cell(
+              [
+                new Paragraph({
+                  spacing: { after: 100 },
+                  keepNext: true,
+                  children: [
+                    new TextRun({
+                      text: g.tittel,
+                      bold: true,
+                      color: C.marine,
+                      size: 24,
+                      font: "Calibri"
+                    })
+                  ]
+                }),
+                ...forklaringParas,
+                new Paragraph({
+                  spacing: { before: 80, after: 80 },
+                  keepNext: true,
+                  children: [
+                    new TextRun({
+                      text: "Eksempler",
+                      bold: true,
+                      color: C.teal,
+                      size: 18,
+                      font: "Calibri"
+                    })
+                  ]
+                }),
+                ...eksempelParas,
+                ...tipParas,
+                spacer(60)
+              ],
+              CONTENT_WIDTH,
+              {
+                shading: C.softTeal,
+                borders: {
+                  top: thinLine,
+                  bottom: thinLine,
+                  left: tealLeft,
+                  right: thinLine
+                },
+                align: VerticalAlign.TOP
+              }
+            )
+          ]
+        })
+      ]
+    }),
+    spacer(160)
   ];
 }
 
@@ -555,7 +661,8 @@ export async function genererWordHefte(
   const children: Array<Paragraph | Table> = [
     headerBar(kapittel, uke),
     ...titleBlock(kapittel),
-    ...learningGoals(kapittel)
+    ...learningGoals(kapittel),
+    ...grammatikkSection(arbeidshefte.grammatikkForklaring)
   ];
 
   for (const seksjon of arbeidshefte.tekstSeksjoner) {

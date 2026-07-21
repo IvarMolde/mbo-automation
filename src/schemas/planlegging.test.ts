@@ -20,6 +20,12 @@ function sampleArbeidshefte() {
         innhold: "a".repeat(15)
       }))
     })),
+    grammatikkForklaring: {
+      tittel: "Presens og preteritum",
+      forklaring: "a".repeat(80),
+      eksempler: ["Eks 1 setning her.", "Eks 2 setning her.", "Eks 3 setning her.", "Eks 4 setning her."],
+      huskeregel: "Husk tidsformene."
+    },
     ordliste: Array.from({ length: 15 }, (_, i) => ({
       ord: `ord${i}`,
       forklaring: "fork",

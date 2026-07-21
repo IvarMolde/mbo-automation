@@ -237,6 +237,12 @@ export const arbeidshefteTekstSeksjonSchema = z.object({
 
 export const arbeidshefteDataSchema = z.object({
   tekstSeksjoner: z.array(arbeidshefteTekstSeksjonSchema).min(3).max(6),
+  grammatikkForklaring: z.object({
+    tittel: z.string().min(3).max(200),
+    forklaring: z.string().min(80).max(15_000),
+    eksempler: z.array(z.string().min(5).max(800)).min(4).max(12),
+    huskeregel: z.string().min(8).max(1000).optional()
+  }),
   ordliste: z
     .array(
       z.object({

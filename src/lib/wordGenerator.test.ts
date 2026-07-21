@@ -39,6 +39,19 @@ const hefte: ArbeidshefteData = {
       ]
     }
   ],
+  grammatikkForklaring: {
+    tittel: "Personlige pronomen",
+    forklaring:
+      "Personlige pronomen er små ord som erstatter navn. Vi bruker dem for å unngå å gjenta samme navn. " +
+      "Formen endrer seg når ordet er subjekt eller objekt i setningen.",
+    eksempler: [
+      "Jeg jobber som renholder.",
+      "Han hjelper meg i dag.",
+      "Vi vasker gulvet sammen.",
+      "Kan du hjelpe oss?"
+    ],
+    huskeregel: "Subjekt: jeg/du/han. Objekt: meg/deg/ham."
+  },
   ordliste: Array.from({ length: 3 }, (_, i) => ({
     ord: `ord${i}`,
     forklaring: "forklaring",

@@ -58,6 +58,17 @@ export interface OrdlisteOrd {
   eksempel: string;
 }
 
+/** Lærebokaktig grammatikkforklaring for elevene (A2–B1). */
+export interface GrammatikkForklaring {
+  tittel: string;
+  /** Hovedforklaring: hva, når og hvordan – korte avsnitt, klar bokmål. */
+  forklaring: string;
+  /** Minst fire konkrete eksempelsetninger. */
+  eksempler: string[];
+  /** Kort huskeregel / tips. */
+  huskeregel?: string;
+}
+
 export interface KapitteltestOppgave {
   nummer: number;
   innhold: string;
@@ -65,6 +76,8 @@ export interface KapitteltestOppgave {
 
 export interface ArbeidshefteData {
   tekstSeksjoner: TekstSeksjon[];
+  /** Lærebokforklaring av kapitlets grammatikkfokus. */
+  grammatikkForklaring: GrammatikkForklaring;
   ordliste: OrdlisteOrd[];
   kapitteltest: KapitteltestOppgave[];
   fasit: string;

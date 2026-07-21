@@ -2,7 +2,7 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
 import { getServiceAccountCredentials } from "./gcpCredentials.js";
 import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
-import type { ArbeidshefteData, Kapittel, OppgaveMal, TematekstMal } from "./types.js";
+import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, OppgaveMal, TematekstMal } from "./types.js";
 import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
 
 export type GenererArbeidshefteOptions = {
@@ -48,6 +48,27 @@ function defaultOppgavestruktur(kapittel: Kapittel): OppgaveMal[] {
   );
 }
 
+function createFallbackGrammatikkForklaring(emne: string): GrammatikkForklaring {
+  const tema = emne.trim() || "Grammatikk";
+  return {
+    tittel: tema,
+    forklaring:
+      `${tema} er et viktig tema i norsk. Vi bruker denne grammatikken for å lage klare setninger ` +
+      `på jobb og i hverdagen.\n\n` +
+      `Les forklaringen og eksemplene nøye. Se hvordan formen endrer seg i setningen. ` +
+      `Start med korte setninger, og lag deretter egne eksempler fra arbeidshverdagen din.\n\n` +
+      `Når du er usikker: se på eksemplene, si setningen høyt, og skriv den ned. ` +
+      `Øving gjør at du husker formen bedre.`,
+    eksempler: [
+      `Vi snakker om ${tema.toLowerCase()} på kurset.`,
+      `Kan du lage en setning med ${tema.toLowerCase()}?`,
+      `På jobben bruker jeg ${tema.toLowerCase()} hver dag.`,
+      `I pausen øver vi på ${tema.toLowerCase()} sammen.`
+    ],
+    huskeregel: `Husk: øv på ${tema.toLowerCase()} med egne, korte setninger fra jobben.`
+  };
+}
+
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const tematekster = defaultTematekster(kapittel);
   const oppgavestruktur = defaultOppgavestruktur(kapittel);
@@ -72,6 +93,7 @@ function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
 
   return {
     tekstSeksjoner,
+    grammatikkForklaring: createFallbackGrammatikkForklaring(kapittel.grammatikk),
     ordliste: Array.from({ length: Math.max(15, Math.min(ordAntall, 20)) }, (_, i) => ({
       ord: `ord${i + 1}`,
       forklaring: "midlertidig forklaring",
@@ -133,6 +155,8 @@ Ordliste: nøyaktig ${ordAntall} nøkkelord (grammatikk, yrke, arbeidsnorsk) med
   - Substantiv MED riktig artikkel en/ei/et (f.eks. «en kollega», «ei hylle», «et lager»).
   - Adjektiv og andre ord uten artikkel (f.eks. «hyggelig»).
 Kapitteltest: nøyaktig ${testAntall} oppsummerende oppgaver.
+Grammatikkforklaring: lag en lærebokaktig forklaring av «${kapittel.grammatikk}» på nivå ${kapittel.cefrNivaa}
+  (presis, korrekt, flere eksempler, enkelt språk A2–B1).
 Fasit: ${kapittel.fasitInstruks ?? "Svar på alle lukkede oppgaver + eksempelsvar på åpne oppgaver."}
 `.trim();
 }
@@ -185,7 +209,7 @@ function extractJsonCandidate(raw: string): string {
 }
 
 /** Fyll inn manglende felter fra Gemini før Zod-validering. */
-function normalizeGeminiPayload(raw: unknown): unknown {
+function normalizeGeminiPayload(raw: unknown, kapittel?: Kapittel): unknown {
   if (!raw || typeof raw !== "object") return raw;
   const data = raw as Record<string, unknown>;
 
@@ -213,6 +237,36 @@ function normalizeGeminiPayload(raw: unknown): unknown {
         oppgaver
       };
     });
+  }
+
+  const emne = kapittel?.grammatikk ?? "Grammatikk";
+  const fallbackG = createFallbackGrammatikkForklaring(emne);
+  const gRaw = data.grammatikkForklaring;
+  if (!gRaw || typeof gRaw !== "object") {
+    data.grammatikkForklaring = fallbackG;
+  } else {
+    const g = gRaw as Record<string, unknown>;
+    let forklaring = String(g.forklaring ?? g.tekst ?? g.beskrivelse ?? "");
+    if (forklaring.length < 80) {
+      forklaring = `${forklaring} ${fallbackG.forklaring}`.trim();
+    }
+    let eksempler = Array.isArray(g.eksempler)
+      ? g.eksempler.map((e) => String(e ?? "").trim()).filter((e) => e.length >= 5)
+      : [];
+    if (eksempler.length < 4) {
+      eksempler = [...eksempler, ...fallbackG.eksempler].slice(0, 8);
+    }
+    const huskeregelRaw = g.huskeregel ?? g.tips ?? g.husk;
+    const huskeregel =
+      huskeregelRaw != null && String(huskeregelRaw).trim().length >= 8
+        ? String(huskeregelRaw).trim()
+        : fallbackG.huskeregel;
+    data.grammatikkForklaring = {
+      tittel: String(g.tittel ?? emne).trim() || emne,
+      forklaring,
+      eksempler,
+      ...(huskeregel ? { huskeregel } : {})
+    };
   }
 
   if (Array.isArray(data.ordliste)) {
@@ -314,6 +368,10 @@ Krav:
 - Ordliste «ord»-feltet MÅ være i lærbar form: verb som «å + infinitiv» (f.eks. «å rydde»); substantiv med riktig artikkel en/ei/et (f.eks. «en pause», «ei hylle», «et lager»); adjektiv uten artikkel.
 - Kapitteltest: nøyaktig ${testAntall} oppgaver.
 - Hvert ordliste-element MÅ ha feltene ord, forklaring og eksempel (alle tre obligatoriske).
+- grammatikkForklaring MÅ finnes: lærebokaktig forklaring av «${kapittel.grammatikk}».
+  Krav til forklaringen: presis og grammatisk korrekt; språk på ${kapittel.cefrNivaa} (A2–B1);
+  forklar HVA det er, NÅR vi bruker det, og HVORDAN formen lages; minst 4–8 konkrete eksempelsetninger
+  (gjerne knyttet til yrket ${kapittel.yrke}); kort huskeregel; ingen akademisk sjargong.
 - Integrer grammatikk naturlig i tekster og oppgaver.
 - Ikke bruk markdown eller tekst utenfor JSON.
 
@@ -330,6 +388,17 @@ Returner kun gyldig JSON:
       ]
     }
   ],
+  "grammatikkForklaring": {
+    "tittel": "${kapittel.grammatikk}",
+    "forklaring": "To til fire korte avsnitt som forklarer temaet klart for elever på A2–B1.",
+    "eksempler": [
+      "Eksempelsetning 1.",
+      "Eksempelsetning 2.",
+      "Eksempelsetning 3.",
+      "Eksempelsetning 4."
+    ],
+    "huskeregel": "En kort, praktisk huskeregel."
+  },
   "ordliste": [
     { "ord": "å rydde", "forklaring": "verb: gjøre rent / ordne", "eksempel": "Jeg liker å rydde på lageret." },
     { "ord": "et lager", "forklaring": "substantiv: sted der varer oppbevares", "eksempel": "Varene står på et lager." },
@@ -353,7 +422,7 @@ Returner kun gyldig JSON:
 
     const json = extractJsonCandidate(content);
     const parsed = JSON.parse(json);
-    const normalized = normalizeGeminiPayload(parsed);
+    const normalized = normalizeGeminiPayload(parsed, kapittel);
     const validated = arbeidshefteDataSchema.parse(normalized);
     return { data: validated, source: "gemini" };
   } catch (error) {
