@@ -251,8 +251,9 @@ export async function genererArbeidshefte(
     const model = vertex.getGenerativeModel({ model: env.GEMINI_MODEL });
     const cefrMd = getCefrNivaMarkdownTekst();
     const cefrMdBlock = cefrMd
-      ? `\nFaglig kontekst om norsknivå (A1–B1), utdrag fra kuratert dokument:\n${cefrMd}\n`
+      ? `\nKort CEFR-kontekst (utdrag):\n${cefrMd}\n`
       : "";
+    // Skip huge CEFR dump for speed on serverless; short instruction below is enough.
     const laererNote = options?.laererTilleggsinstruks?.trim();
     const laererBlock = laererNote
       ? `\nTillegg fra lærer (følg når det ikke strider mot trygghet, faktasjekk eller likeverd):\n${laererNote}\n`

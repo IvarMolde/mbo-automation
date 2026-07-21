@@ -5,7 +5,7 @@ import { env } from "./config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const MAX_CHARS = 24_000;
+const MAX_CHARS = 2_500;
 
 let cache: string | null | undefined;
 
