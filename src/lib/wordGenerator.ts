@@ -276,6 +276,7 @@ function textBox(seksjon: TekstSeksjon): Table {
     columnWidths: [CONTENT_WIDTH],
     rows: [
       new TableRow({
+        cantSplit: true,
         children: [
           cell(
             [
@@ -293,6 +294,7 @@ function textBox(seksjon: TekstSeksjon): Table {
               }),
               new Paragraph({
                 spacing: { after: 120 },
+                keepNext: true,
                 children: [
                   new TextRun({
                     text: `Tekst ${seksjon.nummer}: ${seksjon.tittel}`,
@@ -306,6 +308,7 @@ function textBox(seksjon: TekstSeksjon): Table {
               ...seksjon.tekst.split(/\n+/).filter(Boolean).map((line) =>
                 new Paragraph({
                   spacing: { after: 100, line: 300 },
+                  keepLines: true,
                   children: [
                     new TextRun({ text: line.trim(), color: C.night, size: 22, font: "Calibri" })
                   ]
@@ -359,11 +362,15 @@ export function splitOppgaveInnhold(raw: string): string[] {
 }
 
 function oppgaveContentParagraphs(innhold: string): Paragraph[] {
-  return splitOppgaveInnhold(innhold).map((line) => {
+  const lines = splitOppgaveInnhold(innhold);
+  return lines.map((line, index) => {
     const isOption = /^[a-eA-E1-9]\d?\)\s/.test(line);
+    const isLast = index === lines.length - 1;
     return new Paragraph({
       spacing: { after: isOption ? 140 : 120, line: 300 },
       indent: isOption ? { left: 160 } : undefined,
+      keepLines: true,
+      keepNext: !isLast,
       children: [
         new TextRun({
           text: line,
@@ -388,6 +395,8 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
       columnWidths: [720, CONTENT_WIDTH - 720],
       rows: [
         new TableRow({
+          // Keep the whole oppgave on one page when possible.
+          cantSplit: true,
           children: [
             cell(
               [
@@ -405,6 +414,8 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
               [
                 new Paragraph({
                   spacing: { after: 60 },
+                  keepNext: true,
+                  keepLines: true,
                   children: [
                     new TextRun({
                       text: oppgave.tittel,
@@ -417,6 +428,8 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
                 }),
                 new Paragraph({
                   spacing: { after: 120 },
+                  keepNext: true,
+                  keepLines: true,
                   children: [
                     new TextRun({
                       text: typeLabel(oppgave.type),
@@ -481,6 +494,7 @@ function vocabularyTable(arbeidshefte: ArbeidshefteData): Table {
   const rows = arbeidshefte.ordliste.map((o, i) => {
     const fill = i % 2 === 0 ? C.white : C.softGray;
     return new TableRow({
+      cantSplit: true,
       children: [
         cell(
           [new Paragraph({ children: [new TextRun({ text: o.ord, bold: true, color: C.marine, size: 18, font: "Calibri" })] })],
