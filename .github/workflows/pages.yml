@@ -1,5 +1,8 @@
 name: Deploy GitHub Pages
 
+# Publiserer Vite-appen i web/ til https://ivarmolde.github.io/mbo-automation/
+# Krever: Settings → Pages → Source = GitHub Actions
+
 on:
   push:
     branches: [main]
@@ -29,7 +32,8 @@ jobs:
         run: |
           npm ci
           npm run build
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
 
@@ -40,5 +44,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - id: deployment
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
