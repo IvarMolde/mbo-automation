@@ -153,6 +153,7 @@ export function renderShell(opts: {
           ${nav("oversikt", "Oversikt")}
           ${nav("denne-uken", "Denne uken")}
           ${nav("perioder", "Perioder")}
+          ${nav("veiledning", "Veiledning")}
           ${nav("admin", "Admin")}
           ${nav("om", "Om")}
         </nav>
@@ -167,12 +168,12 @@ export function renderShell(opts: {
     </main>
     <footer class="site-footer">
       <p>Arbeid og norsk · MBO A2–B1 · Årsplan 2026–2027</p>
-      <p class="muted">Grunnplan + dynamiske endringer (lås / forskyv). E-postmottakere kommer i neste fase.</p>
+      <p class="muted">Fase 2: lås ferieuker og forskyv planen. Se Veiledning for forklaringer.</p>
     </footer>
     <nav class="mobile-nav" aria-label="Hurtignavigasjon">
       ${nav("oversikt", "Oversikt")}
       ${nav("denne-uken", "Uken")}
-      ${nav("perioder", "Perioder")}
+      ${nav("veiledning", "Hjelp")}
       ${nav("admin", "Admin")}
     </nav>
   `;

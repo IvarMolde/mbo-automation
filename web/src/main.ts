@@ -1,6 +1,8 @@
 import planJson from "../../data/arsplan-2026-2027.json";
 import { getIsoWeekNumber, getIsoWeekYear } from "./isoWeek";
+import { applyLocalOperation, getLocalEffectiveUker, loadLocalPlanState } from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
+import { computeEffectiveSchedule, type PlanOperation } from "./schedule";
 import type { ArsplanDokument, EffectiveUke, PlanApiResponse, ViewId } from "./types";
 import { renderShell, renderUkeCard } from "./ui";
 import "./style.css";
@@ -17,6 +19,8 @@ let effectiveUker: EffectiveUke[] | undefined;
 let apiMeta: PlanApiResponse["store"] | null = null;
 let apiStateUpdatedAt: string | null = null;
 let loadError: string | null = null;
+/** local = endringer i nettleseren (virker nå), server = Turso/API når det er aktivert */
+let planSource: "local" | "server" | "base" = "base";
 
 function parseView(): { view: ViewId; periode?: string } {
   const hash = window.location.hash.replace(/^#\/?/, "");
@@ -28,6 +32,7 @@ function parseView(): { view: ViewId; periode?: string } {
     view === "oversikt" ||
     view === "denne-uken" ||
     view === "perioder" ||
+    view === "veiledning" ||
     view === "om" ||
     view === "admin"
   ) {
@@ -45,6 +50,19 @@ function setToken(token: string): void {
   else sessionStorage.removeItem(TOKEN_KEY);
 }
 
+function applyLocalSchedule(): void {
+  const local = loadLocalPlanState();
+  if (local.operations.some((op) => op.type !== "reset")) {
+    effectiveUker = getLocalEffectiveUker(plan);
+    planSource = "local";
+    return;
+  }
+  if (!effectiveUker) {
+    effectiveUker = computeEffectiveSchedule(plan).uker;
+    planSource = "base";
+  }
+}
+
 async function refreshPlanFromApi(): Promise<void> {
   loadError = null;
   try {
@@ -53,38 +71,76 @@ async function refreshPlanFromApi(): Promise<void> {
     const data = (await res.json()) as PlanApiResponse;
     if (!data.success) throw new Error("Ugyldig plansvar");
     plan = toArsplanDokument(data);
-    effectiveUker = data.effective.uker;
     apiMeta = data.store;
     apiStateUpdatedAt = data.state.updatedAt;
+
+    // Prefer server schedule when it has changes and is writable/synced;
+    // otherwise keep/use local browser schedule so Fase 2 works without Turso.
+    const local = loadLocalPlanState();
+    const localHasChanges = local.operations.some((op) => op.type !== "reset");
+    if (data.effective.hasChanges && !localHasChanges) {
+      effectiveUker = data.effective.uker;
+      planSource = "server";
+    } else if (localHasChanges) {
+      effectiveUker = getLocalEffectiveUker(plan);
+      planSource = "local";
+    } else {
+      effectiveUker = data.effective.uker;
+      planSource = "base";
+    }
   } catch (err) {
     loadError = err instanceof Error ? err.message : "Kunne ikke hente dynamisk plan";
-    effectiveUker = undefined;
     apiMeta = null;
     plan = planJson as ArsplanDokument;
+    applyLocalSchedule();
   }
 }
 
-async function adminPost(path: string, body: Record<string, unknown>): Promise<string | null> {
-  const token = getToken();
-  if (!token) return "Legg inn admin-token først.";
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`
-      },
-      body: JSON.stringify(body)
-    });
-    const data = (await res.json()) as { success?: boolean; error?: string };
-    if (!res.ok || !data.success) {
-      return data.error ?? `Feil ${res.status}`;
+async function runPlanAction(op: PlanOperation): Promise<string | null> {
+  // Always apply locally so the UI updates immediately with clear feedback.
+  const result = applyLocalOperation(plan, op);
+  effectiveUker = result.effective;
+  planSource = "local";
+
+  // Also try server when writable + token present.
+  if (apiMeta?.writable && getToken()) {
+    const path =
+      op.type === "lock"
+        ? "/api/plan/lock"
+        : op.type === "unlock"
+          ? "/api/plan/unlock"
+          : op.type === "shift"
+            ? "/api/plan/shift"
+            : "/api/plan/reset";
+    const body =
+      op.type === "lock"
+        ? { uke: op.uke, note: op.note }
+        : op.type === "unlock"
+          ? { uke: op.uke }
+          : op.type === "shift"
+            ? { fromUke: op.fromUke, weeks: op.weeks, note: op.note }
+            : {};
+    try {
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(body)
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        return `Lagret i nettleseren. Server: ${data.error ?? res.status}`;
+      }
+      planSource = "server";
+      return null;
+    } catch {
+      return "Lagret i nettleseren. Kunne ikke synke til server.";
     }
-    await refreshPlanFromApi();
-    return null;
-  } catch (err) {
-    return err instanceof Error ? err.message : "Nettverksfeil";
   }
+
+  return null;
 }
 
 function currentWeekLabel(): string {
@@ -109,22 +165,23 @@ function renderOversikt(filterManed?: string): string {
     ? plan.perioder.filter((p) => p.maned === filterManed)
     : plan.perioder;
 
+  const sourceLabel =
+    planSource === "local"
+      ? "Endringer er lagret i denne nettleseren (Fase 2)."
+      : planSource === "server"
+        ? `Gjeldende plan fra server${apiStateUpdatedAt ? ` · ${escapeHtml(apiStateUpdatedAt)}` : ""}.`
+        : "Du ser grunnplanen (ingen lås/forskyvning ennå).";
+
   const banner = loadError
-    ? `<div class="panel note" role="status">Viser lokal grunnplan (API utilgjengelig: ${escapeHtml(loadError)}).</div>`
-    : apiMeta
-      ? `<div class="panel highlight">
-          <p class="lede">Du ser <strong>gjeldende plan</strong>${
-            apiStateUpdatedAt ? ` (sist endret ${escapeHtml(apiStateUpdatedAt)})` : ""
-          }. Merkene forteller hva som er låst, forskjøvet eller satt av til innhenting.${
-            apiMeta.writable ? "" : " Lagring av endringer krever Turso på server."
-          }</p>
+    ? `<div class="panel note" role="status">${escapeHtml(sourceLabel)} API-varsel: ${escapeHtml(loadError)}.</div>`
+    : `<div class="panel highlight">
+          <p class="lede">${sourceLabel} Les mer under <a href="#/veiledning">Veiledning</a>.</p>
           <ul class="legend-list compact">
             <li><span class="badge badge-lock">Låst</span> ferie</li>
             <li><span class="badge badge-empty">Innhenting</span> ekstra tid</li>
             <li><span class="badge badge-changed">Endret</span> flyttet kapittel</li>
           </ul>
-        </div>`
-      : "";
+        </div>`;
 
   if (!perioder.length) {
     return `${banner}<p role="status">Fant ingen periode som matcher.</p>`;
@@ -221,44 +278,97 @@ function renderOm(): string {
   `;
 }
 
+function renderVeiledning(): string {
+  return `
+    <div class="panel prose help-box">
+      <h2>Hva er Fase 2?</h2>
+      <p>
+        Fase 2 gjør årsplanen <strong>fleksibel</strong>. Grunnplanen ligger fast i systemet,
+        men du kan tilpasse den underveis i skoleåret — uten å skrive om hele planen.
+      </p>
+    </div>
+
+    <div class="panel prose">
+      <h2>To planer å huske</h2>
+      <dl class="meta-grid">
+        <div>
+          <dt>Grunnplan</dt>
+          <dd>Den opprinnelige årsplanen (uke for uke). Dette er «fasiten».</dd>
+        </div>
+        <div>
+          <dt>Gjeldende plan</dt>
+          <dd>Det som gjelder nå, etter at du har låst ferieuker eller forskjøvet innhold.</dd>
+        </div>
+      </dl>
+    </div>
+
+    <div class="panel prose">
+      <h2>1. Lås uke</h2>
+      <div class="help-text">
+        <p><strong>Når bruker du det?</strong> Når det ikke skal være undervisning: høstferie, jul, vinterferie, 1. mai, 17. mai.</p>
+        <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-lock">Låst</span>. Kapitler som lå der, flyttes til neste ledige uke. Planen hopper over ferien.</p>
+        <p><strong>Eksempel:</strong> Lås uke 40 som høstferie → innholdet fra uke 40 kommer i uke 41 (eller neste ulåste uke).</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>2. Lås opp uke</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Hvis du låste feil uke, eller ferien ble flyttet.</p>
+        <p><strong>Hva skjer?</strong> Ferie-merket fjernes. Innhold trekkes ikke automatisk tilbake. Bruk forskyvning eller tilbakestill hvis du vil rydde planen.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>3. Forskyv plan</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Klassen ble ikke ferdig med et emne og trenger mer tid.</p>
+        <p><strong>Hva skjer?</strong> Fra valgt uke og fremover skyves kapitlene frem. De første ukene blir <span class="badge badge-empty">Innhenting</span> (ingen nytt kapittel). Låste uker hoppes over.</p>
+        <p><strong>Eksempel:</strong> Fra uke 36, 1 uke frem → uke 36 blir innhenting, og kapittelet som sto der flyttes til neste ledige uke.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>4. Tilbakestill</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Bare hvis du vil slette alle lås og forskyvninger.</p>
+        <p><strong>Obs:</strong> Da er du tilbake til grunnplanen. Handlingen kan ikke angres.</p>
+      </div>
+    </div>
+
+    <div class="panel prose help-box">
+      <h2>Merkene i oversikten</h2>
+      <ul class="legend-list">
+        <li><span class="badge badge-now">Denne uken</span> — inneværende ISO-uke</li>
+        <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
+        <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning</li>
+        <li><span class="badge badge-changed">Endret</span> — kapittelet er flyttet fra grunnplanen</li>
+      </ul>
+      <p class="after-link"><a class="btn" href="#/admin">Gå til Admin og prøv</a></p>
+    </div>
+  `;
+}
+
 function renderAdmin(): string {
   const ukeNow = getIsoWeekNumber();
   return `
     <div class="panel prose help-box">
-      <h2>Slik bruker du den dynamiske planen</h2>
+      <h2>Admin — tilpass planen</h2>
       <p>
-        <strong>Grunnplanen</strong> er årsplanen slik den ble laget for skoleåret.
-        <strong>Gjeldende plan</strong> er det som gjelder nå — etter lås og forskyvning.
+        Her endrer du den <strong>gjeldende planen</strong>.
+        Les først <a href="#/veiledning">Veiledning</a> hvis du er usikker.
       </p>
-      <ol class="plain-list help-steps">
-        <li><strong>Lås</strong> uker uten undervisning (ferie, helligdager).</li>
-        <li><strong>Forskyv</strong> når klassen trenger mer tid på et tema — resten av året skyves frem.</li>
-        <li>Se resultatet under <a href="#/oversikt">Oversikt</a> (merkene Låst, Innhenting, Endret).</li>
-        <li>Bruk <strong>Tilbakestill</strong> bare hvis du vil tilbake til grunnplanen.</li>
-      </ol>
-    </div>
-
-    <div class="panel prose">
-      <h2>Tilgang</h2>
-      <p>
-        Bare du skal kunne endre planen. Lim inn admin-tokenet fra Vercel
-        (<code>ADMIN_TOKEN</code>). Det lagres bare i denne nettleserøkten — ikke i GitHub.
+      <p class="muted">
+        Endringer lagres i nettleseren din med en gang. Synkronisering til server krever Turso + admin-token (valgfritt).
       </p>
-      <form id="admin-token-form" class="admin-form">
-        <label for="admin-token">Admin-token</label>
-        <input id="admin-token" name="token" type="password" autocomplete="current-password" value="${escapeHtml(getToken())}" />
-        <button type="submit" class="btn">Lagre token i denne nettleseren</button>
-      </form>
-      <p class="muted" id="admin-status" role="status"></p>
     </div>
 
     <div class="admin-grid">
       <form id="lock-form" class="panel admin-form">
         <h2>Lås uke</h2>
         <div class="help-text">
-          <p><strong>Når?</strong> Høstferie, juleferie, vinterferie, 1. mai, 17. mai og lignende.</p>
-          <p><strong>Hva skjer?</strong> Uken får merket <em>Låst</em>. Undervisningsinnhold flyttes til neste ledige uke og hopper over den låste uken.</p>
-          <p><strong>Tips:</strong> Skriv gjerne navnet på ferien i notatet, så husker du hvorfor uken er låst.</p>
+          <p><strong>Når?</strong> Ferie og helligdager uten undervisning.</p>
+          <p><strong>Hva skjer?</strong> Uken blir <em>Låst</em>. Innhold flyttes til neste ledige uke.</p>
         </div>
         <label for="lock-uke">Ukenummer (ISO-uke)</label>
         <input id="lock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
@@ -270,8 +380,8 @@ function renderAdmin(): string {
       <form id="unlock-form" class="panel admin-form">
         <h2>Lås opp uke</h2>
         <div class="help-text">
-          <p><strong>Når?</strong> Hvis du låste feil uke, eller ferien ble endret.</p>
-          <p><strong>Hva skjer?</strong> Uken er ikke lenger ferie. Innhold trekkes <em>ikke</em> automatisk tilbake — bruk forskyvning eller tilbakestill hvis planen skal ryddes.</p>
+          <p><strong>Når?</strong> Feil låst uke, eller ferien ble endret.</p>
+          <p><strong>Hva skjer?</strong> Ferie-merket fjernes. Innhold trekkes ikke automatisk tilbake.</p>
         </div>
         <label for="unlock-uke">Ukenummer (ISO-uke)</label>
         <input id="unlock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
@@ -281,9 +391,8 @@ function renderAdmin(): string {
       <form id="shift-form" class="panel admin-form">
         <h2>Forskyv plan</h2>
         <div class="help-text">
-          <p><strong>Når?</strong> Klassen ble ikke ferdig med et emne og trenger én eller flere ekstra uker.</p>
-          <p><strong>Hva skjer?</strong> Fra valgt uke og fremover skyves kapitlene frem. De første ukene blir <em>Innhenting</em> (ingen nytt kapittel). Låste uker hoppes over.</p>
-          <p><strong>Eksempel:</strong> Fra uke ${ukeNow}, 1 uke frem → innholdet som sto i uke ${ukeNow} flyttes til neste ledige uke.</p>
+          <p><strong>Når?</strong> Dere trenger mer tid på et emne.</p>
+          <p><strong>Hva skjer?</strong> Kapitler fra valgt uke skyves frem. Første uker blir <em>Innhenting</em>.</p>
         </div>
         <label for="shift-from">Fra uke (der dere trenger mer tid)</label>
         <input id="shift-from" name="fromUke" type="number" min="1" max="53" required value="${ukeNow}" />
@@ -297,21 +406,22 @@ function renderAdmin(): string {
       <form id="reset-form" class="panel admin-form">
         <h2>Tilbakestill</h2>
         <div class="help-text">
-          <p><strong>Når?</strong> Bare hvis du vil slette alle lås og forskyvninger og starte på nytt fra grunnplanen.</p>
-          <p><strong>Obs:</strong> Dette kan ikke angres. Eksportér eller noter endringer først hvis du trenger dem.</p>
+          <p><strong>Når?</strong> Bare hvis du vil slette alle lås og forskyvninger.</p>
+          <p><strong>Obs:</strong> Kan ikke angres.</p>
         </div>
         <button type="submit" class="btn btn-danger">Tilbakestill til grunnplan</button>
       </form>
     </div>
 
-    <div class="panel prose help-box">
-      <h2>Slik leser du merkene i oversikten</h2>
-      <ul class="legend-list">
-        <li><span class="badge badge-now">Denne uken</span> — inneværende ISO-uke</li>
-        <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
-        <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning, uten nytt kapittel</li>
-        <li><span class="badge badge-changed">Endret</span> — kapittelet er flyttet sammenlignet med grunnplanen</li>
-      </ul>
+    <div class="panel prose">
+      <h2>Valgfri serversynk</h2>
+      <p>Hvis Turso er satt opp på Vercel, kan du også synke med admin-token:</p>
+      <form id="admin-token-form" class="admin-form">
+        <label for="admin-token">Admin-token (valgfritt)</label>
+        <input id="admin-token" name="token" type="password" autocomplete="current-password" value="${escapeHtml(getToken())}" />
+        <button type="submit" class="btn">Lagre token</button>
+      </form>
+      <p class="muted" id="admin-status" role="status"></p>
     </div>
   `;
 }
@@ -322,12 +432,17 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       return { title: "Denne uken", subtitle: "Gjeldende plan for inneværende ISO-uke." };
     case "perioder":
       return { title: "Perioder", subtitle: "Velg en måned for å hoppe til ukene i perioden." };
+    case "veiledning":
+      return {
+        title: "Veiledning — Fase 2",
+        subtitle: "Tydelige forklaringer på lås, forskyvning og merkene i oversikten."
+      };
     case "om":
       return { title: "Om planen", subtitle: "Bakgrunn for MBO-årsplanen 2026–2027." };
     case "admin":
       return {
         title: "Admin — tilpass planen",
-        subtitle: "Lås ferieuker og forskyv undervisningen. Hvert valg er forklart under."
+        subtitle: "Lås ferieuker og forskyv undervisningen. Endringer lagres i nettleseren."
       };
     default:
       return {
@@ -347,50 +462,58 @@ function bindAdminForms(): void {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
     setToken(String(fd.get("token") ?? "").trim());
-    setStatus("Token lagret i denne nettleserøkten.");
+    setStatus("Token lagret i denne nettleserøkten (valgfritt for serversynk).");
   });
 
   document.getElementById("lock-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
     setStatus("Låser uke…");
-    const err = await adminPost("/api/plan/lock", {
+    const err = await runPlanAction({
+      type: "lock",
       uke: Number(fd.get("uke")),
-      note: String(fd.get("note") ?? "") || undefined
+      note: String(fd.get("note") ?? "") || undefined,
+      at: new Date().toISOString()
     });
-    setStatus(err ?? "Uke låst. Planen er oppdatert.");
-    if (!err) render();
+    setStatus(err ?? "Uke låst. Se Oversikt for resultatet.");
+    render();
   });
 
   document.getElementById("unlock-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
     setStatus("Låser opp…");
-    const err = await adminPost("/api/plan/unlock", { uke: Number(fd.get("uke")) });
+    const err = await runPlanAction({
+      type: "unlock",
+      uke: Number(fd.get("uke")),
+      at: new Date().toISOString()
+    });
     setStatus(err ?? "Uke låst opp.");
-    if (!err) render();
+    render();
   });
 
   document.getElementById("shift-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
     setStatus("Forskyver…");
-    const err = await adminPost("/api/plan/shift", {
+    const err = await runPlanAction({
+      type: "shift",
       fromUke: Number(fd.get("fromUke")),
       weeks: Number(fd.get("weeks")),
-      note: String(fd.get("note") ?? "") || undefined
+      note: String(fd.get("note") ?? "") || undefined,
+      at: new Date().toISOString()
     });
-    setStatus(err ?? "Plan forskjøvet.");
-    if (!err) render();
+    setStatus(err ?? "Plan forskjøvet. Se Oversikt.");
+    render();
   });
 
   document.getElementById("reset-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!window.confirm("Tilbakestille hele planen til grunnplanen?")) return;
     setStatus("Tilbakestiller…");
-    const err = await adminPost("/api/plan/reset", {});
+    const err = await runPlanAction({ type: "reset", at: new Date().toISOString() });
     setStatus(err ?? "Tilbakestilt til grunnplan.");
-    if (!err) render();
+    render();
   });
 }
 
@@ -401,6 +524,7 @@ function render(): void {
   let content = "";
   if (view === "denne-uken") content = renderDenneUken();
   else if (view === "perioder") content = renderPerioder();
+  else if (view === "veiledning") content = renderVeiledning();
   else if (view === "om") content = renderOm();
   else if (view === "admin") content = renderAdmin();
   else content = renderOversikt(periode);

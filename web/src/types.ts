@@ -1,4 +1,4 @@
-export type ViewId = "oversikt" | "denne-uken" | "perioder" | "om" | "admin";
+export type ViewId = "oversikt" | "denne-uken" | "perioder" | "veiledning" | "admin" | "om";
 
 export interface ArsplanMetadata {
   tittel: string;
