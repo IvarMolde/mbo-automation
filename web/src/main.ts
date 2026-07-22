@@ -112,9 +112,18 @@ function renderOversikt(filterManed?: string): string {
   const banner = loadError
     ? `<div class="panel note" role="status">Viser lokal grunnplan (API utilgjengelig: ${escapeHtml(loadError)}).</div>`
     : apiMeta
-      ? `<div class="panel highlight"><p class="lede">Gjeldende plan fra API${
-          apiStateUpdatedAt ? ` · oppdatert ${escapeHtml(apiStateUpdatedAt)}` : ""
-        }${apiMeta.writable ? "" : " · lagring krever Turso på server"}.</p></div>`
+      ? `<div class="panel highlight">
+          <p class="lede">Du ser <strong>gjeldende plan</strong>${
+            apiStateUpdatedAt ? ` (sist endret ${escapeHtml(apiStateUpdatedAt)})` : ""
+          }. Merkene forteller hva som er låst, forskjøvet eller satt av til innhenting.${
+            apiMeta.writable ? "" : " Lagring av endringer krever Turso på server."
+          }</p>
+          <ul class="legend-list compact">
+            <li><span class="badge badge-lock">Låst</span> ferie</li>
+            <li><span class="badge badge-empty">Innhenting</span> ekstra tid</li>
+            <li><span class="badge badge-changed">Endret</span> flyttet kapittel</li>
+          </ul>
+        </div>`
       : "";
 
   if (!perioder.length) {
@@ -202,7 +211,12 @@ function renderOm(): string {
         <div><dt>Skoleår</dt><dd>${escapeHtml(m.skolear ?? "—")}</dd></div>
       </dl>
       <h2>Dynamisk plan</h2>
-      <p>Du kan låse ferieuker og forskyve resten av planen fra Admin. Grunnplanen ligger i GitHub; endringer lagres via API.</p>
+      <p>
+        Grunnplanen er fasiten for skoleåret. Underveis kan du tilpasse den:
+        låse ferieuker og forskyve kapitler når klassen trenger mer tid.
+        Gå til <a href="#/admin">Admin</a> for å gjøre endringer — der står også
+        forklaringer på hvert valg.
+      </p>
     </div>
   `;
 }
@@ -210,8 +224,26 @@ function renderOm(): string {
 function renderAdmin(): string {
   const ukeNow = getIsoWeekNumber();
   return `
+    <div class="panel prose help-box">
+      <h2>Slik bruker du den dynamiske planen</h2>
+      <p>
+        <strong>Grunnplanen</strong> er årsplanen slik den ble laget for skoleåret.
+        <strong>Gjeldende plan</strong> er det som gjelder nå — etter lås og forskyvning.
+      </p>
+      <ol class="plain-list help-steps">
+        <li><strong>Lås</strong> uker uten undervisning (ferie, helligdager).</li>
+        <li><strong>Forskyv</strong> når klassen trenger mer tid på et tema — resten av året skyves frem.</li>
+        <li>Se resultatet under <a href="#/oversikt">Oversikt</a> (merkene Låst, Innhenting, Endret).</li>
+        <li>Bruk <strong>Tilbakestill</strong> bare hvis du vil tilbake til grunnplanen.</li>
+      </ol>
+    </div>
+
     <div class="panel prose">
-      <p>Kun administrator. Bruk tokenet som er satt som <code>ADMIN_TOKEN</code> på Vercel.</p>
+      <h2>Tilgang</h2>
+      <p>
+        Bare du skal kunne endre planen. Lim inn admin-tokenet fra Vercel
+        (<code>ADMIN_TOKEN</code>). Det lagres bare i denne nettleserøkten — ikke i GitHub.
+      </p>
       <form id="admin-token-form" class="admin-form">
         <label for="admin-token">Admin-token</label>
         <input id="admin-token" name="token" type="password" autocomplete="current-password" value="${escapeHtml(getToken())}" />
@@ -222,38 +254,64 @@ function renderAdmin(): string {
 
     <div class="admin-grid">
       <form id="lock-form" class="panel admin-form">
-        <h2>Lås uke (ferie)</h2>
-        <label for="lock-uke">Ukenummer</label>
+        <h2>Lås uke</h2>
+        <div class="help-text">
+          <p><strong>Når?</strong> Høstferie, juleferie, vinterferie, 1. mai, 17. mai og lignende.</p>
+          <p><strong>Hva skjer?</strong> Uken får merket <em>Låst</em>. Undervisningsinnhold flyttes til neste ledige uke og hopper over den låste uken.</p>
+          <p><strong>Tips:</strong> Skriv gjerne navnet på ferien i notatet, så husker du hvorfor uken er låst.</p>
+        </div>
+        <label for="lock-uke">Ukenummer (ISO-uke)</label>
         <input id="lock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
         <label for="lock-note">Notat (valgfritt)</label>
-        <input id="lock-note" name="note" type="text" maxlength="300" placeholder="Høstferie" />
+        <input id="lock-note" name="note" type="text" maxlength="300" placeholder="F.eks. Høstferie" />
         <button type="submit" class="btn">Lås uke</button>
       </form>
 
       <form id="unlock-form" class="panel admin-form">
         <h2>Lås opp uke</h2>
-        <label for="unlock-uke">Ukenummer</label>
+        <div class="help-text">
+          <p><strong>Når?</strong> Hvis du låste feil uke, eller ferien ble endret.</p>
+          <p><strong>Hva skjer?</strong> Uken er ikke lenger ferie. Innhold trekkes <em>ikke</em> automatisk tilbake — bruk forskyvning eller tilbakestill hvis planen skal ryddes.</p>
+        </div>
+        <label for="unlock-uke">Ukenummer (ISO-uke)</label>
         <input id="unlock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
         <button type="submit" class="btn">Lås opp</button>
       </form>
 
       <form id="shift-form" class="panel admin-form">
         <h2>Forskyv plan</h2>
-        <p class="muted">Flytter innhold fra valgt uke og fremover. Hopper over låste uker.</p>
-        <label for="shift-from">Fra uke</label>
+        <div class="help-text">
+          <p><strong>Når?</strong> Klassen ble ikke ferdig med et emne og trenger én eller flere ekstra uker.</p>
+          <p><strong>Hva skjer?</strong> Fra valgt uke og fremover skyves kapitlene frem. De første ukene blir <em>Innhenting</em> (ingen nytt kapittel). Låste uker hoppes over.</p>
+          <p><strong>Eksempel:</strong> Fra uke ${ukeNow}, 1 uke frem → innholdet som sto i uke ${ukeNow} flyttes til neste ledige uke.</p>
+        </div>
+        <label for="shift-from">Fra uke (der dere trenger mer tid)</label>
         <input id="shift-from" name="fromUke" type="number" min="1" max="53" required value="${ukeNow}" />
-        <label for="shift-weeks">Antall uker frem</label>
+        <label for="shift-weeks">Hvor mange uker skal planen skyves frem?</label>
         <input id="shift-weeks" name="weeks" type="number" min="1" max="20" required value="1" />
         <label for="shift-note">Notat (valgfritt)</label>
-        <input id="shift-note" name="note" type="text" maxlength="300" placeholder="Trenger mer tid på tema" />
+        <input id="shift-note" name="note" type="text" maxlength="300" placeholder="F.eks. Trenger mer tid på grammatikk" />
         <button type="submit" class="btn">Forskyv</button>
       </form>
 
       <form id="reset-form" class="panel admin-form">
         <h2>Tilbakestill</h2>
-        <p class="muted">Gjenoppretter grunnplanen (fjerner lås og forskyvninger).</p>
+        <div class="help-text">
+          <p><strong>Når?</strong> Bare hvis du vil slette alle lås og forskyvninger og starte på nytt fra grunnplanen.</p>
+          <p><strong>Obs:</strong> Dette kan ikke angres. Eksportér eller noter endringer først hvis du trenger dem.</p>
+        </div>
         <button type="submit" class="btn btn-danger">Tilbakestill til grunnplan</button>
       </form>
+    </div>
+
+    <div class="panel prose help-box">
+      <h2>Slik leser du merkene i oversikten</h2>
+      <ul class="legend-list">
+        <li><span class="badge badge-now">Denne uken</span> — inneværende ISO-uke</li>
+        <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
+        <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning, uten nytt kapittel</li>
+        <li><span class="badge badge-changed">Endret</span> — kapittelet er flyttet sammenlignet med grunnplanen</li>
+      </ul>
     </div>
   `;
 }
@@ -268,8 +326,8 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       return { title: "Om planen", subtitle: "Bakgrunn for MBO-årsplanen 2026–2027." };
     case "admin":
       return {
-        title: "Admin",
-        subtitle: "Lås ferieuker og forskyv planen når et emne trenger mer tid."
+        title: "Admin — tilpass planen",
+        subtitle: "Lås ferieuker og forskyv undervisningen. Hvert valg er forklart under."
       };
     default:
       return {
