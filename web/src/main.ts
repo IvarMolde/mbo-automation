@@ -1,8 +1,12 @@
 import planJson from "../../data/arsplan-2026-2027.json";
 import { getIsoWeekNumber, getIsoWeekYear } from "./isoWeek";
-import { applyLocalOperation, getLocalEffectiveUker, loadLocalPlanState } from "./localPlan";
+import {
+  getLocalEffectiveUker,
+  loadLocalPlanState,
+  saveLocalPlanState
+} from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
-import { computeEffectiveSchedule, type PlanOperation } from "./schedule";
+import { computeEffectiveSchedule, type PlanOperation, type PlanState } from "./schedule";
 import type { ArsplanDokument, EffectiveUke, PlanApiResponse, ViewId } from "./types";
 import { renderShell, renderUkeCard } from "./ui";
 import "./style.css";
@@ -10,7 +14,7 @@ import "./style.css";
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "")
   ?? "https://mbo-automation-b8bi.vercel.app";
 
-const TOKEN_KEY = "mbo-admin-token";
+const SESSION_KEY = "mbo-admin-session-v1";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -18,9 +22,12 @@ let plan: ArsplanDokument = planJson as ArsplanDokument;
 let effectiveUker: EffectiveUke[] | undefined;
 let apiMeta: PlanApiResponse["store"] | null = null;
 let apiStateUpdatedAt: string | null = null;
+let planOperations: PlanState["operations"] = [];
 let loadError: string | null = null;
-/** local = endringer i nettleseren (virker nå), server = Turso/API når det er aktivert */
+/** local = endringer i nettleseren, server = Turso/API, base = grunnplan */
 let planSource: "local" | "server" | "base" = "base";
+/** Statusmelding på Admin som overlever re-render */
+let adminFlash: string | null = null;
 
 function parseView(): { view: ViewId; periode?: string } {
   const hash = window.location.hash.replace(/^#\/?/, "");
@@ -41,19 +48,24 @@ function parseView(): { view: ViewId; periode?: string } {
   return { view: "oversikt" };
 }
 
-function getToken(): string {
-  return sessionStorage.getItem(TOKEN_KEY) ?? "";
+function getSessionToken(): string {
+  return localStorage.getItem(SESSION_KEY) ?? "";
 }
 
-function setToken(token: string): void {
-  if (token) sessionStorage.setItem(TOKEN_KEY, token);
-  else sessionStorage.removeItem(TOKEN_KEY);
+function setSessionToken(token: string): void {
+  if (token) localStorage.setItem(SESSION_KEY, token);
+  else localStorage.removeItem(SESSION_KEY);
+}
+
+function isLoggedIn(): boolean {
+  return Boolean(getSessionToken());
 }
 
 function applyLocalSchedule(): void {
   const local = loadLocalPlanState();
   if (local.operations.some((op) => op.type !== "reset")) {
     effectiveUker = getLocalEffectiveUker(plan);
+    planOperations = local.operations;
     planSource = "local";
     return;
   }
@@ -63,6 +75,21 @@ function applyLocalSchedule(): void {
   }
 }
 
+function adoptServerPlan(data: PlanApiResponse): void {
+  plan = toArsplanDokument(data);
+  apiMeta = data.store;
+  apiStateUpdatedAt = data.state.updatedAt;
+  planOperations = data.state.operations as PlanState["operations"];
+  effectiveUker = data.effective.uker;
+  planSource = data.effective.hasChanges ? "server" : "base";
+  const synced: PlanState = {
+    version: 1,
+    updatedAt: data.state.updatedAt,
+    operations: planOperations
+  };
+  saveLocalPlanState(synced);
+}
+
 async function refreshPlanFromApi(): Promise<void> {
   loadError = null;
   try {
@@ -70,12 +97,18 @@ async function refreshPlanFromApi(): Promise<void> {
     if (!res.ok) throw new Error(`API svarte ${res.status}`);
     const data = (await res.json()) as PlanApiResponse;
     if (!data.success) throw new Error("Ugyldig plansvar");
+
+    // Innlogget: server er sannheten (cron/e-post følger den).
+    if (isLoggedIn()) {
+      adoptServerPlan(data);
+      return;
+    }
+
     plan = toArsplanDokument(data);
     apiMeta = data.store;
     apiStateUpdatedAt = data.state.updatedAt;
+    planOperations = data.state.operations as PlanState["operations"];
 
-    // Prefer server schedule when it has changes and is writable/synced;
-    // otherwise keep/use local browser schedule so Fase 2 works without Turso.
     const local = loadLocalPlanState();
     const localHasChanges = local.operations.some((op) => op.type !== "reset");
     if (data.effective.hasChanges && !localHasChanges) {
@@ -83,6 +116,7 @@ async function refreshPlanFromApi(): Promise<void> {
       planSource = "server";
     } else if (localHasChanges) {
       effectiveUker = getLocalEffectiveUker(plan);
+      planOperations = local.operations;
       planSource = "local";
     } else {
       effectiveUker = data.effective.uker;
@@ -97,50 +131,89 @@ async function refreshPlanFromApi(): Promise<void> {
 }
 
 async function runPlanAction(op: PlanOperation): Promise<string | null> {
-  // Always apply locally so the UI updates immediately with clear feedback.
-  const result = applyLocalOperation(plan, op);
-  effectiveUker = result.effective;
-  planSource = "local";
-
-  // Also try server when writable + token present.
-  if (apiMeta?.writable && getToken()) {
-    const path =
-      op.type === "lock"
-        ? "/api/plan/lock"
-        : op.type === "unlock"
-          ? "/api/plan/unlock"
-          : op.type === "shift"
-            ? "/api/plan/shift"
-            : "/api/plan/reset";
-    const body =
-      op.type === "lock"
-        ? { uke: op.uke, note: op.note }
-        : op.type === "unlock"
-          ? { uke: op.uke }
-          : op.type === "shift"
-            ? { fromUke: op.fromUke, weeks: op.weeks, note: op.note }
-            : {};
-    try {
-      const res = await fetch(`${API_BASE}${path}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${getToken()}`
-        },
-        body: JSON.stringify(body)
-      });
-      const data = (await res.json()) as { success?: boolean; error?: string };
-      if (!res.ok || !data.success) {
-        return `Lagret i nettleseren. Server: ${data.error ?? res.status}`;
-      }
-      planSource = "server";
-      return null;
-    } catch {
-      return "Lagret i nettleseren. Kunne ikke synke til server.";
-    }
+  if (!isLoggedIn()) {
+    return "Du må logge inn først.";
+  }
+  if (!apiMeta?.writable) {
+    return "Serverplan er ikke skrivbar (mangler Turso).";
   }
 
-  return null;
+  const path =
+    op.type === "lock"
+      ? "/api/plan/lock"
+      : op.type === "unlock"
+        ? "/api/plan/unlock"
+        : op.type === "shift"
+          ? "/api/plan/shift"
+          : "/api/plan/reset";
+  const body =
+    op.type === "lock"
+      ? { uke: op.uke, note: op.note }
+      : op.type === "unlock"
+        ? { uke: op.uke }
+        : op.type === "shift"
+          ? { fromUke: op.fromUke, weeks: op.weeks, note: op.note }
+          : {};
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getSessionToken()}`
+      },
+      body: JSON.stringify(body)
+    });
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      state?: PlanState;
+      effective?: { uker: EffectiveUke[]; hasChanges?: boolean };
+    };
+    if (res.status === 401) {
+      setSessionToken("");
+      return "Økten er utløpt. Logg inn på nytt.";
+    }
+    if (!res.ok || !data.success || !data.state || !data.effective) {
+      return data.error ?? `Serverfeil (${res.status})`;
+    }
+    saveLocalPlanState(data.state);
+    planOperations = data.state.operations;
+    effectiveUker = data.effective.uker;
+    planSource = "server";
+    apiStateUpdatedAt = data.state.updatedAt;
+    return null;
+  } catch {
+    return "Kunne ikke nå serveren. Prøv igjen.";
+  }
+}
+
+async function loginWithPassword(password: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/plan/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password })
+    });
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      sessionToken?: string;
+    };
+    if (!res.ok || !data.success || !data.sessionToken) {
+      return data.error ?? "Innlogging feilet.";
+    }
+    setSessionToken(data.sessionToken);
+    await refreshPlanFromApi();
+    return null;
+  } catch {
+    return "Kunne ikke nå serveren.";
+  }
+}
+
+function logout(): void {
+  setSessionToken("");
+  adminFlash = "Du er logget ut.";
 }
 
 function currentWeekLabel(): string {
@@ -349,19 +422,99 @@ function renderVeiledning(): string {
   `;
 }
 
+function lockedWeekNotes(): Map<number, string | undefined> {
+  const notes = new Map<number, string | undefined>();
+  for (const op of planOperations) {
+    if (op.type === "reset") {
+      notes.clear();
+      continue;
+    }
+    if (op.type === "lock") notes.set(op.uke, op.note);
+    if (op.type === "unlock") notes.delete(op.uke);
+  }
+  return notes;
+}
+
+function renderLockedWeeksPanel(): string {
+  const locked = (effectiveUker ?? []).filter((u) => u.status === "locked");
+  const notes = lockedWeekNotes();
+  const syncHint = !isLoggedIn()
+    ? "Logg inn for å endre planen. Alle ser den lagrede serverplanen."
+    : apiMeta?.writable
+      ? "Du er innlogget. Endringer lagres på server og gjelder for onsdagens hefte."
+      : "Du er innlogget, men serverplan er ikke skrivbar (Turso mangler).";
+
+  if (locked.length === 0) {
+    return `
+      <div class="panel highlight locked-summary" id="locked-summary">
+        <h2>Låste uker nå</h2>
+        <p class="lede">Ingen uker er låst ennå.</p>
+        <p class="muted">${escapeHtml(syncHint)}</p>
+        ${adminFlash && isLoggedIn() ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
+      </div>
+    `;
+  }
+
+  const items = locked
+    .map((u) => {
+      const note = notes.get(u.uke);
+      return `<li>
+        <a href="#/oversikt">Uke ${u.uke}</a>
+        <span class="badge badge-lock">Låst</span>
+        ${note ? ` — ${escapeHtml(note)}` : ""}
+        <span class="muted"> · ${escapeHtml(u.maned || "")}</span>
+      </li>`;
+    })
+    .join("");
+
+  return `
+    <div class="panel highlight locked-summary" id="locked-summary">
+      <h2>Låste uker nå (${locked.length})</h2>
+      <p class="lede">Disse ukene er markert som ferie / uten undervisning:</p>
+      <ul class="locked-list">${items}</ul>
+      <p class="muted">${escapeHtml(syncHint)}</p>
+      <p><a class="btn" href="#/oversikt">Se dem i Oversikt</a></p>
+      ${adminFlash && isLoggedIn() ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
+    </div>
+  `;
+}
+
 function renderAdmin(): string {
   const ukeNow = getIsoWeekNumber();
+
+  if (!isLoggedIn()) {
+    return `
+      <div class="panel prose help-box">
+        <h2>Logg inn for å redigere planen</h2>
+        <p>
+          Skriv inn admin-passordet ditt. Økten huskes i denne nettleseren i opptil 30 dager,
+          så du slipper å hente nøkler fra Vercel hver gang.
+        </p>
+      </div>
+      <form id="admin-login-form" class="panel admin-form login-form">
+        <label for="admin-password">Admin-passord</label>
+        <input id="admin-password" name="password" type="password" autocomplete="current-password" required minlength="12" />
+        <button type="submit" class="btn">Logg inn</button>
+        ${adminFlash ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
+      </form>
+      ${renderLockedWeeksPanel()}
+    `;
+  }
+
   return `
     <div class="panel prose help-box">
       <h2>Admin — tilpass planen</h2>
       <p>
-        Her endrer du den <strong>gjeldende planen</strong>.
-        Les først <a href="#/veiledning">Veiledning</a> hvis du er usikker.
+        Du er innlogget. Endringer lagres på serveren og synes i listen under og i
+        <a href="#/oversikt">Oversikt</a> med merket <span class="badge badge-lock">Låst</span>.
       </p>
       <p class="muted">
-        Endringer lagres i nettleseren din med en gang. Synkronisering til server krever Turso + admin-token (valgfritt).
+        ${apiStateUpdatedAt ? `Sist oppdatert på server: ${escapeHtml(apiStateUpdatedAt)}. ` : ""}
+        <button type="button" class="btn btn-ghost" id="admin-logout">Logg ut</button>
       </p>
     </div>
+
+    ${renderLockedWeeksPanel()}
 
     <div class="admin-grid">
       <form id="lock-form" class="panel admin-form">
@@ -412,17 +565,6 @@ function renderAdmin(): string {
         <button type="submit" class="btn btn-danger">Tilbakestill til grunnplan</button>
       </form>
     </div>
-
-    <div class="panel prose">
-      <h2>Valgfri serversynk</h2>
-      <p>Hvis Turso er satt opp på Vercel, kan du også synke med admin-token:</p>
-      <form id="admin-token-form" class="admin-form">
-        <label for="admin-token">Admin-token (valgfritt)</label>
-        <input id="admin-token" name="token" type="password" autocomplete="current-password" value="${escapeHtml(getToken())}" />
-        <button type="submit" class="btn">Lagre token</button>
-      </form>
-      <p class="muted" id="admin-status" role="status"></p>
-    </div>
   `;
 }
 
@@ -442,7 +584,9 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
     case "admin":
       return {
         title: "Admin — tilpass planen",
-        subtitle: "Lås ferieuker og forskyv undervisningen. Endringer lagres i nettleseren."
+        subtitle: isLoggedIn()
+          ? "Du er innlogget. Lås ferieuker og forskyv undervisningen."
+          : "Logg inn med admin-passord for å redigere planen."
       };
     default:
       return {
@@ -453,49 +597,70 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
 }
 
 function bindAdminForms(): void {
-  const status = document.getElementById("admin-status");
-  const setStatus = (msg: string) => {
-    if (status) status.textContent = msg;
+  const setFlash = (msg: string) => {
+    adminFlash = msg;
   };
 
-  document.getElementById("admin-token-form")?.addEventListener("submit", (e) => {
+  document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
-    setToken(String(fd.get("token") ?? "").trim());
-    setStatus("Token lagret i denne nettleserøkten (valgfritt for serversynk).");
+    const password = String(fd.get("password") ?? "");
+    setFlash("Logger inn…");
+    render();
+    const err = await loginWithPassword(password);
+    setFlash(err ?? "Innlogget. Du kan nå låse og forskyve uker.");
+    render();
+  });
+
+  document.getElementById("admin-logout")?.addEventListener("click", () => {
+    logout();
+    render();
   });
 
   document.getElementById("lock-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
-    setStatus("Låser uke…");
+    const uke = Number(fd.get("uke"));
+    setFlash(`Låser uke ${uke}…`);
+    render();
     const err = await runPlanAction({
       type: "lock",
-      uke: Number(fd.get("uke")),
+      uke,
       note: String(fd.get("note") ?? "") || undefined,
       at: new Date().toISOString()
     });
-    setStatus(err ?? "Uke låst. Se Oversikt for resultatet.");
+    const locked = (effectiveUker ?? [])
+      .filter((u) => u.status === "locked")
+      .map((u) => u.uke)
+      .join(", ");
+    setFlash(
+      err
+        ? `Kunne ikke låse uke ${uke}: ${err}`
+        : `Uke ${uke} er låst på server. Låste uker nå: ${locked || String(uke)}.`
+    );
     render();
   });
 
   document.getElementById("unlock-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
-    setStatus("Låser opp…");
+    const uke = Number(fd.get("uke"));
+    setFlash(`Låser opp uke ${uke}…`);
+    render();
     const err = await runPlanAction({
       type: "unlock",
-      uke: Number(fd.get("uke")),
+      uke,
       at: new Date().toISOString()
     });
-    setStatus(err ?? "Uke låst opp.");
+    setFlash(err ? `Kunne ikke låse opp: ${err}` : `Uke ${uke} er låst opp.`);
     render();
   });
 
   document.getElementById("shift-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
-    setStatus("Forskyver…");
+    setFlash("Forskyver…");
+    render();
     const err = await runPlanAction({
       type: "shift",
       fromUke: Number(fd.get("fromUke")),
@@ -503,16 +668,17 @@ function bindAdminForms(): void {
       note: String(fd.get("note") ?? "") || undefined,
       at: new Date().toISOString()
     });
-    setStatus(err ?? "Plan forskjøvet. Se Oversikt.");
+    setFlash(err ? `Kunne ikke forskyve: ${err}` : "Plan forskjøvet. Se Oversikt.");
     render();
   });
 
   document.getElementById("reset-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (!window.confirm("Tilbakestille hele planen til grunnplanen?")) return;
-    setStatus("Tilbakestiller…");
+    setFlash("Tilbakestiller…");
+    render();
     const err = await runPlanAction({ type: "reset", at: new Date().toISOString() });
-    setStatus(err ?? "Tilbakestilt til grunnplan.");
+    setFlash(err ? `Kunne ikke tilbakestille: ${err}` : "Tilbakestilt til grunnplan.");
     render();
   });
 }

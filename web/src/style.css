@@ -331,9 +331,32 @@ a:hover {
 }
 
 .badge-lock {
-  background: #e8eef2;
+  background: #f3e8d8;
+  color: #6b3a12;
+  border: 1px solid #c9a06a;
+}
+
+.locked-summary .locked-list {
+  margin: 0.5rem 0 0.75rem;
+  padding-left: 1.2rem;
+}
+
+.locked-summary .locked-list li {
+  margin: 0.35rem 0;
+}
+
+.admin-flash {
+  margin-top: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  background: #e7f3f6;
+  border: 1px solid #9ec8d2;
+  border-radius: 6px;
+  font-weight: 600;
   color: var(--marine);
-  border: 1px solid var(--line);
+}
+
+.uke-card.is-locked .uke-title {
+  color: #6b3a12;
 }
 
 .badge-empty {
@@ -350,7 +373,9 @@ a:hover {
 
 .uke-card.is-locked {
   border-style: dashed;
-  opacity: 0.95;
+  border-color: #c9a06a;
+  background: #faf6f0;
+  opacity: 1;
 }
 
 .uke-card.is-empty {
@@ -403,6 +428,23 @@ a:hover {
 .btn-danger:hover {
   background: #6e1515;
   color: var(--white);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--teal);
+  border: 1px solid var(--line);
+  padding: 0.25rem 0.7rem;
+  font-size: 0.9rem;
+}
+
+.btn-ghost:hover {
+  background: var(--surface);
+  color: var(--marine);
+}
+
+.login-form {
+  max-width: 24rem;
 }
 
 .help-box h2 {

@@ -24,16 +24,17 @@ https://ivarmolde.github.io/mbo-automation/
 - **Oversikt** — alle uker, gruppert i perioder (gjeldende plan)
 - **Denne uken** — zoom på inneværende ISO-uke
 - **Perioder** — hopp til en måned
-- **Admin** — lås ferieuker og forskyv plan (krever `ADMIN_TOKEN`)
+- **Admin** — logg inn med admin-passord for å låse ferieuker og forskyve plan
 - **Om** — metadata
 
 ### Dynamisk plan (fase 2)
 
 - `GET /api/plan` — grunnplan + gjeldende (effektiv) plan
-- `POST /api/plan/lock` / `unlock` / `shift` / `reset` — krever `Authorization: Bearer <ADMIN_TOKEN>`
-- Lokalt lagres endringer i `data/plan-state.json`
+- `POST /api/plan/login` — bytt admin-passord mot økt-token (30 dager)
+- `POST /api/plan/lock` / `unlock` / `shift` / `reset` — krever innlogget økt
 - På Vercel: sett **Turso** (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`) for varig lagring
-- Sett også `ADMIN_TOKEN` (minst 12 tegn) og `CORS_ALLOWED_ORIGINS=https://ivarmolde.github.io`
+- Sett `ADMIN_TOKEN` til et **passord du husker** (minst 12 tegn) — det er det du logger inn med på Admin
+- Sett `CORS_ALLOWED_ORIGINS=https://ivarmolde.github.io`
 
 Senere fase: e-postmottakere med avmelding.
 

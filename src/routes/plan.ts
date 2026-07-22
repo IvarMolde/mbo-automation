@@ -1,5 +1,11 @@
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
+import {
+  adminAuthConfigured,
+  createAdminSessionToken,
+  isValidAdminCredential,
+  verifyAdminPassword
+} from "../lib/adminSession.js";
 import { env } from "../lib/config.js";
 import { getArsplan } from "../lib/arsplanResolve.js";
 import { appendOperation, computeEffectiveSchedule } from "../lib/planSchedule.js";
@@ -8,13 +14,13 @@ import { getPlanStoreMeta, loadPlanState, savePlanState } from "../lib/planStore
 export const planRouter = Router();
 
 function requireAdmin(req: Request): void {
-  if (!env.ADMIN_TOKEN) {
-    throw new PlanApiError(503, "ADMIN_TOKEN er ikke konfigurert på serveren.");
+  if (!adminAuthConfigured()) {
+    throw new PlanApiError(503, "Admin-pålogging er ikke konfigurert på serveren.");
   }
   const header = req.header("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : req.header("x-admin-token") ?? "";
-  if (token !== env.ADMIN_TOKEN) {
-    throw new PlanApiError(401, "Ugyldig admin-token.");
+  if (!isValidAdminCredential(token)) {
+    throw new PlanApiError(401, "Ikke innlogget eller ugyldig økt. Logg inn på nytt.");
   }
 }
 
@@ -24,6 +30,33 @@ class PlanApiError extends Error {
     this.name = "PlanApiError";
   }
 }
+
+const loginSchema = z.object({
+  password: z.string().min(1).max(200)
+});
+
+planRouter.post("/plan/login", (req, res) => {
+  try {
+    if (!adminAuthConfigured()) {
+      throw new PlanApiError(503, "Admin-pålogging er ikke konfigurert på serveren.");
+    }
+    const body = loginSchema.parse(req.body);
+    if (!verifyAdminPassword(body.password)) {
+      throw new PlanApiError(401, "Feil passord.");
+    }
+    const sessionToken = createAdminSessionToken();
+    if (!sessionToken) {
+      throw new PlanApiError(503, "Kunne ikke opprette økt.");
+    }
+    res.json({
+      success: true,
+      sessionToken,
+      expiresInDays: 30
+    });
+  } catch (error) {
+    handlePlanError(res, error);
+  }
+});
 
 planRouter.get("/plan", async (_req, res) => {
   try {
@@ -46,7 +79,8 @@ planRouter.get("/plan", async (_req, res) => {
         updatedAt: state.updatedAt,
         operations: state.operations
       },
-      store: meta
+      store: meta,
+      auth: { configured: adminAuthConfigured() }
     });
   } catch (error) {
     handlePlanError(res, error);

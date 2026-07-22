@@ -114,4 +114,7 @@ export interface PlanApiResponse {
     backend: "turso" | "file";
     writable: boolean;
   };
+  auth?: {
+    configured: boolean;
+  };
 }
