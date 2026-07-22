@@ -7,6 +7,7 @@ import { type Kapittel } from "../lib/types.js";
 import { getIsoWeekNumber } from "../lib/week.js";
 import { resolveKapittelForIsoUke } from "../lib/arsplanResolve.js";
 import { loadPlanState } from "../lib/planStore.js";
+import { listActiveRecipientEmails, loadRecipientsState } from "../lib/recipientsStore.js";
 import { getAllKapitler, getKapittel } from "../lib/parser.js";
 import { genererWordHefte } from "../lib/wordGenerator.js";
 import {
@@ -85,15 +86,24 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
       throw new ApiError(401, "Ugyldig authorization token.");
     }
 
-    if (!env.RECIPIENT_EMAIL) {
-      throw new ApiError(500, "RECIPIENT_EMAIL er ikke konfigurert.");
+    const recipients = await listActiveRecipientEmails();
+    if (recipients.length === 0) {
+      throw new ApiError(500, "Ingen aktive e-postmottakere. Legg til mottakere under Admin, eller sett RECIPIENT_EMAIL.");
     }
+    const recipientState = await loadRecipientsState();
+    const tokenByEmail = new Map(
+      recipientState.recipients.map((r) => [r.email, r.unsubscribeToken] as const)
+    );
 
     const uke = getIsoWeekNumber(new Date());
     await loadPlanState();
     const resolution = resolveKapittelForIsoUke(uke);
     if (resolution.type === "mangler_uke") {
-      await sendMissingArsplanUkeEmail(env.RECIPIENT_EMAIL, resolution.isoUke);
+      for (const email of recipients) {
+        await sendMissingArsplanUkeEmail(email, resolution.isoUke, {
+          unsubscribeToken: tokenByEmail.get(email)
+        });
+      }
       throw new ApiError(503, `Mangler årsplan-rad for ISO-uke ${resolution.isoUke}. Ingen hefte sendt.`);
     }
     if (resolution.type === "laast_uke") {
@@ -104,7 +114,11 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
     }
     const kapittel = resolution.kapittel;
     const files = await genererFilerForKapittel(kapittel, uke);
-    await sendHefte(env.RECIPIENT_EMAIL, kapittel, files.word, uke);
+    for (const email of recipients) {
+      await sendHefte(email, kapittel, files.word, uke, {
+        unsubscribeToken: tokenByEmail.get(email)
+      });
+    }
 
     sendValidatedJson(res, cronResponseSchema, {
       success: true,
@@ -113,7 +127,8 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
         : "Cron-kjoring fullfort med fallback (Gemini feilet).",
       kapittel: kapittel.nummer,
       uke,
-      contentSource: files.contentSource
+      contentSource: files.contentSource,
+      recipients: recipients.length
     });
   } catch (error) {
     handleError(res, error);

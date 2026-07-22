@@ -447,6 +447,31 @@ a:hover {
   max-width: 24rem;
 }
 
+.recipient-list {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+}
+
+.recipient-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.recipient-list li.is-inactive {
+  opacity: 0.75;
+}
+
+.recipient-add {
+  margin-top: 0.75rem;
+  max-width: 28rem;
+}
+
 .help-box h2 {
   margin-top: 0;
 }

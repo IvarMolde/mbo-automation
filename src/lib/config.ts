@@ -21,6 +21,8 @@ const envSchema = z.object({
   RECIPIENT_EMAIL: z.string().email().optional(),
   CRON_SECRET: z.string().min(12).optional(),
   ADMIN_TOKEN: z.string().min(12).optional(),
+  /** Offentlig API-URL brukt i avmeldingslenker i e-post */
+  PUBLIC_API_BASE_URL: z.string().url().optional(),
   ARSPLAN_JSON_PATH: z.string().min(1).optional(),
   CEFR_MARKDOWN_PATH: z.string().min(1).optional(),
   PLAN_STATE_PATH: z.string().min(1).optional(),

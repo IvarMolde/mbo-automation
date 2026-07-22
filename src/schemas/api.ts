@@ -38,7 +38,8 @@ export const successMessageResponseSchema = z.object({
 export const cronResponseSchema = successMessageResponseSchema.extend({
   kapittel: z.number().int().positive(),
   uke: z.number().int().min(1).max(53),
-  contentSource: z.enum(["gemini", "fallback"])
+  contentSource: z.enum(["gemini", "fallback"]),
+  recipients: z.number().int().nonnegative().optional()
 });
 
 export const errorResponseSchema = z.object({

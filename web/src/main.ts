@@ -29,6 +29,18 @@ let planSource: "local" | "server" | "base" = "base";
 /** Statusmelding på Admin som overlever re-render */
 let adminFlash: string | null = null;
 
+type RecipientRow = {
+  email: string;
+  name?: string;
+  active: boolean;
+  addedAt: string;
+};
+
+let recipients: RecipientRow[] = [];
+let recipientsError: string | null = null;
+let recipientsLoading = false;
+let recipientsFetched = false;
+
 function parseView(): { view: ViewId; periode?: string } {
   const hash = window.location.hash.replace(/^#\/?/, "");
   const [raw, query = ""] = hash.split("?");
@@ -205,6 +217,7 @@ async function loginWithPassword(password: string): Promise<string | null> {
     }
     setSessionToken(data.sessionToken);
     await refreshPlanFromApi();
+    await refreshRecipients();
     return null;
   } catch {
     return "Kunne ikke nå serveren.";
@@ -213,7 +226,99 @@ async function loginWithPassword(password: string): Promise<string | null> {
 
 function logout(): void {
   setSessionToken("");
+  recipients = [];
+  recipientsError = null;
+  recipientsFetched = false;
   adminFlash = "Du er logget ut.";
+}
+
+async function refreshRecipients(): Promise<void> {
+  if (!isLoggedIn()) {
+    recipients = [];
+    recipientsFetched = false;
+    return;
+  }
+  recipientsLoading = true;
+  recipientsError = null;
+  try {
+    const res = await fetch(`${API_BASE}/api/recipients`, {
+      headers: { Authorization: `Bearer ${getSessionToken()}` }
+    });
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      recipients?: RecipientRow[];
+    };
+    if (res.status === 401) {
+      setSessionToken("");
+      recipients = [];
+      recipientsFetched = false;
+      recipientsError = "Økten er utløpt. Logg inn på nytt.";
+      return;
+    }
+    if (!res.ok || !data.success || !data.recipients) {
+      recipientsError = data.error ?? `Kunne ikke hente mottakere (${res.status})`;
+      recipientsFetched = true;
+      return;
+    }
+    recipients = data.recipients;
+    recipientsFetched = true;
+  } catch {
+    recipientsError = "Kunne ikke hente mottakerlisten.";
+    recipientsFetched = true;
+  } finally {
+    recipientsLoading = false;
+  }
+}
+
+async function addRecipientEmail(email: string, name?: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recipients`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getSessionToken()}`
+      },
+      body: JSON.stringify({ email, name })
+    });
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      recipients?: RecipientRow[];
+    };
+    if (!res.ok || !data.success || !data.recipients) {
+      return data.error ?? "Kunne ikke legge til mottaker.";
+    }
+    recipients = data.recipients;
+    return null;
+  } catch {
+    return "Kunne ikke nå serveren.";
+  }
+}
+
+async function removeRecipientEmail(email: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/recipients`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getSessionToken()}`
+      },
+      body: JSON.stringify({ email })
+    });
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      recipients?: RecipientRow[];
+    };
+    if (!res.ok || !data.success || !data.recipients) {
+      return data.error ?? "Kunne ikke fjerne mottaker.";
+    }
+    recipients = data.recipients;
+    return null;
+  } catch {
+    return "Kunne ikke nå serveren.";
+  }
 }
 
 function currentWeekLabel(): string {
@@ -479,6 +584,50 @@ function renderLockedWeeksPanel(): string {
   `;
 }
 
+function renderRecipientsPanel(): string {
+  const active = recipients.filter((r) => r.active);
+  const inactive = recipients.filter((r) => !r.active);
+  const rows =
+    recipients.length === 0
+      ? `<p class="muted">${recipientsLoading ? "Henter mottakere…" : "Ingen mottakere ennå. Legg til minst én e-post."}</p>`
+      : `<ul class="recipient-list">
+          ${active
+            .map(
+              (r) => `<li>
+                <span><strong>${escapeHtml(r.email)}</strong>${
+                  r.name ? ` · ${escapeHtml(r.name)}` : ""
+                }</span>
+                <button type="button" class="btn btn-ghost recipient-remove" data-email="${escapeHtml(r.email)}">Fjern</button>
+              </li>`
+            )
+            .join("")}
+          ${inactive
+            .map(
+              (r) => `<li class="is-inactive">
+                <span><strong>${escapeHtml(r.email)}</strong> <span class="badge">Avmeldt</span></span>
+                <button type="button" class="btn btn-ghost recipient-remove" data-email="${escapeHtml(r.email)}">Slett</button>
+              </li>`
+            )
+            .join("")}
+        </ul>`;
+
+  return `
+    <div class="panel highlight" id="recipients-panel">
+      <h2>E-postmottakere (${active.length} aktive)</h2>
+      <p class="lede">Onsdagens hefte sendes til alle aktive adresser under. Hver e-post har også avmeldingslenke.</p>
+      ${recipientsError ? `<p class="admin-flash" role="status">${escapeHtml(recipientsError)}</p>` : ""}
+      ${rows}
+      <form id="recipient-add-form" class="admin-form recipient-add">
+        <label for="recipient-email">Ny e-postadresse</label>
+        <input id="recipient-email" name="email" type="email" required placeholder="navn@example.com" />
+        <label for="recipient-name">Navn (valgfritt)</label>
+        <input id="recipient-name" name="name" type="text" maxlength="120" placeholder="F.eks. Kari" />
+        <button type="submit" class="btn">Legg til mottaker</button>
+      </form>
+    </div>
+  `;
+}
+
 function renderAdmin(): string {
   const ukeNow = getIsoWeekNumber();
 
@@ -515,6 +664,8 @@ function renderAdmin(): string {
     </div>
 
     ${renderLockedWeeksPanel()}
+
+    ${renderRecipientsPanel()}
 
     <div class="admin-grid">
       <form id="lock-form" class="panel admin-form">
@@ -585,7 +736,7 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       return {
         title: "Admin — tilpass planen",
         subtitle: isLoggedIn()
-          ? "Du er innlogget. Lås ferieuker og forskyv undervisningen."
+          ? "Lås ferieuker, forskyv undervisning og administrer e-postmottakere."
           : "Logg inn med admin-passord for å redigere planen."
       };
     default:
@@ -615,6 +766,31 @@ function bindAdminForms(): void {
   document.getElementById("admin-logout")?.addEventListener("click", () => {
     logout();
     render();
+  });
+
+  document.getElementById("recipient-add-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target as HTMLFormElement);
+    const email = String(fd.get("email") ?? "").trim();
+    const name = String(fd.get("name") ?? "").trim() || undefined;
+    setFlash(`Legger til ${email}…`);
+    render();
+    const err = await addRecipientEmail(email, name);
+    setFlash(err ? `Kunne ikke legge til: ${err}` : `${email} er lagt til som mottaker.`);
+    render();
+  });
+
+  app?.querySelectorAll<HTMLButtonElement>(".recipient-remove").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const email = btn.dataset.email;
+      if (!email) return;
+      if (!window.confirm(`Fjerne ${email} fra mottakerlisten?`)) return;
+      setFlash(`Fjerner ${email}…`);
+      render();
+      const err = await removeRecipientEmail(email);
+      setFlash(err ? `Kunne ikke fjerne: ${err}` : `${email} er fjernet.`);
+      render();
+    });
   });
 
   document.getElementById("lock-form")?.addEventListener("submit", async (e) => {
@@ -719,7 +895,14 @@ function render(): void {
     d.addEventListener("toggle", sync);
   });
 
-  if (view === "admin") bindAdminForms();
+  if (view === "admin") {
+    bindAdminForms();
+    if (isLoggedIn() && !recipientsFetched && !recipientsLoading) {
+      void refreshRecipients().then(() => {
+        if (parseView().view === "admin") render();
+      });
+    }
+  }
 }
 
 window.addEventListener("hashchange", () => {

@@ -1,28 +1,17 @@
-import { type Request, type Response, Router } from "express";
+import { type Response, Router } from "express";
 import { z } from "zod";
 import {
   adminAuthConfigured,
   createAdminSessionToken,
-  isValidAdminCredential,
   verifyAdminPassword
 } from "../lib/adminSession.js";
 import { env } from "../lib/config.js";
 import { getArsplan } from "../lib/arsplanResolve.js";
 import { appendOperation, computeEffectiveSchedule } from "../lib/planSchedule.js";
 import { getPlanStoreMeta, loadPlanState, savePlanState } from "../lib/planStore.js";
+import { AdminAuthError, requireAdmin } from "../lib/requireAdmin.js";
 
 export const planRouter = Router();
-
-function requireAdmin(req: Request): void {
-  if (!adminAuthConfigured()) {
-    throw new PlanApiError(503, "Admin-pålogging er ikke konfigurert på serveren.");
-  }
-  const header = req.header("authorization") ?? "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : req.header("x-admin-token") ?? "";
-  if (!isValidAdminCredential(token)) {
-    throw new PlanApiError(401, "Ikke innlogget eller ugyldig økt. Logg inn på nytt.");
-  }
-}
 
 class PlanApiError extends Error {
   constructor(public readonly statusCode: number, message: string) {
@@ -179,6 +168,10 @@ function handlePlanError(res: Response, error: unknown): void {
     return;
   }
   if (error instanceof PlanApiError) {
+    res.status(error.statusCode).json({ success: false, error: error.message });
+    return;
+  }
+  if (error instanceof AdminAuthError) {
     res.status(error.statusCode).json({ success: false, error: error.message });
     return;
   }

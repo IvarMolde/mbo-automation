@@ -35,8 +35,10 @@ https://ivarmolde.github.io/mbo-automation/
 - På Vercel: sett **Turso** (`TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`) for varig lagring
 - Sett `ADMIN_TOKEN` til et **passord du husker** (minst 12 tegn) — det er det du logger inn med på Admin
 - Sett `CORS_ALLOWED_ORIGINS=https://ivarmolde.github.io`
+- **E-postmottakere:** administreres under Admin (Turso). Cron sender til alle aktive. `RECIPIENT_EMAIL` er fallback/startverdi.
+- Avmelding: lenke i hefte-e-post → `GET /api/recipients/unsubscribe?token=…`
 
-Senere fase: e-postmottakere med avmelding.
+Senere: mer finmasket tilgangsstyring / ekte OAuth om ønskelig.
 
 ## Kom i gang (API)
 

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-22T13:49:31.550Z",
+  "recipients": [
+    {
+      "email": "cron-test@example.com",
+      "name": "Standard (fra miljø)",
+      "active": true,
+      "addedAt": "2026-07-22T13:49:31.550Z",
+      "unsubscribeToken": "kKnbJKDA49CWGd1gyn0n1QMwIvNtL-ggabRrcldmORw"
+    }
+  ]
+}
