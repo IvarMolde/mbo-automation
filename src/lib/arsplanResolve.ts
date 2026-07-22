@@ -5,6 +5,8 @@ import { arsplanDokumentSchema } from "../schemas/planlegging.js";
 import type { ArsplanDokument } from "../schemas/planlegging.js";
 import { env } from "./config.js";
 import { getCefrCanDoForNivaa, getKapittel, getKapittelForUkeModulo } from "./parser.js";
+import { computeEffectiveSchedule } from "./planSchedule.js";
+import { getPlanStateCached } from "./planStore.js";
 import type { CefrNivaa, Kapittel } from "./types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -92,7 +94,9 @@ export type UkeResolution =
   | { type: "arsplan"; kapittel: Kapittel }
   | { type: "fallback"; kapittel: Kapittel }
   | { type: "overstyring"; kapittel: Kapittel }
-  | { type: "mangler_uke"; isoUke: number };
+  | { type: "mangler_uke"; isoUke: number }
+  | { type: "laast_uke"; isoUke: number }
+  | { type: "tom_uke"; isoUke: number };
 
 export function resolveKapittelForIsoUke(
   isoUke: number,
@@ -109,6 +113,24 @@ export function resolveKapittelForIsoUke(
   const plan = getArsplan();
   if (!plan) {
     return { type: "fallback", kapittel: getKapittelForUkeModulo(isoUke) };
+  }
+
+  // Dynamic schedule (locks / shifts). Async handlers should await loadPlanState() first.
+  const schedule = computeEffectiveSchedule(plan, getPlanStateCached());
+  const effective = schedule.uker.find((u) => u.uke === isoUke);
+
+  if (effective) {
+    if (effective.status === "locked") {
+      return { type: "laast_uke", isoUke };
+    }
+    if (effective.status === "empty" || effective.kapittelNummer == null) {
+      return { type: "tom_uke", isoUke };
+    }
+    const ch = plan.kapitler.find((k) => k.nummer === effective.kapittelNummer);
+    if (!ch) {
+      return { type: "fallback", kapittel: getKapittelForUkeModulo(isoUke) };
+    }
+    return { type: "arsplan", kapittel: mapArsplanKapitelTilKapittel(ch) };
   }
 
   const row = plan.uker.find((u) => u.uke === isoUke);

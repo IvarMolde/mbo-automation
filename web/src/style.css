@@ -330,10 +330,86 @@ a:hover {
   vertical-align: middle;
 }
 
-.badge-now {
-  background: var(--amber-soft);
-  color: #7a4a00;
-  border: 1px solid #e0b35a;
+.badge-lock {
+  background: #e8eef2;
+  color: var(--marine);
+  border: 1px solid var(--line);
+}
+
+.badge-empty {
+  background: #eef6f0;
+  color: #1b5e3b;
+  border: 1px solid #9cccaf;
+}
+
+.badge-changed {
+  background: #e7f3f6;
+  color: var(--teal);
+  border: 1px solid #9ec8d2;
+}
+
+.uke-card.is-locked {
+  border-style: dashed;
+  opacity: 0.95;
+}
+
+.uke-card.is-empty {
+  border-color: #9cccaf;
+}
+
+.uke-card.is-changed:not(.is-locked):not(.is-empty) {
+  border-color: #7eb6c4;
+}
+
+.admin-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  margin-top: 1rem;
+}
+
+.admin-form {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.admin-form label {
+  font-weight: 700;
+  color: var(--teal);
+  font-size: 0.9rem;
+}
+
+.admin-form input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--ink);
+}
+
+.admin-form h2 {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: var(--marine);
+}
+
+.btn-danger {
+  background: #8b1e1e;
+}
+
+.btn-danger:hover {
+  background: #6e1515;
+  color: var(--white);
+}
+
+code {
+  font-size: 0.92em;
+  background: var(--surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
 }
 
 .muted {

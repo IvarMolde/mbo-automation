@@ -20,8 +20,12 @@ const envSchema = z.object({
   GMAIL_APP_PASSWORD: z.string().min(8).optional(),
   RECIPIENT_EMAIL: z.string().email().optional(),
   CRON_SECRET: z.string().min(12).optional(),
+  ADMIN_TOKEN: z.string().min(12).optional(),
   ARSPLAN_JSON_PATH: z.string().min(1).optional(),
-  CEFR_MARKDOWN_PATH: z.string().min(1).optional()
+  CEFR_MARKDOWN_PATH: z.string().min(1).optional(),
+  PLAN_STATE_PATH: z.string().min(1).optional(),
+  TURSO_DATABASE_URL: z.string().min(1).optional(),
+  TURSO_AUTH_TOKEN: z.string().min(1).optional()
 });
 
 export const env = envSchema.parse(process.env);

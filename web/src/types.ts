@@ -1,4 +1,4 @@
-export type ViewId = "oversikt" | "denne-uken" | "perioder" | "om";
+export type ViewId = "oversikt" | "denne-uken" | "perioder" | "om" | "admin";
 
 export interface ArsplanMetadata {
   tittel: string;
@@ -72,10 +72,46 @@ export interface ArsplanDokument {
   kapitler: ArsplanKapittel[];
 }
 
+export type EffectiveStatus = "teaching" | "locked" | "empty";
+
+export interface EffectiveUke {
+  uke: number;
+  status: EffectiveStatus;
+  kapittelNummer: number | null;
+  baseKapittelNummer: number | null;
+  maned: string;
+  periodeFokus: string;
+  endret: boolean;
+}
+
 export interface UkeVisning {
   uke: number;
   maned: string;
   periodeFokus: string;
   kapittel: ArsplanKapittel | null;
   erDagensUke: boolean;
+  status: EffectiveStatus;
+  endret: boolean;
+  baseKapittelNummer: number | null;
+}
+
+export interface PlanApiResponse {
+  success: boolean;
+  metadata: ArsplanMetadata;
+  perioder: ArsplanPeriode[];
+  kapitler: ArsplanKapittel[];
+  baseUker: ArsplanUkeOppslag[];
+  effective: {
+    uker: EffectiveUke[];
+    lockedWeeks: number[];
+    hasChanges: boolean;
+  };
+  state: {
+    updatedAt: string;
+    operations: Array<Record<string, unknown>>;
+  };
+  store: {
+    backend: "turso" | "file";
+    writable: boolean;
+  };
 }

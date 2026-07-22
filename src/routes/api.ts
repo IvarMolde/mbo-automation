@@ -6,6 +6,7 @@ import { genererArbeidshefte } from "../lib/gemini.js";
 import { type Kapittel } from "../lib/types.js";
 import { getIsoWeekNumber } from "../lib/week.js";
 import { resolveKapittelForIsoUke } from "../lib/arsplanResolve.js";
+import { loadPlanState } from "../lib/planStore.js";
 import { getAllKapitler, getKapittel } from "../lib/parser.js";
 import { genererWordHefte } from "../lib/wordGenerator.js";
 import {
@@ -89,10 +90,17 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
     }
 
     const uke = getIsoWeekNumber(new Date());
+    await loadPlanState();
     const resolution = resolveKapittelForIsoUke(uke);
     if (resolution.type === "mangler_uke") {
       await sendMissingArsplanUkeEmail(env.RECIPIENT_EMAIL, resolution.isoUke);
       throw new ApiError(503, `Mangler årsplan-rad for ISO-uke ${resolution.isoUke}. Ingen hefte sendt.`);
+    }
+    if (resolution.type === "laast_uke") {
+      throw new ApiError(503, `ISO-uke ${resolution.isoUke} er låst (ferie). Ingen hefte sendt.`);
+    }
+    if (resolution.type === "tom_uke") {
+      throw new ApiError(503, `ISO-uke ${resolution.isoUke} er tom etter forskyvning. Ingen hefte sendt.`);
     }
     const kapittel = resolution.kapittel;
     const files = await genererFilerForKapittel(kapittel, uke);
@@ -148,6 +156,12 @@ function resolveKapittelFromRequest(body: {
   const resolution = resolveKapittelForIsoUke(uke);
   if (resolution.type === "mangler_uke") {
     throw new ApiError(503, `Mangler årsplan-rad for ISO-uke ${resolution.isoUke}.`);
+  }
+  if (resolution.type === "laast_uke") {
+    throw new ApiError(503, `ISO-uke ${resolution.isoUke} er låst (ferie).`);
+  }
+  if (resolution.type === "tom_uke") {
+    throw new ApiError(503, `ISO-uke ${resolution.isoUke} er tom etter forskyvning.`);
   }
   return resolution.kapittel;
 }

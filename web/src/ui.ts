@@ -11,17 +11,49 @@ function typeLabel(type: string): string {
   return map[type] ?? type;
 }
 
+function statusBadges(uke: UkeVisning): string {
+  const parts: string[] = [];
+  if (uke.erDagensUke) parts.push(`<span class="badge badge-now">Denne uken</span>`);
+  if (uke.status === "locked") parts.push(`<span class="badge badge-lock">Låst</span>`);
+  if (uke.status === "empty") parts.push(`<span class="badge badge-empty">Innhenting</span>`);
+  if (uke.endret && uke.status === "teaching") {
+    parts.push(`<span class="badge badge-changed">Endret</span>`);
+  }
+  return parts.join(" ");
+}
+
 export function renderUkeCard(uke: UkeVisning, open = false): string {
   const k = uke.kapittel;
-  const title = k ? escapeHtml(k.yrke || k.tittel) : "Uten kapittel";
+  const title =
+    uke.status === "locked"
+      ? "Låst uke (ferie)"
+      : uke.status === "empty"
+        ? "Innhentingsuke (uten nytt kapittel)"
+        : k
+          ? escapeHtml(k.yrke || k.tittel)
+          : "Uten kapittel";
   const grammatikk = k ? escapeHtml(k.grammatikk) : "—";
   const tema = k?.arbeidsnorskTema ? escapeHtml(k.arbeidsnorskTema) : "—";
   const niva = k ? escapeHtml((k.standardNiva ?? k.cefrNivaa.join("/")) || "—") : "—";
-  const badge = uke.erDagensUke ? `<span class="badge badge-now">Denne uken</span>` : "";
+  const badges = statusBadges(uke);
+  const cardClass = [
+    "uke-card",
+    uke.erDagensUke ? "is-current" : "",
+    uke.status === "locked" ? "is-locked" : "",
+    uke.status === "empty" ? "is-empty" : "",
+    uke.endret ? "is-changed" : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const details = k
     ? `
     <div class="uke-details">
+      ${
+        uke.endret && uke.baseKapittelNummer != null && uke.baseKapittelNummer !== k.nummer
+          ? `<p class="note">Grunnplan hadde kapittel ${uke.baseKapittelNummer}. Gjeldende plan har kapittel ${k.nummer}.</p>`
+          : ""
+      }
       <p class="lede">${escapeHtml(k.periodeFokus || uke.periodeFokus)}</p>
       <dl class="meta-grid">
         <div><dt>Kapittel</dt><dd>${k.nummer}. ${escapeHtml(k.tittel)}</dd></div>
@@ -67,16 +99,24 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
         <div><dt>Fasit</dt><dd>${escapeHtml(k.fasit ?? "—")}</dd></div>
       </dl>
     </div>`
-    : `<p class="muted">Ingen kapitteldata for denne uken.</p>`;
+    : `<div class="uke-details"><p class="muted">${
+        uke.status === "locked"
+          ? "Denne uken er låst (f.eks. ferie). Undervisningsinnhold hoppes over."
+          : uke.status === "empty"
+            ? "Uken er satt av til innhenting etter forskyvning. Ingen nytt kapittel."
+            : "Ingen kapitteldata for denne uken."
+      }</p></div>`;
 
   return `
-    <article class="uke-card${uke.erDagensUke ? " is-current" : ""}" id="uke-${uke.uke}">
+    <article class="${cardClass}" id="uke-${uke.uke}">
       <details ${open ? "open" : ""}>
         <summary>
           <span class="uke-num">Uke ${uke.uke}</span>
           <span class="uke-main">
-            <span class="uke-title">${title} ${badge}</span>
-            <span class="uke-sub">${escapeHtml(uke.maned)} · ${grammatikk}</span>
+            <span class="uke-title">${title} ${badges}</span>
+            <span class="uke-sub">${escapeHtml(uke.maned || "—")}${
+              k ? ` · ${grammatikk}` : ""
+            }</span>
           </span>
           <span class="uke-action">Åpne detaljer</span>
         </summary>
@@ -113,7 +153,8 @@ export function renderShell(opts: {
           ${nav("oversikt", "Oversikt")}
           ${nav("denne-uken", "Denne uken")}
           ${nav("perioder", "Perioder")}
-          ${nav("om", "Om planen")}
+          ${nav("admin", "Admin")}
+          ${nav("om", "Om")}
         </nav>
       </div>
     </header>
@@ -126,13 +167,13 @@ export function renderShell(opts: {
     </main>
     <footer class="site-footer">
       <p>Arbeid og norsk · MBO A2–B1 · Årsplan 2026–2027</p>
-      <p class="muted">Fase 1: lese årsplan. Forskyvning og e-postmottakere kommer i neste faser.</p>
+      <p class="muted">Grunnplan + dynamiske endringer (lås / forskyv). E-postmottakere kommer i neste fase.</p>
     </footer>
     <nav class="mobile-nav" aria-label="Hurtignavigasjon">
       ${nav("oversikt", "Oversikt")}
       ${nav("denne-uken", "Uken")}
       ${nav("perioder", "Perioder")}
-      ${nav("om", "Om")}
+      ${nav("admin", "Admin")}
     </nav>
   `;
 }
