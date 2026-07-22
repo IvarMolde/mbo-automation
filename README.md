@@ -37,6 +37,7 @@ https://ivarmolde.github.io/mbo-automation/
 - Sett `CORS_ALLOWED_ORIGINS=https://ivarmolde.github.io`
 - **E-postmottakere:** administreres under Admin (Turso). Cron sender til alle aktive. `RECIPIENT_EMAIL` er fallback/startverdi.
 - Avmelding: lenke i hefte-e-post → `GET /api/recipients/unsubscribe?token=…`
+- **Manuell sending:** Admin → «Send hefte nå» (`POST /api/hefte/send`) for valgt ISO-uke, til deg eller alle mottakere
 
 Senere: mer finmasket tilgangsstyring / ekte OAuth om ønskelig.
 

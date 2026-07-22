@@ -42,6 +42,29 @@ export const cronResponseSchema = successMessageResponseSchema.extend({
   recipients: z.number().int().nonnegative().optional()
 });
 
+/** Manuell utsending av hefte for valgt ISO-uke (admin). */
+export const manueltSendSchema = z.object({
+  uke: z.number().int().min(1).max(53),
+  /** all = aktive mottakere, one = kun motaker */
+  mode: z.enum(["all", "one"]).default("one"),
+  motaker: z.string().email().optional()
+}).superRefine((val, ctx) => {
+  if (val.mode === "one" && !val.motaker) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "motaker er påkrevd når mode er one",
+      path: ["motaker"]
+    });
+  }
+});
+
+export const manueltSendResponseSchema = successMessageResponseSchema.extend({
+  kapittel: z.number().int().positive(),
+  uke: z.number().int().min(1).max(53),
+  contentSource: z.enum(["gemini", "fallback"]),
+  sentTo: z.array(z.string().email())
+});
+
 export const errorResponseSchema = z.object({
   success: z.literal(false),
   error: z.string().min(1),

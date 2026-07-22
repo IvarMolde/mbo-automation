@@ -8,6 +8,7 @@ import { getIsoWeekNumber } from "../lib/week.js";
 import { resolveKapittelForIsoUke } from "../lib/arsplanResolve.js";
 import { loadPlanState } from "../lib/planStore.js";
 import { listActiveRecipientEmails, loadRecipientsState } from "../lib/recipientsStore.js";
+import { AdminAuthError, requireAdmin } from "../lib/requireAdmin.js";
 import { getAllKapitler, getKapittel } from "../lib/parser.js";
 import { genererWordHefte } from "../lib/wordGenerator.js";
 import {
@@ -15,6 +16,8 @@ import {
   errorResponseSchema,
   genererResponseSchema,
   genererSchema,
+  manueltSendResponseSchema,
+  manueltSendSchema,
   sendSchema,
   successMessageResponseSchema,
   testEmailSchema
@@ -138,6 +141,54 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
 apiRouter.get("/cron", cronHandler);
 apiRouter.post("/cron", cronHandler);
 
+/** Manuell utsending: velg ISO-uke og send hefte nå (krever admin-innlogging). */
+apiRouter.post("/hefte/send", async (req, res) => {
+  try {
+    requireAdmin(req);
+    const body = manueltSendSchema.parse(req.body);
+    await loadPlanState();
+
+    const kapittel = resolveKapittelFromRequest({ uke: body.uke });
+    const files = await genererFilerForKapittel(kapittel, body.uke);
+
+    let emails: string[];
+    if (body.mode === "one") {
+      emails = [body.motaker!.trim().toLowerCase()];
+    } else {
+      emails = await listActiveRecipientEmails();
+      if (emails.length === 0) {
+        throw new ApiError(500, "Ingen aktive mottakere. Legg til minst én under Admin.");
+      }
+    }
+
+    const recipientState = await loadRecipientsState();
+    const tokenByEmail = new Map(
+      recipientState.recipients.map((r) => [r.email, r.unsubscribeToken] as const)
+    );
+
+    for (const email of emails) {
+      await sendHefte(email, kapittel, files.word, body.uke, {
+        unsubscribeToken: tokenByEmail.get(email)
+      });
+    }
+
+    sendValidatedJson(res, manueltSendResponseSchema, {
+      success: true,
+      message:
+        files.contentSource === "gemini"
+          ? `Hefte for uke ${body.uke} er sendt.`
+          : `Hefte for uke ${body.uke} er sendt (fallback — Gemini feilet).`,
+      kapittel: kapittel.nummer,
+      uke: body.uke,
+      contentSource: files.contentSource,
+      geminiError: files.contentSource === "fallback" ? sanitizeGeminiError(files.geminiError) : undefined,
+      sentTo: emails
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
 class ApiError extends Error {
   constructor(public readonly statusCode: number, message: string) {
     super(message);
@@ -210,6 +261,14 @@ function handleError(res: Response, error: unknown) {
   }
 
   if (error instanceof ApiError) {
+    sendValidatedJson(res.status(error.statusCode), errorResponseSchema, {
+      success: false,
+      error: error.message
+    });
+    return;
+  }
+
+  if (error instanceof AdminAuthError) {
     sendValidatedJson(res.status(error.statusCode), errorResponseSchema, {
       success: false,
       error: error.message

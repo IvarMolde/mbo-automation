@@ -472,6 +472,43 @@ a:hover {
   max-width: 28rem;
 }
 
+.send-hefte-form {
+  max-width: 32rem;
+}
+
+.send-mode {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  margin: 0.5rem 0;
+}
+
+.send-mode legend {
+  font-weight: 700;
+  color: var(--teal);
+  padding: 0 0.25rem;
+}
+
+.radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-weight: 500;
+  margin: 0.35rem 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .help-box h2 {
   margin-top: 0;
 }

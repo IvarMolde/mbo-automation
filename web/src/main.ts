@@ -321,6 +321,47 @@ async function removeRecipientEmail(email: string): Promise<string | null> {
   }
 }
 
+async function sendHefteManualWithMessage(input: {
+  uke: number;
+  mode: "all" | "one";
+  motaker?: string;
+}): Promise<{ error: string | null; detail?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/hefte/send`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getSessionToken()}`
+      },
+      body: JSON.stringify(input)
+    });
+    const data = (await res.json()) as {
+      success?: boolean;
+      error?: string;
+      message?: string;
+      sentTo?: string[];
+      kapittel?: number;
+      uke?: number;
+    };
+    if (res.status === 401) {
+      setSessionToken("");
+      return { error: "Økten er utløpt. Logg inn på nytt." };
+    }
+    if (!res.ok || !data.success) {
+      return { error: data.error ?? `Sending feilet (${res.status})` };
+    }
+    const to = data.sentTo?.join(", ") ?? "";
+    return {
+      error: null,
+      detail: `Sendt uke ${data.uke} (kap. ${data.kapittel}) til: ${to}`
+    };
+  } catch {
+    return {
+      error: "Kunne ikke nå serveren. Vent gjerne 2 min og sjekk innboksen før du prøver igjen."
+    };
+  }
+}
+
 function currentWeekLabel(): string {
   const uke = getIsoWeekNumber();
   const year = getIsoWeekYear();
@@ -628,6 +669,57 @@ function renderRecipientsPanel(): string {
   `;
 }
 
+function weekSendPreview(uke: number): string {
+  const row = (effectiveUker ?? []).find((u) => u.uke === uke);
+  if (!row) return "Uken finnes ikke i inneværende årsplan.";
+  if (row.status === "locked") return "Låst uke (ferie) — kan ikke sende hefte.";
+  if (row.status === "empty") return "Tom/innhentingsuke — kan ikke sende hefte.";
+  const kap = plan.kapitler.find((k) => k.nummer === row.kapittelNummer);
+  if (!kap) return `Kapittel ${row.kapittelNummer ?? "?"} (mangler detaljer)`;
+  return `Kap. ${kap.nummer} — ${kap.yrke || kap.tittel}`;
+}
+
+function defaultSendEmail(): string {
+  const active = recipients.find((r) => r.active);
+  return active?.email ?? "";
+}
+
+function renderSendHeftePanel(): string {
+  const ukeNow = getIsoWeekNumber();
+  const defaultEmail = escapeHtml(defaultSendEmail());
+  return `
+    <div class="panel highlight" id="send-hefte-panel">
+      <h2>Send hefte nå</h2>
+      <p class="lede">
+        Generer og send arbeidsheftet for en valgt uke — f.eks. for å forberede deg i forkant.
+        Den automatiske onsdagsutsendingen fortsetter som før.
+      </p>
+      <form id="send-hefte-form" class="admin-form send-hefte-form">
+        <label for="send-uke">ISO-uke</label>
+        <input id="send-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
+        <p class="muted" id="send-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
+
+        <fieldset class="send-mode">
+          <legend>Hvem skal motta?</legend>
+          <label class="radio-row">
+            <input type="radio" name="mode" value="one" checked />
+            Kun denne adressen (anbefalt for forberedelse)
+          </label>
+          <label for="send-motaker" class="sr-only">E-postadresse</label>
+          <input id="send-motaker" name="motaker" type="email" value="${defaultEmail}" placeholder="din@epost.no" />
+          <label class="radio-row">
+            <input type="radio" name="mode" value="all" />
+            Alle aktive mottakere (${recipients.filter((r) => r.active).length})
+          </label>
+        </fieldset>
+
+        <button type="submit" class="btn">Send hefte</button>
+        <p class="muted">Kan ta 1–2 minutter (Gemini lager innhold + Word-fil).</p>
+      </form>
+    </div>
+  `;
+}
+
 function renderAdmin(): string {
   const ukeNow = getIsoWeekNumber();
 
@@ -664,6 +756,8 @@ function renderAdmin(): string {
     </div>
 
     ${renderLockedWeeksPanel()}
+
+    ${renderSendHeftePanel()}
 
     ${renderRecipientsPanel()}
 
@@ -777,6 +871,33 @@ function bindAdminForms(): void {
     render();
     const err = await addRecipientEmail(email, name);
     setFlash(err ? `Kunne ikke legge til: ${err}` : `${email} er lagt til som mottaker.`);
+    render();
+  });
+
+  const sendUkeInput = document.getElementById("send-uke") as HTMLInputElement | null;
+  const sendPreview = document.getElementById("send-uke-preview");
+  sendUkeInput?.addEventListener("input", () => {
+    const uke = Number(sendUkeInput.value);
+    if (sendPreview && Number.isFinite(uke)) {
+      sendPreview.textContent = weekSendPreview(uke);
+    }
+  });
+
+  document.getElementById("send-hefte-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target as HTMLFormElement);
+    const uke = Number(fd.get("uke"));
+    const mode = String(fd.get("mode") ?? "one") === "all" ? "all" : "one";
+    const motaker = String(fd.get("motaker") ?? "").trim() || undefined;
+    if (mode === "one" && !motaker) {
+      setFlash("Skriv inn e-postadressen du vil sende til.");
+      render();
+      return;
+    }
+    setFlash(`Genererer og sender hefte for uke ${uke}… Dette kan ta 1–2 minutter.`);
+    render();
+    const result = await sendHefteManualWithMessage({ uke, mode, motaker });
+    setFlash(result.error ? `Sending feilet: ${result.error}` : (result.detail ?? "Hefte sendt."));
     render();
   });
 
