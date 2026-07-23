@@ -1055,7 +1055,7 @@ function renderCustomizePanel(): string {
         Endringen gjelder oversikten og heftet som sendes for den uken.
       </p>
       <form id="customize-form" class="admin-form send-hefte-form">
-        <label for="custom-uke">ISO-uke</label>
+        <label for="custom-uke">Velg uke å tilpasse</label>
         <input id="custom-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
         <p class="muted" id="custom-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
 
