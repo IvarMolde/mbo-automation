@@ -54,10 +54,13 @@ function parseView(): { view: ViewId; periode?: string } {
   const view = (raw || "oversikt") as ViewId;
   const params = new URLSearchParams(query);
   const periode = params.get("m") ?? undefined;
+  // «Perioder» er slått sammen med «Nå»; behold gamle lenker ved å omdirigere.
+  if (view === "perioder") {
+    return { view: "denne-uken" };
+  }
   if (
     view === "oversikt" ||
     view === "denne-uken" ||
-    view === "perioder" ||
     view === "veiledning" ||
     view === "om" ||
     view === "admin"
@@ -524,7 +527,11 @@ function renderCalendarGrid(uker: UkeVisning[]): string {
       if (!chips.length) return "";
       return `
         <div class="cal-month">
-          <p class="cal-month-name">${escapeHtml(periode.maned)}</p>
+          <a class="cal-month-name" href="#/oversikt?m=${encodeURIComponent(periode.maned)}">
+            ${escapeHtml(periode.maned)}
+            <span class="cal-month-uke">Uke ${periode.ukeStart}–${periode.ukeSlutt}</span>
+          </a>
+          ${periode.fokus ? `<p class="cal-month-fokus muted">${escapeHtml(periode.fokus)}</p>` : ""}
           <div class="cal-weeks">
             ${chips.map(renderCalendarChip).join("")}
           </div>
@@ -603,7 +610,7 @@ function renderDenneUken(): string {
     <section class="cal-section" aria-label="Kalender for hele skoleåret">
       <div class="cal-head">
         <h2>Kalender · hele skoleåret</h2>
-        <p class="muted">Fargene viser status. Klikk en uke for å hoppe til måneden i årsplanen.</p>
+        <p class="muted">Fargene viser status. Klikk en uke eller et månedsnavn for å hoppe til måneden i årsplanen.</p>
       </div>
       ${renderCalendarGrid(uker)}
       <ul class="legend-list compact cal-legend">
@@ -616,23 +623,6 @@ function renderDenneUken(): string {
     </section>`;
 
   return `${hero}${strip}${detail}${calendar}`;
-}
-
-function renderPerioder(): string {
-  return `
-    <div class="periode-grid" role="list">
-      ${plan.perioder
-        .map(
-          (p) => `
-        <a class="periode-tile" role="listitem" href="#/oversikt?m=${encodeURIComponent(p.maned)}">
-          <h2>${escapeHtml(p.maned)}</h2>
-          <p class="muted">Uke ${p.ukeStart}–${p.ukeSlutt}</p>
-          <p>${escapeHtml(p.fokus)}</p>
-        </a>`
-        )
-        .join("")}
-    </div>
-  `;
 }
 
 function renderOm(): string {
@@ -684,10 +674,11 @@ function renderOm(): string {
         kalender for hele skoleåret. Da er det lett å se hvor dere er, hva som var, og hva som kommer.
       </p>
 
-      <h3>3. Årsplan og perioder</h3>
+      <h3>3. Årsplan</h3>
       <p>
         <a href="#/oversikt">Årsplan</a> viser alle ukene med kapittel, yrke, grammatikk, nivå,
-        tematekster og oppgaver. <a href="#/perioder">Perioder</a> gir en rask inngang måned for måned.
+        tematekster og oppgaver. Vil du hoppe rett til en måned? Klikk månedsnavnet i kalenderen
+        under <a href="#/denne-uken">Nå</a>.
       </p>
 
       <h3>4. Automatisk ukehefte</h3>
@@ -761,9 +752,8 @@ function renderVeiledning(): string {
     <div class="panel prose">
       <h2>Fanene i menyen</h2>
       <div class="help-text">
-        <p><strong>Nå</strong> — forrige, inneværende og neste uke side om side, pluss en fargekodet kalender for hele skoleåret. Din daglige startside.</p>
+        <p><strong>Nå</strong> — forrige, inneværende og neste uke side om side, pluss en fargekodet kalender for hele skoleåret. Klikk et månedsnavn for å hoppe til måneden i Årsplan. Din daglige startside.</p>
         <p><strong>Årsplan</strong> — alle ukene med kapittel, yrke, grammatikk, nivå, tematekster og oppgaver. Åpne en uke for full detalj.</p>
-        <p><strong>Perioder</strong> — hurtig inngang måned for måned.</p>
         <p><strong>Admin</strong> — logg inn for å endre planen og styre utsending.</p>
         <p><strong>Om</strong> — bakgrunn og hvordan verktøyet fungerer under panseret.</p>
       </div>
@@ -1173,8 +1163,6 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
         title: "Nå",
         subtitle: "Forrige, denne og neste uke — og kalender for hele skoleåret."
       };
-    case "perioder":
-      return { title: "Perioder", subtitle: "Velg en måned for å hoppe til ukene i perioden." };
     case "veiledning":
       return {
         title: "Veiledning",
@@ -1411,7 +1399,6 @@ function render(): void {
   const copy = pageCopy(view, periode);
   let content = "";
   if (view === "denne-uken") content = renderDenneUken();
-  else if (view === "perioder") content = renderPerioder();
   else if (view === "veiledning") content = renderVeiledning();
   else if (view === "om") content = renderOm();
   else if (view === "admin") content = renderAdmin();

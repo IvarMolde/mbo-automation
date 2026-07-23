@@ -218,8 +218,9 @@ a:hover {
 }
 
 .uke-card.is-current {
-  border-color: var(--amber);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 35%, transparent), var(--shadow);
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--line));
+  background: color-mix(in srgb, var(--amber-soft) 55%, var(--white));
+  box-shadow: var(--shadow);
 }
 
 .uke-card details summary {
@@ -839,12 +840,34 @@ a:hover {
 }
 
 .cal-month-name {
-  margin: 0 0 0.5rem;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 0.15rem;
   font-weight: 800;
   color: var(--teal);
   font-size: 0.85rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  text-decoration: none;
+}
+
+a.cal-month-name:hover {
+  color: var(--marine);
+  text-decoration: underline;
+}
+
+.cal-month-uke {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.cal-month-fokus {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
 }
 
 .cal-weeks {
@@ -896,8 +919,9 @@ a:hover {
 }
 
 .cal-week.is-current {
-  border-color: var(--amber);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 40%, transparent);
+  border-color: color-mix(in srgb, var(--amber) 45%, var(--line));
+  background: color-mix(in srgb, var(--amber-soft) 65%, var(--white));
+  box-shadow: none;
 }
 
 /* Statusfarger (delt av kalender-chips, strip-kort og swatches) */

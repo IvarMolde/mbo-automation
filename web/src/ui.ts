@@ -153,7 +153,6 @@ export function renderShell(opts: {
         <nav id="hovedmeny" class="main-nav" aria-label="Hovedmeny">
           ${nav("denne-uken", "Nå")}
           ${nav("oversikt", "Årsplan")}
-          ${nav("perioder", "Perioder")}
           ${nav("veiledning", "Veiledning")}
           ${nav("admin", "Admin")}
           ${nav("om", "Om")}
