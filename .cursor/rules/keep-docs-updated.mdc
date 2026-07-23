@@ -1,0 +1,25 @@
+---
+description: Hold Om- og Veiledning-tekstene i appen oppdatert når funksjonalitet endres
+globs: web/src/**/*.ts,src/**/*.ts,src/routes/**/*.ts
+alwaysApply: false
+---
+
+# Hold brukerforklaringene oppdatert
+
+Når du legger til, endrer eller fjerner en **brukervendt funksjon** (ny fane/rute,
+Admin-handling, e-post/utsending, KI-generering, kalender osv.), MÅ du samtidig
+oppdatere forklaringene i `web/src/main.ts`:
+
+- `renderOm()` — «Om verktøyet»: hva programmet gjør og hvordan det henger sammen.
+- `renderVeiledning()` — «Veiledning»: steg-for-steg for den nye/endrede funksjonen.
+- Oppdater `DOCS_UPDATED` (og `APP_FASE` ved behov) øverst i filen.
+
+## Sjekkliste før du er ferdig
+
+- [ ] Er ny funksjon beskrevet i både `renderOm` og `renderVeiledning`?
+- [ ] Er fjernet funksjon også fjernet fra tekstene?
+- [ ] Stemmer fanenavn/lenker (`#/denne-uken`, `#/oversikt`, `#/admin` …) med `ViewId` og nav i `ui.ts`?
+- [ ] Er `DOCS_UPDATED` satt til dagens dato?
+- [ ] Er merke-/fargeforklaringen (Låst/Tilpasset/Innhenting/Endret) fortsatt korrekt?
+
+Hold språket enkelt og pedagogisk (målgruppe: lærere, ikke utviklere).

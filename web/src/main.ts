@@ -16,6 +16,13 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.repl
 
 const SESSION_KEY = "mbo-admin-session-v1";
 
+/**
+ * Vedlikehold: Oppdater DOCS_UPDATED hver gang «Om»- eller «Veiledning»-teksten
+ * endres, og hold begge forklaringene i tråd med nye funksjoner i appen.
+ */
+const APP_FASE = "Fase 2";
+const DOCS_UPDATED = "23. juli 2026";
+
 const app = document.querySelector<HTMLDivElement>("#app");
 
 let plan: ArsplanDokument = planJson as ArsplanDokument;
@@ -630,21 +637,92 @@ function renderPerioder(): string {
 
 function renderOm(): string {
   const m = plan.metadata;
+  const niva = m.norskniva?.length ? m.norskniva.join(", ") : "—";
   return `
+    <div class="panel prose help-box">
+      <h2>Hva er dette?</h2>
+      <p>
+        Dette er planleggings- og publiseringsverktøyet for årsplanen i
+        <strong>${escapeHtml(m.kurs ?? "Arbeid og norsk")}</strong> ved
+        ${escapeHtml(m.organisasjon ?? "Molde voksenopplæring")}. Verktøyet holder
+        oversikt over hva klassen skal jobbe med hver uke gjennom hele skoleåret, lar deg
+        tilpasse planen når hverdagen endrer seg, og lager og sender ukentlige arbeidshefter
+        automatisk — slik at du bruker mindre tid på administrasjon og mer tid på undervisning.
+      </p>
+    </div>
+
     <div class="panel prose">
+      <h2>Kort om planen</h2>
       <dl class="meta-grid">
         <div><dt>Tittel</dt><dd>${escapeHtml(m.tittel)}</dd></div>
         <div><dt>Kurs</dt><dd>${escapeHtml(m.kurs ?? "—")}</dd></div>
         <div><dt>Organisasjon</dt><dd>${escapeHtml(m.organisasjon ?? "—")}</dd></div>
+        ${m.samarbeidspartner ? `<div><dt>Samarbeidspartner</dt><dd>${escapeHtml(m.samarbeidspartner)}</dd></div>` : ""}
         <div><dt>Skoleår</dt><dd>${escapeHtml(m.skolear ?? "—")}</dd></div>
+        <div><dt>Målgruppe</dt><dd>${escapeHtml(m.malgruppe ?? "—")}</dd></div>
+        <div><dt>Norsknivå</dt><dd>${escapeHtml(niva)}</dd></div>
+        <div><dt>Antall kapitler</dt><dd>${m.antallKapitler ?? plan.kapitler.length}</dd></div>
       </dl>
-      <h2>Dynamisk plan</h2>
+      ${m.notat ? `<p class="muted">${escapeHtml(m.notat)}</p>` : ""}
+    </div>
+
+    <div class="panel prose">
+      <h2>Slik fungerer verktøyet</h2>
+
+      <h3>1. Grunnplan og gjeldende plan</h3>
       <p>
-        Grunnplanen er fasiten for skoleåret. Underveis kan du tilpasse den:
-        låse ferieuker og forskyve kapitler når klassen trenger mer tid.
-        Gå til <a href="#/admin">Admin</a> for å gjøre endringer — der står også
-        forklaringer på hvert valg.
+        <strong>Grunnplanen</strong> er den opprinnelige årsplanen (uke for uke) og ligger
+        fast som «fasit». Den <strong>gjeldende planen</strong> er det som gjelder akkurat nå —
+        etter at du eventuelt har låst ferieuker, forskjøvet innhold eller tilpasset enkeltuker.
+        Du overskriver aldri grunnplanen; alle endringer er sporbare og kan tilbakestilles.
       </p>
+
+      <h3>2. «Nå» — kalender og ukesoverblikk</h3>
+      <p>
+        Under <a href="#/denne-uken">Nå</a> ser du <em>forrige</em>, <em>inneværende</em> og
+        <em>neste</em> uke ved siden av hverandre, full detalj for uken vi er i, og en fargekodet
+        kalender for hele skoleåret. Da er det lett å se hvor dere er, hva som var, og hva som kommer.
+      </p>
+
+      <h3>3. Årsplan og perioder</h3>
+      <p>
+        <a href="#/oversikt">Årsplan</a> viser alle ukene med kapittel, yrke, grammatikk, nivå,
+        tematekster og oppgaver. <a href="#/perioder">Perioder</a> gir en rask inngang måned for måned.
+      </p>
+
+      <h3>4. Automatisk ukehefte</h3>
+      <p>
+        Hver uke lager verktøyet et arbeidshefte for gjeldende kapittel — tekst og oppgaver
+        genereres med KI (Google Gemini) og pakkes i et Word-dokument (.docx) som sendes på e-post
+        til mottakerne. Den faste utsendingen skjer automatisk hver onsdag.
+      </p>
+
+      <h3>5. Tilpasning underveis</h3>
+      <p>
+        I <a href="#/admin">Admin</a> kan du <strong>låse ferieuker</strong>,
+        <strong>forskyve planen</strong> når klassen trenger mer tid, og
+        <strong>tilpasse yrke og grammatikk</strong> for enkeltuker med rullegardinmeny.
+        Du kan også <strong>sende et hefte manuelt</strong> for en valgt uke, f.eks. for å
+        forberede deg i forkant, og <strong>styre hvem som mottar</strong> heftet.
+      </p>
+
+      <h3>6. Innlogging og lagring</h3>
+      <p>
+        Redigering krever innlogging med admin-passord. Økten huskes i nettleseren i inntil 30 dager,
+        så du slipper å hente nøkler hver gang. Endringer lagres sentralt på server, slik at både
+        oversikten og den automatiske utsendingen følger samme, oppdaterte plan.
+      </p>
+    </div>
+
+    <div class="panel prose">
+      <h2>Litt om teknikken</h2>
+      <p>
+        Nettsiden er en lettvekts app (TypeScript/Vite) som publiseres via GitHub Pages.
+        Selve motoren — planlagring, KI-generering, Word-fil og e-post — kjører som et API på Vercel
+        med en planlagt jobb (cron) for onsdagsutsendingen. Data lagres i en database (Turso).
+        Sensitive nøkler ligger som miljøvariabler og vises aldri i nettleseren.
+      </p>
+      <p class="muted">Versjon: ${escapeHtml(APP_FASE)} · Denne teksten sist oppdatert ${escapeHtml(DOCS_UPDATED)}.</p>
     </div>
   `;
 }
@@ -652,38 +730,64 @@ function renderOm(): string {
 function renderVeiledning(): string {
   return `
     <div class="panel prose help-box">
-      <h2>Hva er Fase 2?</h2>
+      <h2>Kom raskt i gang</h2>
       <p>
-        Fase 2 gjør årsplanen <strong>fleksibel</strong>. Grunnplanen ligger fast i systemet,
-        men du kan tilpasse den underveis i skoleåret — uten å skrive om hele planen.
+        Denne veiledningen forklarer hva du kan gjøre i verktøyet, steg for steg. Du trenger ikke
+        være innlogget for å <em>se</em> planen — men for å <em>endre</em> noe (låse uker, forskyve,
+        tilpasse, sende hefte, styre mottakere) må du logge inn under <a href="#/admin">Admin</a>.
       </p>
+      <ul class="help-steps">
+        <li><strong>Vil du se hvor dere er?</strong> Gå til <a href="#/denne-uken">Nå</a>.</li>
+        <li><strong>Vil du se hele skoleåret?</strong> Gå til <a href="#/oversikt">Årsplan</a>.</li>
+        <li><strong>Vil du endre noe?</strong> Logg inn under <a href="#/admin">Admin</a>.</li>
+      </ul>
     </div>
 
     <div class="panel prose">
-      <h2>To planer å huske</h2>
+      <h2>Grunnplan vs. gjeldende plan</h2>
       <dl class="meta-grid">
         <div>
           <dt>Grunnplan</dt>
-          <dd>Den opprinnelige årsplanen (uke for uke). Dette er «fasiten».</dd>
+          <dd>Den opprinnelige årsplanen (uke for uke). Dette er «fasiten» og endres aldri av deg.</dd>
         </div>
         <div>
           <dt>Gjeldende plan</dt>
-          <dd>Det som gjelder nå, etter at du har låst ferieuker eller forskjøvet innhold.</dd>
+          <dd>Det som gjelder nå, etter at du har låst ferieuker, forskjøvet eller tilpasset uker.</dd>
         </div>
       </dl>
+      <p class="muted">Alt du gjør kan tilbakestilles til grunnplanen når som helst.</p>
     </div>
 
     <div class="panel prose">
-      <h2>1. Lås uke</h2>
+      <h2>Fanene i menyen</h2>
       <div class="help-text">
-        <p><strong>Når bruker du det?</strong> Når det ikke skal være undervisning: høstferie, jul, vinterferie, 1. mai, 17. mai.</p>
+        <p><strong>Nå</strong> — forrige, inneværende og neste uke side om side, pluss en fargekodet kalender for hele skoleåret. Din daglige startside.</p>
+        <p><strong>Årsplan</strong> — alle ukene med kapittel, yrke, grammatikk, nivå, tematekster og oppgaver. Åpne en uke for full detalj.</p>
+        <p><strong>Perioder</strong> — hurtig inngang måned for måned.</p>
+        <p><strong>Admin</strong> — logg inn for å endre planen og styre utsending.</p>
+        <p><strong>Om</strong> — bakgrunn og hvordan verktøyet fungerer under panseret.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>1. Logg inn</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Før du skal endre noe som helst.</p>
+        <p><strong>Hvordan?</strong> Gå til <a href="#/admin">Admin</a>, skriv inn admin-passordet, og trykk «Logg inn». Økten huskes i denne nettleseren i inntil 30 dager, så du slipper å logge inn hver gang.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>2. Lås uke</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Når det ikke skal være undervisning: høstferie, jul, vinterferie, 1. mai, 17. mai.</p>
         <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-lock">Låst</span>. Kapitler som lå der, flyttes til neste ledige uke. Planen hopper over ferien.</p>
         <p><strong>Eksempel:</strong> Lås uke 40 som høstferie → innholdet fra uke 40 kommer i uke 41 (eller neste ulåste uke).</p>
       </div>
     </div>
 
     <div class="panel prose">
-      <h2>2. Lås opp uke</h2>
+      <h2>3. Lås opp uke</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Hvis du låste feil uke, eller ferien ble flyttet.</p>
         <p><strong>Hva skjer?</strong> Ferie-merket fjernes. Innhold trekkes ikke automatisk tilbake. Bruk forskyvning eller tilbakestill hvis du vil rydde planen.</p>
@@ -691,7 +795,7 @@ function renderVeiledning(): string {
     </div>
 
     <div class="panel prose">
-      <h2>3. Forskyv plan</h2>
+      <h2>4. Forskyv plan</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Klassen ble ikke ferdig med et emne og trenger mer tid.</p>
         <p><strong>Hva skjer?</strong> Fra valgt uke og fremover skyves kapitlene frem. De første ukene blir <span class="badge badge-empty">Innhenting</span> (ingen nytt kapittel). Låste uker hoppes over.</p>
@@ -700,15 +804,41 @@ function renderVeiledning(): string {
     </div>
 
     <div class="panel prose">
-      <h2>4. Tilbakestill</h2>
+      <h2>5. Tilpass yrke og grammatikk</h2>
       <div class="help-text">
-        <p><strong>Når?</strong> Bare hvis du vil slette alle lås og forskyvninger.</p>
+        <p><strong>Når?</strong> Når du vil bytte yrke og/eller grammatikk for én uke, uten å endre grunnplanen.</p>
+        <p><strong>Hvordan?</strong> I Admin velger du uke og bruker rullegardinmenyene for yrke og grammatikk. Velg «Bruk kapitlets standard» for å nullstille et felt.</p>
+        <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-tilpasset">Tilpasset</span>, og både oversikten og heftet som sendes for uken bruker de nye valgene.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>6. Send hefte manuelt</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Når du vil forberede deg i forkant, i stedet for å vente på den automatiske onsdagsutsendingen.</p>
+        <p><strong>Hvordan?</strong> Velg uke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
+        <p class="muted">Den faste onsdagsutsendingen fortsetter uansett som normalt.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>7. E-postmottakere</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Når flere skal motta ukeheftet, eller noen skal fjernes.</p>
+        <p><strong>Hvordan?</strong> Legg til navn og e-post i mottakerlisten i Admin. Alle aktive adresser får onsdagsheftet, og hver e-post har egen avmeldingslenke.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>8. Tilbakestill</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Bare hvis du vil slette alle lås, forskyvninger og tilpasninger.</p>
         <p><strong>Obs:</strong> Da er du tilbake til grunnplanen. Handlingen kan ikke angres.</p>
       </div>
     </div>
 
     <div class="panel prose help-box">
-      <h2>Merkene i oversikten</h2>
+      <h2>Merkene og fargene</h2>
       <ul class="legend-list">
         <li><span class="badge badge-now">Denne uken</span> — inneværende ISO-uke</li>
         <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
@@ -716,7 +846,9 @@ function renderVeiledning(): string {
         <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning</li>
         <li><span class="badge badge-changed">Endret</span> — kapittelet er flyttet fra grunnplanen</li>
       </ul>
+      <p>De samme fargene brukes i kalenderen under <a href="#/denne-uken">Nå</a>.</p>
       <p class="after-link"><a class="btn" href="#/admin">Gå til Admin og prøv</a></p>
+      <p class="muted">Veiledningen sist oppdatert ${escapeHtml(DOCS_UPDATED)} (${escapeHtml(APP_FASE)}).</p>
     </div>
   `;
 }
@@ -1045,11 +1177,14 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       return { title: "Perioder", subtitle: "Velg en måned for å hoppe til ukene i perioden." };
     case "veiledning":
       return {
-        title: "Veiledning — Fase 2",
-        subtitle: "Tydelige forklaringer på lås, forskyvning og merkene i oversikten."
+        title: "Veiledning",
+        subtitle: "Steg-for-steg: se planen, logg inn, lås, forskyv, tilpass og send hefte."
       };
     case "om":
-      return { title: "Om planen", subtitle: "Bakgrunn for MBO-årsplanen 2026–2027." };
+      return {
+        title: "Om verktøyet",
+        subtitle: "Hva programmet gjør, hvordan det fungerer og hvordan planen henger sammen."
+      };
     case "admin":
       return {
         title: "Admin — tilpass planen",
