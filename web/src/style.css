@@ -684,6 +684,311 @@ a:hover {
   border-radius: 8px;
 }
 
+/* ---- «Nå»-dashbord + kalender ---- */
+.now-hero {
+  border-left-width: 6px;
+}
+
+.now-kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--teal);
+}
+
+.now-week {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  color: var(--marine);
+  line-height: 1.1;
+}
+
+.now-year {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.week-strip {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: 1fr;
+  margin-bottom: 1.25rem;
+}
+
+.week-summary {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1rem 1.1rem;
+  border-top: 4px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.week-summary.is-now {
+  border-top-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 35%, transparent), var(--shadow);
+}
+
+.week-summary.is-empty-slot {
+  justify-content: center;
+  color: var(--muted);
+}
+
+.week-role {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: var(--teal);
+}
+
+.week-summary.is-now .week-role {
+  color: var(--amber);
+}
+
+.week-num {
+  margin: 0.1rem 0 0;
+  font-weight: 800;
+  font-size: 1.15rem;
+  color: var(--marine);
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.week-maned {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.week-headline {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--marine);
+  line-height: 1.25;
+}
+
+.week-gram {
+  margin: 0.35rem 0 0;
+}
+
+.week-gram-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--teal);
+  font-weight: 700;
+}
+
+.week-kap {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+}
+
+.week-badges {
+  margin: 0.5rem 0 0;
+  min-height: 1.5rem;
+}
+
+.week-badges .badge {
+  margin-left: 0;
+  margin-right: 0.3rem;
+}
+
+.week-jump {
+  margin-top: 0.6rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.now-detail {
+  margin-bottom: 1.5rem;
+}
+
+.cal-section {
+  margin-top: 0.5rem;
+}
+
+.cal-head h2 {
+  margin: 0 0 0.25rem;
+  font-family: var(--font-display);
+  color: var(--marine);
+  font-size: 1.45rem;
+}
+
+.cal-head p {
+  margin: 0 0 1rem;
+}
+
+.cal-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.cal-month-name {
+  margin: 0 0 0.5rem;
+  font-weight: 800;
+  color: var(--teal);
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.cal-weeks {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+}
+
+.cal-week {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  text-decoration: none;
+  color: var(--ink);
+  min-height: 3.4rem;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.cal-week:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.cal-week-num {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--marine);
+}
+
+.cal-week-yrke {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cal-week-here {
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--amber);
+}
+
+.cal-week.is-current {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber) 40%, transparent);
+}
+
+/* Statusfarger (delt av kalender-chips, strip-kort og swatches) */
+.status-teaching {
+  border-left: 4px solid var(--teal);
+}
+
+.cal-week.status-teaching {
+  border-left-width: 4px;
+}
+
+.status-locked {
+  background: #faf6f0;
+  border-color: #c9a06a;
+}
+
+.week-summary.status-locked {
+  border-top-color: #c9a06a;
+}
+
+.status-empty {
+  background: #f2f9f4;
+  border-color: #9cccaf;
+}
+
+.week-summary.status-empty {
+  border-top-color: #2f8f5b;
+}
+
+.status-tilpasset {
+  background: #f6f1fc;
+  border-color: #c4b0e0;
+}
+
+.week-summary.status-tilpasset {
+  border-top-color: #6b46b0;
+}
+
+.status-changed {
+  background: #eef7f9;
+  border-color: #9ec8d2;
+}
+
+.week-summary.status-changed {
+  border-top-color: var(--teal);
+}
+
+.cal-legend {
+  margin-top: 1rem;
+}
+
+.cal-swatch {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.cal-swatch.status-teaching {
+  background: var(--surface-2);
+  border-left: 4px solid var(--teal);
+}
+
+.cal-swatch.status-locked {
+  background: #f3e8d8;
+  border-color: #c9a06a;
+}
+
+.cal-swatch.status-empty {
+  background: #eef6f0;
+  border-color: #9cccaf;
+}
+
+.cal-swatch.status-tilpasset {
+  background: #efe8f8;
+  border-color: #c4b0e0;
+}
+
+.cal-swatch.status-changed {
+  background: #e7f3f6;
+  border-color: #9ec8d2;
+}
+
+@media (min-width: 720px) {
+  .week-strip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (min-width: 860px) {
   .header-inner {
     grid-template-columns: auto 1fr auto;

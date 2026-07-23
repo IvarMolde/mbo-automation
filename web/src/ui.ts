@@ -151,8 +151,8 @@ export function renderShell(opts: {
           Meny
         </button>
         <nav id="hovedmeny" class="main-nav" aria-label="Hovedmeny">
-          ${nav("oversikt", "Oversikt")}
-          ${nav("denne-uken", "Denne uken")}
+          ${nav("denne-uken", "Nå")}
+          ${nav("oversikt", "Årsplan")}
           ${nav("perioder", "Perioder")}
           ${nav("veiledning", "Veiledning")}
           ${nav("admin", "Admin")}
@@ -172,8 +172,8 @@ export function renderShell(opts: {
       <p class="muted">Fase 2: lås ferieuker og forskyv planen. Se Veiledning for forklaringer.</p>
     </footer>
     <nav class="mobile-nav" aria-label="Hurtignavigasjon">
-      ${nav("oversikt", "Oversikt")}
-      ${nav("denne-uken", "Uken")}
+      ${nav("denne-uken", "Nå")}
+      ${nav("oversikt", "Årsplan")}
       ${nav("veiledning", "Hjelp")}
       ${nav("admin", "Admin")}
     </nav>

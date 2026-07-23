@@ -7,7 +7,7 @@ import {
 } from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
 import { computeEffectiveSchedule, type PlanOperation, type PlanState } from "./schedule";
-import type { ArsplanDokument, EffectiveUke, PlanApiResponse, ViewId } from "./types";
+import type { ArsplanDokument, EffectiveUke, PlanApiResponse, UkeVisning, ViewId } from "./types";
 import { renderShell, renderUkeCard } from "./ui";
 import "./style.css";
 
@@ -409,9 +409,6 @@ function renderOversikt(filterManed?: string): string {
             <li><span class="badge badge-empty">Innhenting</span> etter forskyvning</li>
             <li><span class="badge badge-changed">Endret</span> kapittel flyttet</li>
           </ul>
-            <li><span class="badge badge-empty">Innhenting</span> ekstra tid</li>
-            <li><span class="badge badge-changed">Endret</span> flyttet kapittel</li>
-          </ul>
         </div>`;
 
   if (!perioder.length) {
@@ -451,24 +448,167 @@ function renderOversikt(filterManed?: string): string {
   );
 }
 
-function renderDenneUken(): string {
-  const uke = getIsoWeekNumber();
-  const match = findUke(plan, uke, effectiveUker);
-  if (!match) {
+function weekHeadline(u: UkeVisning): string {
+  if (u.status === "locked") return "Ferie / låst uke";
+  if (u.status === "empty") return "Innhenting (uten nytt kapittel)";
+  const k = u.kapittel;
+  return k ? escapeHtml(k.yrke || k.tittel) : "Uten kapittel";
+}
+
+function weekStatusClass(u: UkeVisning): string {
+  if (u.status === "locked") return "status-locked";
+  if (u.status === "empty") return "status-empty";
+  if (u.tilpasset) return "status-tilpasset";
+  if (u.endret) return "status-changed";
+  return "status-teaching";
+}
+
+function renderWeekSummaryCard(
+  u: UkeVisning | undefined,
+  role: "prev" | "now" | "next"
+): string {
+  const roleLabel = role === "prev" ? "Forrige uke" : role === "now" ? "Denne uken" : "Neste uke";
+  if (!u) {
     return `
-      <div class="panel">
-        <p>Uke ${uke} finnes ikke i årsplanen for ${escapeHtml(plan.metadata.skolear ?? "dette skoleåret")}.</p>
-        <p><a class="btn" href="#/oversikt">Gå til oversikt</a></p>
-      </div>
+      <article class="week-summary is-${role} is-empty-slot">
+        <p class="week-role">${roleLabel}</p>
+        <p class="muted">Utenfor skoleåret.</p>
+      </article>
     `;
   }
+  const k = u.kapittel;
+  const gram = k ? escapeHtml(k.grammatikk) : "—";
+  const kapLine = k ? `Kapittel ${k.nummer} · ${escapeHtml(k.tittel)}` : "";
+  const jump = `#/oversikt?m=${encodeURIComponent(u.maned || "")}`;
   return `
-    <div class="panel highlight">
-      <p class="lede">Her er den gjeldende planen for inneværende ISO-uke.</p>
-    </div>
-    ${renderUkeCard(match, true)}
-    <p class="after-link"><a href="#/oversikt">Se hele årsplanen</a></p>
+    <article class="week-summary is-${role} ${weekStatusClass(u)}">
+      <p class="week-role">${roleLabel}</p>
+      <p class="week-num">Uke ${u.uke}<span class="week-maned">${escapeHtml(u.maned || "")}</span></p>
+      <h3 class="week-headline">${weekHeadline(u)}</h3>
+      ${k ? `<p class="week-gram"><span class="week-gram-label">Grammatikk</span> ${gram}</p>` : ""}
+      ${kapLine ? `<p class="muted week-kap">${kapLine}</p>` : ""}
+      <p class="week-badges">${
+        [
+          u.status === "locked" ? `<span class="badge badge-lock">Låst</span>` : "",
+          u.status === "empty" ? `<span class="badge badge-empty">Innhenting</span>` : "",
+          u.tilpasset ? `<span class="badge badge-tilpasset">Tilpasset</span>` : "",
+          u.endret && u.status === "teaching" && !u.tilpasset
+            ? `<span class="badge badge-changed">Endret</span>`
+            : ""
+        ]
+          .filter(Boolean)
+          .join(" ") || `<span class="muted">Følger grunnplanen</span>`
+      }</p>
+      <a class="week-jump" href="${jump}">Se i årsplanen →</a>
+    </article>
   `;
+}
+
+function renderCalendarGrid(uker: UkeVisning[]): string {
+  const byUke = new Map(uker.map((u) => [u.uke, u]));
+  const listed = new Set<number>();
+
+  const months = plan.perioder
+    .map((periode) => {
+      const chips = periode.uker
+        .map((uke) => byUke.get(uke))
+        .filter((u): u is UkeVisning => Boolean(u));
+      chips.forEach((c) => listed.add(c.uke));
+      if (!chips.length) return "";
+      return `
+        <div class="cal-month">
+          <p class="cal-month-name">${escapeHtml(periode.maned)}</p>
+          <div class="cal-weeks">
+            ${chips.map(renderCalendarChip).join("")}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  const extra = uker.filter((u) => !listed.has(u.uke));
+  const extraBlock = extra.length
+    ? `
+      <div class="cal-month">
+        <p class="cal-month-name">Forlenget / forskjøvet</p>
+        <div class="cal-weeks">${extra.map(renderCalendarChip).join("")}</div>
+      </div>`
+    : "";
+
+  return `<div class="cal-grid">${months}${extraBlock}</div>`;
+}
+
+function renderCalendarChip(u: UkeVisning): string {
+  const jump = `#/oversikt?m=${encodeURIComponent(u.maned || "")}`;
+  const short =
+    u.status === "locked"
+      ? "Ferie"
+      : u.status === "empty"
+        ? "Innhenting"
+        : u.kapittel
+          ? escapeHtml(u.kapittel.yrke || u.kapittel.tittel)
+          : "—";
+  const title = `Uke ${u.uke}: ${short}`;
+  return `
+    <a
+      class="cal-week ${weekStatusClass(u)}${u.erDagensUke ? " is-current" : ""}"
+      href="${jump}"
+      title="${title}"
+      ${u.erDagensUke ? 'aria-current="date"' : ""}
+    >
+      <span class="cal-week-num">Uke ${u.uke}</span>
+      <span class="cal-week-yrke">${short}</span>
+      ${u.erDagensUke ? `<span class="cal-week-here">Du er her</span>` : ""}
+    </a>
+  `;
+}
+
+function renderDenneUken(): string {
+  const uke = getIsoWeekNumber();
+  const year = getIsoWeekYear();
+  const uker = buildUkeVisninger(plan, effectiveUker);
+  const idx = uker.findIndex((u) => u.uke === uke);
+  const match = idx >= 0 ? uker[idx] : findUke(plan, uke, effectiveUker);
+
+  const outsidePlan = idx < 0 && !match;
+  const hero = `
+    <div class="panel highlight now-hero">
+      <p class="now-kicker">Der vi er nå</p>
+      <p class="now-week">ISO-uke ${uke} <span class="now-year">· ${year}</span></p>
+      <p class="lede">${
+        outsidePlan
+          ? `Uke ${uke} er utenfor skoleåret ${escapeHtml(plan.metadata.skolear ?? "")}. Se hele årsplanen nedenfor.`
+          : "Rask oversikt over forrige, inneværende og neste uke — pluss hele skoleåret."
+      }</p>
+    </div>`;
+
+  const strip = outsidePlan
+    ? ""
+    : `
+    <section class="week-strip" aria-label="Forrige, denne og neste uke">
+      ${renderWeekSummaryCard(idx > 0 ? uker[idx - 1] : undefined, "prev")}
+      ${renderWeekSummaryCard(match, "now")}
+      ${renderWeekSummaryCard(idx >= 0 && idx < uker.length - 1 ? uker[idx + 1] : undefined, "next")}
+    </section>`;
+
+  const detail = match ? `<section class="now-detail">${renderUkeCard(match, true)}</section>` : "";
+
+  const calendar = `
+    <section class="cal-section" aria-label="Kalender for hele skoleåret">
+      <div class="cal-head">
+        <h2>Kalender · hele skoleåret</h2>
+        <p class="muted">Fargene viser status. Klikk en uke for å hoppe til måneden i årsplanen.</p>
+      </div>
+      ${renderCalendarGrid(uker)}
+      <ul class="legend-list compact cal-legend">
+        <li><span class="cal-swatch status-teaching"></span> Undervisning</li>
+        <li><span class="cal-swatch status-locked"></span> Ferie / låst</li>
+        <li><span class="cal-swatch status-empty"></span> Innhenting</li>
+        <li><span class="cal-swatch status-tilpasset"></span> Tilpasset</li>
+        <li><span class="cal-swatch status-changed"></span> Endret</li>
+      </ul>
+    </section>`;
+
+  return `${hero}${strip}${detail}${calendar}`;
 }
 
 function renderPerioder(): string {
@@ -897,7 +1037,10 @@ function renderAdmin(): string {
 function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: string } {
   switch (view) {
     case "denne-uken":
-      return { title: "Denne uken", subtitle: "Gjeldende plan for inneværende ISO-uke." };
+      return {
+        title: "Nå",
+        subtitle: "Forrige, denne og neste uke — og kalender for hele skoleåret."
+      };
     case "perioder":
       return { title: "Perioder", subtitle: "Velg en måned for å hoppe til ukene i perioden." };
     case "veiledning":
@@ -916,7 +1059,7 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       };
     default:
       return {
-        title: periode ? `Oversikt · ${periode}` : "Årsplan uke for uke",
+        title: periode ? `Årsplan · ${periode}` : "Årsplan uke for uke",
         subtitle: "Kompakt oversikt over gjeldende plan. Åpne detaljer for full formulering."
       };
   }
