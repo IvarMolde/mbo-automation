@@ -396,30 +396,86 @@ function currentWeekLabel(): string {
   return `ISO-uke ${uke} (${year}) · ikke i inneværende skoleårsplan`;
 }
 
+interface PlanChangeCounts {
+  locked: number;
+  empty: number;
+  tilpasset: number;
+  flyttet: number;
+  total: number;
+}
+
+function planChangeCounts(): PlanChangeCounts {
+  const uker = effectiveUker ?? [];
+  const locked = uker.filter((u) => u.status === "locked").length;
+  const empty = uker.filter((u) => u.status === "empty").length;
+  const tilpasset = uker.filter((u) => Boolean(u.tilpasset)).length;
+  const flyttet = uker.filter(
+    (u) => u.endret && u.status === "teaching" && !u.tilpasset
+  ).length;
+  return { locked, empty, tilpasset, flyttet, total: locked + empty + tilpasset + flyttet };
+}
+
+function formatUpdatedAt(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" });
+}
+
+/**
+ * Tydelig markør som forteller læreren om de ser grunnplanen (fasiten)
+ * eller en gjeldende, tilpasset plan — og hvor mye som er endret.
+ */
+function renderPlanStatus(opts: { showLegend?: boolean } = {}): string {
+  const c = planChangeCounts();
+  const changed = c.total > 0 || planSource !== "base";
+  const updated = formatUpdatedAt(apiStateUpdatedAt);
+
+  const breakdown = changed
+    ? `<ul class="plan-status-breakdown">
+        ${c.locked ? `<li><span class="badge badge-lock">Låst</span> ${c.locked} ${c.locked === 1 ? "uke" : "uker"}</li>` : ""}
+        ${c.flyttet ? `<li><span class="badge badge-changed">Endret</span> ${c.flyttet} ${c.flyttet === 1 ? "uke" : "uker"}</li>` : ""}
+        ${c.tilpasset ? `<li><span class="badge badge-tilpasset">Tilpasset</span> ${c.tilpasset} ${c.tilpasset === 1 ? "uke" : "uker"}</li>` : ""}
+        ${c.empty ? `<li><span class="badge badge-empty">Innhenting</span> ${c.empty} ${c.empty === 1 ? "uke" : "uker"}</li>` : ""}
+      </ul>`
+    : "";
+
+  const legend = opts.showLegend
+    ? `<ul class="legend-list compact plan-status-legend">
+        <li><span class="badge badge-lock">Låst</span> ferie</li>
+        <li><span class="badge badge-tilpasset">Tilpasset</span> yrke/grammatikk</li>
+        <li><span class="badge badge-empty">Innhenting</span> etter forskyvning</li>
+        <li><span class="badge badge-changed">Endret</span> kapittel flyttet</li>
+      </ul>`
+    : "";
+
+  return `
+    <div class="panel plan-status ${changed ? "is-changed" : "is-base"}" role="status">
+      <div class="plan-status-head">
+        <span class="plan-status-pill">${changed ? "Gjeldende plan" : "Grunnplan"}</span>
+        <p class="plan-status-lead">${
+          changed
+            ? `${c.total} ${c.total === 1 ? "endring" : "endringer"} fra grunnplanen.`
+            : "Ingen endringer ennå — dette er fasiten for skoleåret."
+        }</p>
+      </div>
+      ${breakdown}
+      <p class="plan-status-help muted">
+        ${changed ? `Grunnplanen er uendret som fasit. ` : ""}${updated ? `Sist endret ${escapeHtml(updated)}. ` : ""}<a href="#/veiledning">Hva betyr dette?</a>
+      </p>
+      ${legend}
+    </div>`;
+}
+
 function renderOversikt(filterManed?: string): string {
   const uker = buildUkeVisninger(plan, effectiveUker);
   const perioder = filterManed
     ? plan.perioder.filter((p) => p.maned === filterManed)
     : plan.perioder;
 
-  const sourceLabel =
-    planSource === "local"
-      ? "Endringer er lagret i denne nettleseren (Fase 2)."
-      : planSource === "server"
-        ? `Gjeldende plan fra server${apiStateUpdatedAt ? ` · ${escapeHtml(apiStateUpdatedAt)}` : ""}.`
-        : "Du ser grunnplanen (ingen lås/forskyvning ennå).";
-
   const banner = loadError
-    ? `<div class="panel note" role="status">${escapeHtml(sourceLabel)} API-varsel: ${escapeHtml(loadError)}.</div>`
-    : `<div class="panel highlight">
-          <p class="lede">${sourceLabel} Les mer under <a href="#/veiledning">Veiledning</a>.</p>
-          <ul class="legend-list compact">
-            <li><span class="badge badge-lock">Låst</span> ferie</li>
-            <li><span class="badge badge-tilpasset">Tilpasset</span> yrke/grammatikk</li>
-            <li><span class="badge badge-empty">Innhenting</span> etter forskyvning</li>
-            <li><span class="badge badge-changed">Endret</span> kapittel flyttet</li>
-          </ul>
-        </div>`;
+    ? `<div class="panel note" role="status">Kunne ikke hente oppdatert plan akkurat nå. API-varsel: ${escapeHtml(loadError)}.</div>${renderPlanStatus({ showLegend: true })}`
+    : renderPlanStatus({ showLegend: true });
 
   if (!perioder.length) {
     return `${banner}<p role="status">Fant ingen periode som matcher.</p>`;
@@ -595,6 +651,8 @@ function renderDenneUken(): string {
       }</p>
     </div>`;
 
+  const status = renderPlanStatus();
+
   const strip = outsidePlan
     ? ""
     : `
@@ -622,7 +680,7 @@ function renderDenneUken(): string {
       </ul>
     </section>`;
 
-  return `${hero}${strip}${detail}${calendar}`;
+  return `${hero}${status}${strip}${detail}${calendar}`;
 }
 
 function renderOm(): string {
@@ -747,6 +805,11 @@ function renderVeiledning(): string {
         </div>
       </dl>
       <p class="muted">Alt du gjør kan tilbakestilles til grunnplanen når som helst.</p>
+      <div class="help-text">
+        <p><strong>Hvordan ser jeg hvilken plan jeg ser på?</strong> Øverst på <a href="#/denne-uken">Nå</a> og <a href="#/oversikt">Årsplan</a> står en markør:</p>
+        <p>• <span class="plan-status-pill">Grunnplan</span> betyr at ingenting er endret ennå — du ser fasiten.</p>
+        <p>• <span class="plan-status-pill" style="background:var(--amber);color:#fff;border-color:var(--amber)">Gjeldende plan</span> betyr at planen er tilpasset, og markøren viser hvor mange uker som er låst, endret, tilpasset eller satt til innhenting.</p>
+      </div>
     </div>
 
     <div class="panel prose">
