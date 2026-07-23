@@ -1,5 +1,5 @@
 import type { ArsplanDokument } from "../schemas/planlegging.js";
-import type { PlanOperation, PlanState } from "./planState.js";
+import type { PlanOperation, PlanState, WeekFieldOverride } from "./planState.js";
 import { emptyPlanState } from "./planState.js";
 
 /** School-year sort: autumn weeks (34–53) before spring (1–33). */
@@ -22,12 +22,17 @@ export interface EffectiveUke {
   maned: string;
   periodeFokus: string;
   endret: boolean;
+  /** Lærer har tilpasset yrke og/eller grammatikk for uken */
+  tilpasset: boolean;
+  overrideYrke?: string;
+  overrideGrammatikk?: string;
 }
 
 export interface EffectiveSchedule {
   uker: EffectiveUke[];
   lockedWeeks: number[];
   hasChanges: boolean;
+  weekOverrides: Record<string, WeekFieldOverride>;
 }
 
 interface MutableSlot {
@@ -183,6 +188,34 @@ export function lockedWeeksFromState(state: PlanState): number[] {
   return [...locked].sort(compareSchoolYear);
 }
 
+/** Fold field overrides (yrke/grammatikk) from the operation log. */
+export function foldWeekOverrides(state: PlanState): Map<number, WeekFieldOverride> {
+  const map = new Map<number, WeekFieldOverride>();
+  for (const op of state.operations) {
+    if (op.type === "reset") {
+      map.clear();
+      continue;
+    }
+    if (op.type === "clearWeekOverride") {
+      map.delete(op.uke);
+      continue;
+    }
+    if (op.type !== "overrideWeek") continue;
+    const cur: WeekFieldOverride = { ...(map.get(op.uke) ?? {}) };
+    if ("yrke" in op) {
+      if (op.yrke == null || op.yrke === "") delete cur.yrke;
+      else cur.yrke = op.yrke;
+    }
+    if ("grammatikk" in op) {
+      if (op.grammatikk == null || op.grammatikk === "") delete cur.grammatikk;
+      else cur.grammatikk = op.grammatikk;
+    }
+    if (!cur.yrke && !cur.grammatikk) map.delete(op.uke);
+    else map.set(op.uke, cur);
+  }
+  return map;
+}
+
 export function computeEffectiveSchedule(
   plan: ArsplanDokument,
   state: PlanState = emptyPlanState()
@@ -190,6 +223,7 @@ export function computeEffectiveSchedule(
   const baseByUke = new Map(plan.uker.map((u) => [u.uke, u.kapittel]));
   const slots = replay(plan, state);
   const lockedWeeks = lockedWeeksFromState(state);
+  const overrides = foldWeekOverrides(state);
 
   const uker: EffectiveUke[] = slots.map((s) => {
     const baseKap = baseByUke.get(s.uke) ?? null;
@@ -197,7 +231,9 @@ export function computeEffectiveSchedule(
     if (s.locked) status = "locked";
     else if (s.kapittelNummer == null) status = "empty";
 
-    const endret = s.locked || s.kapittelNummer !== baseKap;
+    const ov = overrides.get(s.uke);
+    const tilpasset = Boolean(ov?.yrke || ov?.grammatikk);
+    const endret = s.locked || s.kapittelNummer !== baseKap || tilpasset;
 
     return {
       uke: s.uke,
@@ -206,15 +242,24 @@ export function computeEffectiveSchedule(
       baseKapittelNummer: baseKap,
       maned: s.maned,
       periodeFokus: s.periodeFokus,
-      endret
+      endret,
+      tilpasset,
+      overrideYrke: ov?.yrke,
+      overrideGrammatikk: ov?.grammatikk
     };
   });
+
+  const weekOverrides: Record<string, WeekFieldOverride> = {};
+  for (const [uke, ov] of overrides) {
+    weekOverrides[String(uke)] = ov;
+  }
 
   const meaningfulOps = state.operations.filter((op) => op.type !== "reset");
   return {
     uker,
     lockedWeeks,
-    hasChanges: meaningfulOps.length > 0
+    hasChanges: meaningfulOps.length > 0,
+    weekOverrides
   };
 }
 

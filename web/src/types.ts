@@ -82,6 +82,9 @@ export interface EffectiveUke {
   maned: string;
   periodeFokus: string;
   endret: boolean;
+  tilpasset?: boolean;
+  overrideYrke?: string;
+  overrideGrammatikk?: string;
 }
 
 export interface UkeVisning {
@@ -93,6 +96,7 @@ export interface UkeVisning {
   status: EffectiveStatus;
   endret: boolean;
   baseKapittelNummer: number | null;
+  tilpasset?: boolean;
 }
 
 export interface PlanApiResponse {
@@ -105,6 +109,7 @@ export interface PlanApiResponse {
     uker: EffectiveUke[];
     lockedWeeks: number[];
     hasChanges: boolean;
+    weekOverrides?: Record<string, { yrke?: string; grammatikk?: string }>;
   };
   state: {
     updatedAt: string;

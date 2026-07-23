@@ -20,6 +20,20 @@ export const planOperationSchema = z.discriminatedUnion("type", [
     note: z.string().max(300).optional()
   }),
   z.object({
+    type: z.literal("overrideWeek"),
+    uke: z.number().int().min(1).max(53),
+    at: z.string().max(40),
+    note: z.string().max(300).optional(),
+    /** null = fjern overstyring for feltet; utelatt = ikke endre feltet */
+    yrke: z.string().max(300).nullable().optional(),
+    grammatikk: z.string().max(2000).nullable().optional()
+  }),
+  z.object({
+    type: z.literal("clearWeekOverride"),
+    uke: z.number().int().min(1).max(53),
+    at: z.string().max(40)
+  }),
+  z.object({
     type: z.literal("reset"),
     at: z.string().max(40)
   })
@@ -33,6 +47,11 @@ export const planStateSchema = z.object({
 
 export type PlanOperation = z.infer<typeof planOperationSchema>;
 export type PlanState = z.infer<typeof planStateSchema>;
+
+export type WeekFieldOverride = {
+  yrke?: string;
+  grammatikk?: string;
+};
 
 export function emptyPlanState(now = new Date().toISOString()): PlanState {
   return { version: 1, operations: [], updatedAt: now };

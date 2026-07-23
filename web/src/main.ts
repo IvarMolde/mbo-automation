@@ -157,7 +157,11 @@ async function runPlanAction(op: PlanOperation): Promise<string | null> {
         ? "/api/plan/unlock"
         : op.type === "shift"
           ? "/api/plan/shift"
-          : "/api/plan/reset";
+          : op.type === "overrideWeek"
+            ? "/api/plan/override-week"
+            : op.type === "clearWeekOverride"
+              ? "/api/plan/clear-week-override"
+              : "/api/plan/reset";
   const body =
     op.type === "lock"
       ? { uke: op.uke, note: op.note }
@@ -165,7 +169,11 @@ async function runPlanAction(op: PlanOperation): Promise<string | null> {
         ? { uke: op.uke }
         : op.type === "shift"
           ? { fromUke: op.fromUke, weeks: op.weeks, note: op.note }
-          : {};
+          : op.type === "overrideWeek"
+            ? { uke: op.uke, note: op.note, yrke: op.yrke, grammatikk: op.grammatikk }
+            : op.type === "clearWeekOverride"
+              ? { uke: op.uke }
+              : {};
 
   try {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -397,6 +405,10 @@ function renderOversikt(filterManed?: string): string {
           <p class="lede">${sourceLabel} Les mer under <a href="#/veiledning">Veiledning</a>.</p>
           <ul class="legend-list compact">
             <li><span class="badge badge-lock">Låst</span> ferie</li>
+            <li><span class="badge badge-tilpasset">Tilpasset</span> yrke/grammatikk</li>
+            <li><span class="badge badge-empty">Innhenting</span> etter forskyvning</li>
+            <li><span class="badge badge-changed">Endret</span> kapittel flyttet</li>
+          </ul>
             <li><span class="badge badge-empty">Innhenting</span> ekstra tid</li>
             <li><span class="badge badge-changed">Endret</span> flyttet kapittel</li>
           </ul>
@@ -560,6 +572,7 @@ function renderVeiledning(): string {
       <ul class="legend-list">
         <li><span class="badge badge-now">Denne uken</span> — inneværende ISO-uke</li>
         <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
+        <li><span class="badge badge-tilpasset">Tilpasset</span> — yrke eller grammatikk er endret for uken</li>
         <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning</li>
         <li><span class="badge badge-changed">Endret</span> — kapittelet er flyttet fra grunnplanen</li>
       </ul>
@@ -676,7 +689,73 @@ function weekSendPreview(uke: number): string {
   if (row.status === "empty") return "Tom/innhentingsuke — kan ikke sende hefte.";
   const kap = plan.kapitler.find((k) => k.nummer === row.kapittelNummer);
   if (!kap) return `Kapittel ${row.kapittelNummer ?? "?"} (mangler detaljer)`;
-  return `Kap. ${kap.nummer} — ${kap.yrke || kap.tittel}`;
+  const yrke = row.overrideYrke ?? kap.yrke;
+  const gram = row.overrideGrammatikk ?? kap.grammatikk;
+  const tip = row.tilpasset ? " · tilpasset" : "";
+  return `Kap. ${kap.nummer} — ${yrke} · ${gram}${tip}`;
+}
+
+function catalogOptions(kind: "yrke" | "grammatikk"): string[] {
+  const values = plan.kapitler.map((k) => (kind === "yrke" ? k.yrke : k.grammatikk)).filter(Boolean);
+  return [...new Set(values)].sort((a, b) => a.localeCompare(b, "nb"));
+}
+
+function renderCustomizePanel(): string {
+  const ukeNow = getIsoWeekNumber();
+  const row = (effectiveUker ?? []).find((u) => u.uke === ukeNow);
+  const baseKap = row?.kapittelNummer != null
+    ? plan.kapitler.find((k) => k.nummer === row.kapittelNummer)
+    : undefined;
+  const selectedYrke = row?.overrideYrke ?? "";
+  const selectedGram = row?.overrideGrammatikk ?? "";
+
+  const yrkeOpts = catalogOptions("yrke")
+    .map(
+      (y) =>
+        `<option value="${escapeHtml(y)}"${y === selectedYrke ? " selected" : ""}>${escapeHtml(y)}</option>`
+    )
+    .join("");
+  const gramOpts = catalogOptions("grammatikk")
+    .map(
+      (g) =>
+        `<option value="${escapeHtml(g)}"${g === selectedGram ? " selected" : ""}>${escapeHtml(g)}</option>`
+    )
+    .join("");
+
+  return `
+    <div class="panel highlight" id="customize-panel">
+      <h2>Tilpass yrke og grammatikk</h2>
+      <p class="lede">
+        Velg en uke, og bytt yrke og/eller grammatikk med rullegardinmeny.
+        Endringen gjelder oversikten og heftet som sendes for den uken.
+      </p>
+      <form id="customize-form" class="admin-form send-hefte-form">
+        <label for="custom-uke">ISO-uke</label>
+        <input id="custom-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
+        <p class="muted" id="custom-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
+
+        <label for="custom-yrke">Yrke</label>
+        <select id="custom-yrke" name="yrke">
+          <option value="">Bruk kapitlets standard${baseKap ? ` (${escapeHtml(baseKap.yrke)})` : ""}</option>
+          ${yrkeOpts}
+        </select>
+
+        <label for="custom-grammatikk">Grammatikk</label>
+        <select id="custom-grammatikk" name="grammatikk">
+          <option value="">Bruk kapitlets standard${baseKap ? ` (${escapeHtml(baseKap.grammatikk)})` : ""}</option>
+          ${gramOpts}
+        </select>
+
+        <label for="custom-note">Notat (valgfritt)</label>
+        <input id="custom-note" name="note" type="text" maxlength="300" placeholder="F.eks. Klassen vil jobbe med renhold" />
+
+        <div class="btn-row">
+          <button type="submit" class="btn">Lagre tilpasning</button>
+          <button type="button" class="btn btn-ghost" id="custom-clear">Nullstill uke</button>
+        </div>
+      </form>
+    </div>
+  `;
 }
 
 function defaultSendEmail(): string {
@@ -756,6 +835,8 @@ function renderAdmin(): string {
     </div>
 
     ${renderLockedWeeksPanel()}
+
+    ${renderCustomizePanel()}
 
     ${renderSendHeftePanel()}
 
@@ -881,6 +962,72 @@ function bindAdminForms(): void {
     if (sendPreview && Number.isFinite(uke)) {
       sendPreview.textContent = weekSendPreview(uke);
     }
+  });
+
+  const customUkeInput = document.getElementById("custom-uke") as HTMLInputElement | null;
+  const customPreview = document.getElementById("custom-uke-preview");
+  customUkeInput?.addEventListener("input", () => {
+    const uke = Number(customUkeInput.value);
+    if (!Number.isFinite(uke) || !customPreview) return;
+    customPreview.textContent = weekSendPreview(uke);
+    const row = (effectiveUker ?? []).find((u) => u.uke === uke);
+    const yrkeSelect = document.getElementById("custom-yrke") as HTMLSelectElement | null;
+    const gramSelect = document.getElementById("custom-grammatikk") as HTMLSelectElement | null;
+    if (yrkeSelect) yrkeSelect.value = row?.overrideYrke ?? "";
+    if (gramSelect) gramSelect.value = row?.overrideGrammatikk ?? "";
+  });
+
+  document.getElementById("customize-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target as HTMLFormElement);
+    const uke = Number(fd.get("uke"));
+    const yrkeRaw = String(fd.get("yrke") ?? "");
+    const gramRaw = String(fd.get("grammatikk") ?? "");
+    const note = String(fd.get("note") ?? "") || undefined;
+    const yrke = yrkeRaw === "" ? null : yrkeRaw;
+    const grammatikk = gramRaw === "" ? null : gramRaw;
+    if (yrke === null && grammatikk === null) {
+      setFlash(`Nullstiller tilpasning for uke ${uke}…`);
+      render();
+      const err = await runPlanAction({
+        type: "clearWeekOverride",
+        uke,
+        at: new Date().toISOString()
+      });
+      setFlash(err ? `Kunne ikke nullstille: ${err}` : `Uke ${uke} bruker kapitlets standard igjen.`);
+      render();
+      return;
+    }
+    setFlash(`Lagrer tilpasning for uke ${uke}…`);
+    render();
+    const err = await runPlanAction({
+      type: "overrideWeek",
+      uke,
+      yrke,
+      grammatikk,
+      note,
+      at: new Date().toISOString()
+    });
+    setFlash(
+      err
+        ? `Kunne ikke lagre: ${err}`
+        : `Uke ${uke} er tilpasset. Se merket «Tilpasset» i Oversikt.`
+    );
+    render();
+  });
+
+  document.getElementById("custom-clear")?.addEventListener("click", async () => {
+    const uke = Number((document.getElementById("custom-uke") as HTMLInputElement | null)?.value);
+    if (!Number.isFinite(uke)) return;
+    setFlash(`Nullstiller tilpasning for uke ${uke}…`);
+    render();
+    const err = await runPlanAction({
+      type: "clearWeekOverride",
+      uke,
+      at: new Date().toISOString()
+    });
+    setFlash(err ? `Kunne ikke nullstille: ${err}` : `Uke ${uke} er nullstilt.`);
+    render();
   });
 
   document.getElementById("send-hefte-form")?.addEventListener("submit", async (e) => {

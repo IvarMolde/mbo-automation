@@ -371,6 +371,12 @@ a:hover {
   border: 1px solid #9ec8d2;
 }
 
+.badge-tilpasset {
+  background: #efe8f8;
+  color: #4a2d7a;
+  border: 1px solid #c4b0e0;
+}
+
 .uke-card.is-locked {
   border-style: dashed;
   border-color: #c9a06a;
@@ -472,8 +478,20 @@ a:hover {
   max-width: 28rem;
 }
 
-.send-hefte-form {
-  max-width: 32rem;
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.send-hefte-form select {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  background: #fff;
 }
 
 .send-mode {

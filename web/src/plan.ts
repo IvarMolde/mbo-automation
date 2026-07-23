@@ -20,16 +20,28 @@ export function buildUkeVisninger(
   const byNummer = kapittelMap(plan);
 
   if (effectiveUker?.length) {
-    return effectiveUker.map((row) => ({
-      uke: row.uke,
-      maned: row.maned || plan.uker.find((u) => u.uke === row.uke)?.maned || "",
-      periodeFokus: row.periodeFokus,
-      kapittel: row.kapittelNummer != null ? byNummer.get(row.kapittelNummer) ?? null : null,
-      erDagensUke: row.uke === current,
-      status: row.status,
-      endret: row.endret,
-      baseKapittelNummer: row.baseKapittelNummer
-    }));
+    return effectiveUker.map((row) => {
+      const base = row.kapittelNummer != null ? byNummer.get(row.kapittelNummer) ?? null : null;
+      const kapittel =
+        base == null
+          ? null
+          : {
+              ...base,
+              yrke: row.overrideYrke ?? base.yrke,
+              grammatikk: row.overrideGrammatikk ?? base.grammatikk
+            };
+      return {
+        uke: row.uke,
+        maned: row.maned || plan.uker.find((u) => u.uke === row.uke)?.maned || "",
+        periodeFokus: row.periodeFokus,
+        kapittel,
+        erDagensUke: row.uke === current,
+        status: row.status,
+        endret: row.endret,
+        baseKapittelNummer: row.baseKapittelNummer,
+        tilpasset: row.tilpasset
+      };
+    });
   }
 
   return plan.uker.map((row) => ({
@@ -40,7 +52,8 @@ export function buildUkeVisninger(
     erDagensUke: row.uke === current,
     status: "teaching" as const,
     endret: false,
-    baseKapittelNummer: row.kapittel
+    baseKapittelNummer: row.kapittel,
+    tilpasset: false
   }));
 }
 

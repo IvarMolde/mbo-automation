@@ -16,7 +16,8 @@ function statusBadges(uke: UkeVisning): string {
   if (uke.erDagensUke) parts.push(`<span class="badge badge-now">Denne uken</span>`);
   if (uke.status === "locked") parts.push(`<span class="badge badge-lock">Låst</span>`);
   if (uke.status === "empty") parts.push(`<span class="badge badge-empty">Innhenting</span>`);
-  if (uke.endret && uke.status === "teaching") {
+  if (uke.tilpasset) parts.push(`<span class="badge badge-tilpasset">Tilpasset</span>`);
+  if (uke.endret && uke.status === "teaching" && !uke.tilpasset) {
     parts.push(`<span class="badge badge-changed">Endret</span>`);
   }
   return parts.join(" ");

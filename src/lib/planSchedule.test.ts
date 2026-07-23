@@ -51,4 +51,25 @@ describe("planSchedule", () => {
     expect(eff.uker.find((u) => u.uke === 40)?.kapittelNummer).toBe(4);
     expect(eff.hasChanges).toBe(false);
   });
+
+  it("lar lærer overstyre yrke og grammatikk per uke", () => {
+    let state = emptyPlanState("t0");
+    state = appendOperation(state, {
+      type: "overrideWeek",
+      uke: 40,
+      at: "t1",
+      yrke: "Snekker",
+      grammatikk: "Presens"
+    });
+    const eff = computeEffectiveSchedule(miniPlan(), state);
+    const u40 = eff.uker.find((u) => u.uke === 40);
+    expect(u40?.tilpasset).toBe(true);
+    expect(u40?.overrideYrke).toBe("Snekker");
+    expect(u40?.overrideGrammatikk).toBe("Presens");
+    expect(eff.weekOverrides["40"]?.yrke).toBe("Snekker");
+
+    state = appendOperation(state, { type: "clearWeekOverride", uke: 40, at: "t2" });
+    const cleared = computeEffectiveSchedule(miniPlan(), state);
+    expect(cleared.uker.find((u) => u.uke === 40)?.tilpasset).toBe(false);
+  });
 });

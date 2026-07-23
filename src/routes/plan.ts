@@ -141,6 +141,53 @@ planRouter.post("/plan/shift", async (req, res) => {
   }
 });
 
+const overrideWeekSchema = z.object({
+  uke: z.number().int().min(1).max(53),
+  note: z.string().max(300).optional(),
+  yrke: z.string().max(300).nullable().optional(),
+  grammatikk: z.string().max(2000).nullable().optional()
+});
+
+planRouter.post("/plan/override-week", async (req, res) => {
+  try {
+    requireAdmin(req);
+    const body = overrideWeekSchema.parse(req.body);
+    if (body.yrke === undefined && body.grammatikk === undefined) {
+      throw new PlanApiError(400, "Oppgi minst yrke eller grammatikk (eller null for å nullstille felt).");
+    }
+    const state = await loadPlanState();
+    const next = appendOperation(state, {
+      type: "overrideWeek",
+      uke: body.uke,
+      note: body.note,
+      yrke: body.yrke,
+      grammatikk: body.grammatikk,
+      at: new Date().toISOString()
+    });
+    await savePlanState(next);
+    res.json({ success: true, state: next, effective: scheduleSnapshot(next) });
+  } catch (error) {
+    handlePlanError(res, error);
+  }
+});
+
+planRouter.post("/plan/clear-week-override", async (req, res) => {
+  try {
+    requireAdmin(req);
+    const body = z.object({ uke: z.number().int().min(1).max(53) }).parse(req.body);
+    const state = await loadPlanState();
+    const next = appendOperation(state, {
+      type: "clearWeekOverride",
+      uke: body.uke,
+      at: new Date().toISOString()
+    });
+    await savePlanState(next);
+    res.json({ success: true, state: next, effective: scheduleSnapshot(next) });
+  } catch (error) {
+    handlePlanError(res, error);
+  }
+});
+
 planRouter.post("/plan/reset", async (req, res) => {
   try {
     requireAdmin(req);

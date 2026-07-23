@@ -130,7 +130,10 @@ export function resolveKapittelForIsoUke(
     if (!ch) {
       return { type: "fallback", kapittel: getKapittelForUkeModulo(isoUke) };
     }
-    return { type: "arsplan", kapittel: mapArsplanKapitelTilKapittel(ch) };
+    const kapittel = mapArsplanKapitelTilKapittel(ch);
+    if (effective.overrideYrke) kapittel.yrke = effective.overrideYrke;
+    if (effective.overrideGrammatikk) kapittel.grammatikk = effective.overrideGrammatikk;
+    return { type: "arsplan", kapittel };
   }
 
   const row = plan.uker.find((u) => u.uke === isoUke);
@@ -143,5 +146,9 @@ export function resolveKapittelForIsoUke(
     return { type: "fallback", kapittel: getKapittelForUkeModulo(isoUke) };
   }
 
-  return { type: "arsplan", kapittel: mapArsplanKapitelTilKapittel(ch) };
+  const kapittel = mapArsplanKapitelTilKapittel(ch);
+  const ov = schedule.weekOverrides[String(isoUke)];
+  if (ov?.yrke) kapittel.yrke = ov.yrke;
+  if (ov?.grammatikk) kapittel.grammatikk = ov.grammatikk;
+  return { type: "arsplan", kapittel };
 }
