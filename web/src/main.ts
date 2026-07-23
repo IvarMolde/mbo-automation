@@ -35,6 +35,8 @@ let loadError: string | null = null;
 let planSource: "local" | "server" | "base" = "base";
 /** Statusmelding på Admin som overlever re-render */
 let adminFlash: string | null = null;
+/** Uken som er valgt i «Tilpass yrke og grammatikk», overlever re-render */
+let customizeUke: number | null = null;
 
 type RecipientRow = {
   email: string;
@@ -861,6 +863,7 @@ function renderVeiledning(): string {
       <div class="help-text">
         <p><strong>Når?</strong> Når du vil bytte yrke og/eller grammatikk for én uke, uten å endre grunnplanen.</p>
         <p><strong>Hvordan?</strong> I Admin velger du uke og bruker rullegardinmenyene for yrke og grammatikk. Velg «Bruk kapitlets standard» for å nullstille et felt.</p>
+        <p><strong>Hvordan vet jeg at det ble lagret?</strong> Etter lagring blir uken stående valgt med de nye verdiene, du får en bekreftelse, og uken dukker opp i listen «Tilpassede uker» der du også kan redigere eller nullstille den.</p>
         <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-tilpasset">Tilpasset</span>, og både oversikten og heftet som sendes for uken bruker de nye valgene.</p>
       </div>
     </div>
@@ -1025,14 +1028,49 @@ function catalogOptions(kind: "yrke" | "grammatikk"): string[] {
   return [...new Set(values)].sort((a, b) => a.localeCompare(b, "nb"));
 }
 
+function renderCustomizedWeeksList(): string {
+  const tilpassede = (effectiveUker ?? []).filter((u) => u.tilpasset);
+  if (!tilpassede.length) {
+    return `<p class="muted custom-empty">Ingen uker er tilpasset ennå. Endringene dine vil vises her.</p>`;
+  }
+  const items = tilpassede
+    .map((u) => {
+      const baseKap =
+        u.kapittelNummer != null ? plan.kapitler.find((k) => k.nummer === u.kapittelNummer) : undefined;
+      const yrke = u.overrideYrke
+        ? `<span class="custom-field"><span class="custom-field-label">Yrke</span> ${escapeHtml(u.overrideYrke)}</span>`
+        : "";
+      const gram = u.overrideGrammatikk
+        ? `<span class="custom-field"><span class="custom-field-label">Grammatikk</span> ${escapeHtml(u.overrideGrammatikk)}</span>`
+        : "";
+      const baseHint = baseKap
+        ? `<span class="muted custom-base">Grunnplan: ${escapeHtml(baseKap.yrke)} · ${escapeHtml(baseKap.grammatikk)}</span>`
+        : "";
+      return `<li>
+        <div class="custom-item-main">
+          <strong>Uke ${u.uke}</strong> <span class="badge badge-tilpasset">Tilpasset</span>
+          <div class="custom-fields">${yrke}${gram}</div>
+          ${baseHint}
+        </div>
+        <div class="custom-item-actions">
+          <button type="button" class="btn btn-ghost custom-edit" data-uke="${u.uke}">Rediger</button>
+          <button type="button" class="btn btn-ghost custom-reset" data-uke="${u.uke}">Nullstill</button>
+        </div>
+      </li>`;
+    })
+    .join("");
+  return `<ul class="custom-list">${items}</ul>`;
+}
+
 function renderCustomizePanel(): string {
-  const ukeNow = getIsoWeekNumber();
-  const row = (effectiveUker ?? []).find((u) => u.uke === ukeNow);
+  const selectedUke = customizeUke ?? getIsoWeekNumber();
+  const row = (effectiveUker ?? []).find((u) => u.uke === selectedUke);
   const baseKap = row?.kapittelNummer != null
     ? plan.kapitler.find((k) => k.nummer === row.kapittelNummer)
     : undefined;
   const selectedYrke = row?.overrideYrke ?? "";
   const selectedGram = row?.overrideGrammatikk ?? "";
+  const isTilpasset = Boolean(row?.tilpasset);
 
   const yrkeOpts = catalogOptions("yrke")
     .map(
@@ -1047,6 +1085,10 @@ function renderCustomizePanel(): string {
     )
     .join("");
 
+  const statusLine = isTilpasset
+    ? `<p class="custom-status is-active" role="status">Uke ${selectedUke} er tilpasset. Valgene under viser hva som gjelder nå.</p>`
+    : `<p class="custom-status" role="status">Uke ${selectedUke} følger grunnplanen. Velg yrke og/eller grammatikk for å tilpasse.</p>`;
+
   return `
     <div class="panel highlight" id="customize-panel">
       <h2>Tilpass yrke og grammatikk</h2>
@@ -1056,8 +1098,9 @@ function renderCustomizePanel(): string {
       </p>
       <form id="customize-form" class="admin-form send-hefte-form">
         <label for="custom-uke">Velg uke å tilpasse</label>
-        <input id="custom-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
-        <p class="muted" id="custom-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
+        <input id="custom-uke" name="uke" type="number" min="1" max="53" required value="${selectedUke}" />
+        <p class="muted" id="custom-uke-preview">${escapeHtml(weekSendPreview(selectedUke))}</p>
+        ${statusLine}
 
         <label for="custom-yrke">Yrke</label>
         <select id="custom-yrke" name="yrke">
@@ -1076,9 +1119,12 @@ function renderCustomizePanel(): string {
 
         <div class="btn-row">
           <button type="submit" class="btn">Lagre tilpasning</button>
-          <button type="button" class="btn btn-ghost" id="custom-clear">Nullstill uke</button>
+          <button type="button" class="btn btn-ghost" id="custom-clear">Nullstill denne uken</button>
         </div>
       </form>
+
+      <h3 class="custom-list-title">Tilpassede uker</h3>
+      ${renderCustomizedWeeksList()}
     </div>
   `;
 }
@@ -1297,13 +1343,22 @@ function bindAdminForms(): void {
   const customPreview = document.getElementById("custom-uke-preview");
   customUkeInput?.addEventListener("input", () => {
     const uke = Number(customUkeInput.value);
-    if (!Number.isFinite(uke) || !customPreview) return;
-    customPreview.textContent = weekSendPreview(uke);
+    if (!Number.isFinite(uke)) return;
+    customizeUke = uke;
+    if (customPreview) customPreview.textContent = weekSendPreview(uke);
     const row = (effectiveUker ?? []).find((u) => u.uke === uke);
     const yrkeSelect = document.getElementById("custom-yrke") as HTMLSelectElement | null;
     const gramSelect = document.getElementById("custom-grammatikk") as HTMLSelectElement | null;
     if (yrkeSelect) yrkeSelect.value = row?.overrideYrke ?? "";
     if (gramSelect) gramSelect.value = row?.overrideGrammatikk ?? "";
+    const statusEl = document.querySelector("#customize-panel .custom-status");
+    if (statusEl) {
+      const tilpasset = Boolean(row?.tilpasset);
+      statusEl.classList.toggle("is-active", tilpasset);
+      statusEl.textContent = tilpasset
+        ? `Uke ${uke} er tilpasset. Valgene under viser hva som gjelder nå.`
+        : `Uke ${uke} følger grunnplanen. Velg yrke og/eller grammatikk for å tilpasse.`;
+    }
   });
 
   document.getElementById("customize-form")?.addEventListener("submit", async (e) => {
@@ -1315,6 +1370,7 @@ function bindAdminForms(): void {
     const note = String(fd.get("note") ?? "") || undefined;
     const yrke = yrkeRaw === "" ? null : yrkeRaw;
     const grammatikk = gramRaw === "" ? null : gramRaw;
+    customizeUke = uke;
     if (yrke === null && grammatikk === null) {
       setFlash(`Nullstiller tilpasning for uke ${uke}…`);
       render();
@@ -1337,10 +1393,16 @@ function bindAdminForms(): void {
       note,
       at: new Date().toISOString()
     });
+    const deler = [
+      yrke ? `yrke «${yrke}»` : null,
+      grammatikk ? `grammatikk «${grammatikk}»` : null
+    ]
+      .filter(Boolean)
+      .join(" og ");
     setFlash(
       err
         ? `Kunne ikke lagre: ${err}`
-        : `Uke ${uke} er tilpasset. Se merket «Tilpasset» i Oversikt.`
+        : `Lagret: uke ${uke} har nå ${deler}. Se «Tilpassede uker» under og merket «Tilpasset» i Årsplan.`
     );
     render();
   });
@@ -1348,6 +1410,7 @@ function bindAdminForms(): void {
   document.getElementById("custom-clear")?.addEventListener("click", async () => {
     const uke = Number((document.getElementById("custom-uke") as HTMLInputElement | null)?.value);
     if (!Number.isFinite(uke)) return;
+    customizeUke = uke;
     setFlash(`Nullstiller tilpasning for uke ${uke}…`);
     render();
     const err = await runPlanAction({
@@ -1355,8 +1418,36 @@ function bindAdminForms(): void {
       uke,
       at: new Date().toISOString()
     });
-    setFlash(err ? `Kunne ikke nullstille: ${err}` : `Uke ${uke} er nullstilt.`);
+    setFlash(err ? `Kunne ikke nullstille: ${err}` : `Uke ${uke} er nullstilt og følger grunnplanen igjen.`);
     render();
+  });
+
+  app?.querySelectorAll<HTMLButtonElement>(".custom-edit").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const uke = Number(btn.dataset.uke);
+      if (!Number.isFinite(uke)) return;
+      customizeUke = uke;
+      render();
+      document.getElementById("customize-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  app?.querySelectorAll<HTMLButtonElement>(".custom-reset").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const uke = Number(btn.dataset.uke);
+      if (!Number.isFinite(uke)) return;
+      if (!window.confirm(`Nullstille tilpasningen for uke ${uke}?`)) return;
+      customizeUke = uke;
+      setFlash(`Nullstiller tilpasning for uke ${uke}…`);
+      render();
+      const err = await runPlanAction({
+        type: "clearWeekOverride",
+        uke,
+        at: new Date().toISOString()
+      });
+      setFlash(err ? `Kunne ikke nullstille: ${err}` : `Uke ${uke} er nullstilt og følger grunnplanen igjen.`);
+      render();
+    });
   });
 
   document.getElementById("send-hefte-form")?.addEventListener("submit", async (e) => {
