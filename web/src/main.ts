@@ -21,7 +21,7 @@ const SESSION_KEY = "mbo-admin-session-v1";
  * endres, og hold begge forklaringene i tråd med nye funksjoner i appen.
  */
 const APP_FASE = "Fase 2";
-const DOCS_UPDATED = "23. juli 2026";
+const DOCS_UPDATED = "25. juli 2026";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -37,6 +37,11 @@ let planSource: "local" | "server" | "base" = "base";
 let adminFlash: string | null = null;
 /** Uken som er valgt i «Tilpass yrke og grammatikk», overlever re-render */
 let customizeUke: number | null = null;
+/** Valgt uke i «Send hefte» (overlever re-render) */
+let sendUke: number | null = null;
+/** Pågående manuell sending — hindrer dobbeltklikk og viser status i panelet */
+let sendHefteBusy = false;
+let sendHefteStatus: { kind: "info" | "ok" | "error"; text: string } | null = null;
 
 type RecipientRow = {
   email: string;
@@ -355,14 +360,26 @@ async function sendHefteManualWithMessage(input: {
       },
       body: JSON.stringify(input)
     });
-    const data = (await res.json()) as {
+    let data: {
       success?: boolean;
       error?: string;
       message?: string;
       sentTo?: string[];
       kapittel?: number;
       uke?: number;
-    };
+      contentSource?: string;
+    } = {};
+    try {
+      data = (await res.json()) as typeof data;
+    } catch {
+      if (res.status === 504 || res.status === 502) {
+        return {
+          error:
+            "Serveren brukte for lang tid (timeout). Prøv igjen — eller sjekk om e-posten likevel kom frem."
+        };
+      }
+      return { error: `Ugyldig svar fra serveren (${res.status}).` };
+    }
     if (res.status === 401) {
       setSessionToken("");
       return { error: "Økten er utløpt. Logg inn på nytt." };
@@ -371,13 +388,16 @@ async function sendHefteManualWithMessage(input: {
       return { error: data.error ?? `Sending feilet (${res.status})` };
     }
     const to = data.sentTo?.join(", ") ?? "";
+    const src =
+      data.contentSource === "fallback" ? " (fallback — Gemini feilet, midlertidig innhold)" : "";
     return {
       error: null,
-      detail: `Sendt uke ${data.uke} (kap. ${data.kapittel}) til: ${to}`
+      detail: `Sendt uke ${data.uke} (kap. ${data.kapittel}) til: ${to}${src}`
     };
   } catch {
     return {
-      error: "Kunne ikke nå serveren. Vent gjerne 2 min og sjekk innboksen før du prøver igjen."
+      error:
+        "Kunne ikke nå serveren (nettverk/timeout). Vent 2 minutter og sjekk innboksen før du prøver igjen."
     };
   }
 }
@@ -872,7 +892,7 @@ function renderVeiledning(): string {
       <h2>6. Send hefte manuelt</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Når du vil forberede deg i forkant, i stedet for å vente på den automatiske onsdagsutsendingen.</p>
-        <p><strong>Hvordan?</strong> Velg uke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
+        <p><strong>Hvordan?</strong> Velg en uke som finnes i årsplanen (ikke sommerferie — f.eks. uke 34), velg mottaker, og trykk «Send hefte». Det kan ta 1–2 minutter. Status vises under knappen.</p>
         <p class="muted">Den faste onsdagsutsendingen fortsetter uansett som normalt.</p>
       </div>
     </div>
@@ -1010,11 +1030,45 @@ function renderRecipientsPanel(): string {
   `;
 }
 
+function weekRow(uke: number): EffectiveUke | undefined {
+  return (effectiveUker ?? []).find((u) => u.uke === uke);
+}
+
+function canSendUke(uke: number): boolean {
+  const row = weekRow(uke);
+  return Boolean(row && row.status !== "locked" && row.status !== "empty" && row.kapittelNummer != null);
+}
+
+/** Første uke det går an å sende hefte for (helst ≥ inneværende ISO-uke). */
+function defaultSendableUke(): number {
+  const now = getIsoWeekNumber();
+  if (canSendUke(now)) return now;
+  const rows = [...(effectiveUker ?? [])].sort((a, b) => a.uke - b.uke);
+  const upcoming = rows.find((u) => u.uke >= now && canSendUke(u.uke));
+  if (upcoming) return upcoming.uke;
+  const any = rows.find((u) => canSendUke(u.uke));
+  return any?.uke ?? now;
+}
+
+function weekSendBlockReason(uke: number): string | null {
+  const row = weekRow(uke);
+  if (!row) {
+    const suggestion = defaultSendableUke();
+    return canSendUke(suggestion)
+      ? `Uke ${uke} finnes ikke i årsplanen. Prøv f.eks. uke ${suggestion}.`
+      : `Uke ${uke} finnes ikke i inneværende årsplan.`;
+  }
+  if (row.status === "locked") return `Uke ${uke} er låst (ferie) — kan ikke sende hefte.`;
+  if (row.status === "empty" || row.kapittelNummer == null) {
+    return `Uke ${uke} er tom/innhenting — kan ikke sende hefte.`;
+  }
+  return null;
+}
+
 function weekSendPreview(uke: number): string {
-  const row = (effectiveUker ?? []).find((u) => u.uke === uke);
-  if (!row) return "Uken finnes ikke i inneværende årsplan.";
-  if (row.status === "locked") return "Låst uke (ferie) — kan ikke sende hefte.";
-  if (row.status === "empty") return "Tom/innhentingsuke — kan ikke sende hefte.";
+  const blocked = weekSendBlockReason(uke);
+  if (blocked) return blocked;
+  const row = weekRow(uke)!;
   const kap = plan.kapitler.find((k) => k.nummer === row.kapittelNummer);
   if (!kap) return `Kapittel ${row.kapittelNummer ?? "?"} (mangler detaljer)`;
   const yrke = row.overrideYrke ?? kap.yrke;
@@ -1135,8 +1189,14 @@ function defaultSendEmail(): string {
 }
 
 function renderSendHeftePanel(): string {
-  const ukeNow = getIsoWeekNumber();
+  const selectedUke = sendUke ?? defaultSendableUke();
   const defaultEmail = escapeHtml(defaultSendEmail());
+  const preview = weekSendPreview(selectedUke);
+  const previewClass = canSendUke(selectedUke) ? "muted" : "send-uke-warning";
+  const statusHtml = sendHefteStatus
+    ? `<p class="admin-flash send-status is-${sendHefteStatus.kind}" role="status">${escapeHtml(sendHefteStatus.text)}</p>`
+    : "";
+  const disabled = sendHefteBusy ? " disabled" : "";
   return `
     <div class="panel highlight" id="send-hefte-panel">
       <h2>Send hefte nå</h2>
@@ -1144,27 +1204,33 @@ function renderSendHeftePanel(): string {
         Generer og send arbeidsheftet for en valgt uke — f.eks. for å forberede deg i forkant.
         Den automatiske onsdagsutsendingen fortsetter som før.
       </p>
-      <form id="send-hefte-form" class="admin-form send-hefte-form">
+      <p class="muted">
+        Velg en uke som finnes i årsplanen (ikke sommerferie). Nå foreslås uke ${selectedUke}.
+      </p>
+      <form id="send-hefte-form" class="admin-form send-hefte-form"${sendHefteBusy ? " aria-busy=\"true\"" : ""}>
         <label for="send-uke">ISO-uke</label>
-        <input id="send-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
-        <p class="muted" id="send-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
+        <input id="send-uke" name="uke" type="number" min="1" max="53" required value="${selectedUke}"${disabled} />
+        <p class="${previewClass}" id="send-uke-preview">${escapeHtml(preview)}</p>
 
         <fieldset class="send-mode">
           <legend>Hvem skal motta?</legend>
           <label class="radio-row">
-            <input type="radio" name="mode" value="one" checked />
+            <input type="radio" name="mode" value="one" checked${disabled} />
             Kun denne adressen (anbefalt for forberedelse)
           </label>
           <label for="send-motaker" class="sr-only">E-postadresse</label>
-          <input id="send-motaker" name="motaker" type="email" value="${defaultEmail}" placeholder="din@epost.no" />
+          <input id="send-motaker" name="motaker" type="email" value="${defaultEmail}" placeholder="din@epost.no"${disabled} />
           <label class="radio-row">
-            <input type="radio" name="mode" value="all" />
+            <input type="radio" name="mode" value="all"${disabled} />
             Alle aktive mottakere (${recipients.filter((r) => r.active).length})
           </label>
         </fieldset>
 
-        <button type="submit" class="btn">Send hefte</button>
-        <p class="muted">Kan ta 1–2 minutter (Gemini lager innhold + Word-fil).</p>
+        <button type="submit" class="btn" id="send-hefte-btn"${disabled}>
+          ${sendHefteBusy ? "Sender hefte…" : "Send hefte"}
+        </button>
+        <p class="muted">Kan ta 1–2 minutter (Gemini lager innhold + Word-fil). Ikke lukk fanen mens det pågår.</p>
+        ${statusHtml}
       </form>
     </div>
   `;
@@ -1334,8 +1400,12 @@ function bindAdminForms(): void {
   const sendPreview = document.getElementById("send-uke-preview");
   sendUkeInput?.addEventListener("input", () => {
     const uke = Number(sendUkeInput.value);
-    if (sendPreview && Number.isFinite(uke)) {
+    if (!Number.isFinite(uke)) return;
+    sendUke = uke;
+    if (sendPreview) {
       sendPreview.textContent = weekSendPreview(uke);
+      sendPreview.classList.toggle("send-uke-warning", !canSendUke(uke));
+      sendPreview.classList.toggle("muted", canSendUke(uke));
     }
   });
 
@@ -1452,20 +1522,56 @@ function bindAdminForms(): void {
 
   document.getElementById("send-hefte-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (sendHefteBusy) return;
     const fd = new FormData(e.target as HTMLFormElement);
     const uke = Number(fd.get("uke"));
     const mode = String(fd.get("mode") ?? "one") === "all" ? "all" : "one";
     const motaker = String(fd.get("motaker") ?? "").trim() || undefined;
-    if (mode === "one" && !motaker) {
-      setFlash("Skriv inn e-postadressen du vil sende til.");
+    sendUke = uke;
+
+    if (!Number.isFinite(uke) || uke < 1 || uke > 53) {
+      sendHefteStatus = { kind: "error", text: "Ugyldig ukenummer. Velg en uke mellom 1 og 53." };
       render();
+      document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    setFlash(`Genererer og sender hefte for uke ${uke}… Dette kan ta 1–2 minutter.`);
+    const blocked = weekSendBlockReason(uke);
+    if (blocked) {
+      sendHefteStatus = { kind: "error", text: blocked };
+      render();
+      document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    if (mode === "one" && !motaker) {
+      sendHefteStatus = {
+        kind: "error",
+        text: "Skriv inn e-postadressen du vil sende til, eller velg «Alle aktive mottakere»."
+      };
+      render();
+      document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+
+    sendHefteBusy = true;
+    sendHefteStatus = {
+      kind: "info",
+      text: `Genererer og sender hefte for uke ${uke}… Dette kan ta 1–2 minutter. Ikke lukk fanen.`
+    };
+    setFlash(sendHefteStatus.text);
     render();
+    document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
     const result = await sendHefteManualWithMessage({ uke, mode, motaker });
-    setFlash(result.error ? `Sending feilet: ${result.error}` : (result.detail ?? "Hefte sendt."));
+    sendHefteBusy = false;
+    if (result.error) {
+      sendHefteStatus = { kind: "error", text: `Sending feilet: ${result.error}` };
+      setFlash(sendHefteStatus.text);
+    } else {
+      sendHefteStatus = { kind: "ok", text: result.detail ?? "Hefte sendt." };
+      setFlash(sendHefteStatus.text);
+    }
     render();
+    document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   app?.querySelectorAll<HTMLButtonElement>(".recipient-remove").forEach((btn) => {

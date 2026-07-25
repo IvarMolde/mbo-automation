@@ -221,13 +221,16 @@ function resolveKapittelFromRequest(body: {
   }
   const resolution = resolveKapittelForIsoUke(uke);
   if (resolution.type === "mangler_uke") {
-    throw new ApiError(503, `Mangler årsplan-rad for ISO-uke ${resolution.isoUke}.`);
+    throw new ApiError(
+      400,
+      `Uke ${resolution.isoUke} finnes ikke i årsplanen (f.eks. sommerferie). Velg en uke som har kapittel i oversikten — skoleåret starter typisk i uke 34.`
+    );
   }
   if (resolution.type === "laast_uke") {
-    throw new ApiError(503, `ISO-uke ${resolution.isoUke} er låst (ferie).`);
+    throw new ApiError(400, `Uke ${resolution.isoUke} er låst (ferie) og kan ikke få hefte.`);
   }
   if (resolution.type === "tom_uke") {
-    throw new ApiError(503, `ISO-uke ${resolution.isoUke} er tom etter forskyvning.`);
+    throw new ApiError(400, `Uke ${resolution.isoUke} er tom/innhenting og kan ikke få hefte.`);
   }
   return resolution.kapittel;
 }

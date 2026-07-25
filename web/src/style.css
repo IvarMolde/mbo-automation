@@ -356,6 +356,34 @@ a:hover {
   color: var(--marine);
 }
 
+.admin-flash.send-status.is-error {
+  background: #fdecea;
+  border-color: #f5c2c0;
+  color: #8a1f1b;
+}
+
+.admin-flash.send-status.is-ok {
+  background: #e8f6ee;
+  border-color: #9cccaf;
+  color: #1b5e3b;
+}
+
+.admin-flash.send-status.is-info {
+  background: #fff6e5;
+  border-color: #f0d59a;
+  color: #6b4a00;
+}
+
+.send-uke-warning {
+  color: #8a1f1b;
+  font-weight: 600;
+}
+
+#send-hefte-form[aria-busy="true"] .btn {
+  opacity: 0.75;
+  cursor: wait;
+}
+
 .uke-card.is-locked .uke-title {
   color: #6b3a12;
 }
