@@ -21,7 +21,7 @@ const SESSION_KEY = "mbo-admin-session-v1";
  * endres, og hold begge forklaringene i tråd med nye funksjoner i appen.
  */
 const APP_FASE = "Fase 2";
-const DOCS_UPDATED = "23. juli 2026";
+const DOCS_UPDATED = "25. juli 2026";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -747,6 +747,11 @@ function renderOm(): string {
         genereres med KI (Google Gemini) og pakkes i et Word-dokument (.docx) som sendes på e-post
         til mottakerne. Den faste utsendingen skjer automatisk hver onsdag.
       </p>
+      <p>
+        Oppgavene i Word-heftet har tydelig pedagogisk layout: radioknapper (○) når eleven skal
+        velge <em>ett</em> svar, avkryssingsbokser (☐) når flere svar kan være riktige,
+        sant/usant-valg, ordbank til setningsbygging, og skrivelinjer til åpne svar.
+      </p>
 
       <h3>5. Tilpasning underveis</h3>
       <p>
@@ -873,6 +878,7 @@ function renderVeiledning(): string {
       <div class="help-text">
         <p><strong>Når?</strong> Når du vil forberede deg i forkant, i stedet for å vente på den automatiske onsdagsutsendingen.</p>
         <p><strong>Hvordan?</strong> Velg uke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
+        <p><strong>Oppgavene i heftet:</strong> ○ = ett svar, ☐ = flere svar, egen ordbank til setningsbygging, og linjer til skriving/muntlig sjekkliste.</p>
         <p class="muted">Den faste onsdagsutsendingen fortsetter uansett som normalt.</p>
       </div>
     </div>

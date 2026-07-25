@@ -27,14 +27,70 @@ const hefte: ArbeidshefteData = {
         {
           nummer: 1,
           type: "leseforstaelse",
+          format: "leseforstaelse",
           tittel: "Les og svar",
-          innhold: "Hva er hovedtema? a) Hygiene b) Mat c) Sport d) Musikk e) Reise"
+          innhold: "Les teksten og svar på spørsmålene.",
+          deler: [
+            {
+              merke: "1a",
+              tekst: "Hva er hovedtema?",
+              svarType: "single",
+              alternativer: ["Hygiene", "Mat", "Sport", "Musikk"]
+            },
+            {
+              merke: "1b",
+              tekst: "Skriv et kort svar med egne ord.",
+              svarType: "open"
+            }
+          ]
         },
         {
           nummer: 2,
-          type: "skriveoppgave",
-          tittel: "Skriv",
-          innhold: "Skriv fem setninger om deg selv."
+          type: "variert",
+          format: "avkryssing",
+          tittel: "Kryss av",
+          innhold: "Kryss av alle som passer. Flere kan være riktige.",
+          deler: [
+            {
+              merke: "2a",
+              tekst: "Hva er viktig på jobb?",
+              svarType: "multi",
+              alternativer: ["Punctuality", "Hygiene", "Soving på jobb", "Samarbeid"]
+            }
+          ]
+        },
+        {
+          nummer: 3,
+          type: "fyll_inn_setningsstruktur",
+          format: "fyll_inn",
+          tittel: "Fyll inn",
+          innhold: "Bruk ordbanken.",
+          ordbank: ["jeg", "jobber", "som", "renholder"],
+          deler: [
+            { merke: "3a", tekst: "_____ _____ _____ renholder.", svarType: "fyll_inn" }
+          ]
+        },
+        {
+          nummer: 4,
+          type: "variert",
+          format: "sant_usant",
+          tittel: "Sant eller usant",
+          innhold: "Velg sant eller usant.",
+          deler: [
+            { merke: "4a", tekst: "Teksten handler om renhold.", svarType: "sant_usant" },
+            { merke: "4b", tekst: "Alt skjer i et annet land.", svarType: "sant_usant" }
+          ]
+        },
+        {
+          nummer: 5,
+          type: "variert",
+          format: "finn_par",
+          tittel: "Finn par",
+          innhold: "Koble riktig.",
+          par: {
+            venstre: ["1. kollega", "2. pause", "3. lager"],
+            hoyre: ["A. sted for varer", "B. person du jobber med", "C. kort hvil"]
+          }
         }
       ]
     }
@@ -52,12 +108,15 @@ const hefte: ArbeidshefteData = {
     ],
     huskeregel: "Subjekt: jeg/du/han. Objekt: meg/deg/ham."
   },
-  ordliste: Array.from({ length: 3 }, (_, i) => ({
+  ordliste: Array.from({ length: 15 }, (_, i) => ({
     ord: `ord${i}`,
     forklaring: "forklaring",
     eksempel: "Dette er et eksempel."
   })),
-  kapitteltest: [{ nummer: 1, innhold: "Hva betyr hygiene?" }],
+  kapitteltest: Array.from({ length: 5 }, (_, i) => ({
+    nummer: i + 1,
+    innhold: "Hva betyr hygiene på jobb?"
+  })),
   fasit: "a".repeat(30)
 };
 
@@ -84,9 +143,9 @@ describe("splitOppgaveInnhold", () => {
 });
 
 describe("wordGenerator", () => {
-  it("bygger et gyldig docx-buffer med designmal", async () => {
+  it("bygger et gyldig docx-buffer med pedagogiske oppgaveformater", async () => {
     const buf = await genererWordHefte(kapittel, hefte, 34);
-    expect(buf.byteLength).toBeGreaterThan(2000);
+    expect(buf.byteLength).toBeGreaterThan(3000);
     expect(buf.subarray(0, 2).toString("utf8")).toBe("PK");
   });
 });
