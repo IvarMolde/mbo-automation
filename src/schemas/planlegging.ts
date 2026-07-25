@@ -219,12 +219,51 @@ export type CefrCanDoSamling = z.infer<typeof cefrCanDoSamlingSchema>;
 
 // ── Generert undervisningsopplegg (Gemini → validering → dokumenter) ───────
 
+const oppgaveFormatSchema = z.enum([
+  "leseforstaelse",
+  "flervalg",
+  "avkryssing",
+  "sant_usant",
+  "finn_par",
+  "fyll_inn",
+  "skrive",
+  "muntlig"
+]);
+
+const oppgaveSvarTypeSchema = z.enum(["single", "multi", "open", "sant_usant", "fyll_inn"]);
+
+const oppgaveDelSchema = z.object({
+  merke: z.string().min(1).max(10),
+  tekst: z.string().min(2).max(2000),
+  svarType: oppgaveSvarTypeSchema,
+  alternativer: z.array(z.string().min(1).max(500)).min(2).max(8).optional()
+});
+
 /** Gemini-kontrakt: følger årsplanens tematekster + oppgavestruktur. */
 export const arbeidshefteOppgaveSchema = z.object({
   nummer: z.number().int().positive().max(20),
   type: z.string().min(1).max(120),
   tittel: z.string().min(3).max(500),
-  innhold: z.string().min(15).max(20_000)
+  innhold: z.string().min(15).max(20_000),
+  format: oppgaveFormatSchema.optional(),
+  deler: z.array(oppgaveDelSchema).min(1).max(12).optional(),
+  ordbank: z.array(z.string().min(1).max(80)).min(3).max(20).optional(),
+  par: z
+    .object({
+      venstre: z.array(z.string().min(1).max(300)).min(3).max(8),
+      hoyre: z.array(z.string().min(1).max(300)).min(3).max(8)
+    })
+    .optional(),
+  roller: z
+    .array(
+      z.object({
+        navn: z.string().min(1).max(40),
+        tekst: z.string().min(5).max(2000)
+      })
+    )
+    .min(1)
+    .max(4)
+    .optional()
 });
 
 export const arbeidshefteTekstSeksjonSchema = z.object({

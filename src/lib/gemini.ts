@@ -2,8 +2,15 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
 import { getServiceAccountCredentials } from "./gcpCredentials.js";
 import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
-import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, OppgaveMal, TematekstMal } from "./types.js";
+import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, Oppgave, OppgaveMal, TematekstMal } from "./types.js";
 import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
+import {
+  defaultSvarTypeForFormat,
+  inferDelerFromInnhold,
+  normalizeDeler,
+  resolveOppgaveFormat,
+  type OppgaveFormat
+} from "./oppgaveFormat.js";
 
 export type GenererArbeidshefteOptions = {
   laererTilleggsinstruks?: string;
@@ -69,6 +76,178 @@ function createFallbackGrammatikkForklaring(emne: string): GrammatikkForklaring 
   };
 }
 
+/** Roter «variert»-format per tekst, så heftene ikke gjentar samme oppgaveform. */
+function variertFormatForTekst(tekstNummer: number): OppgaveFormat {
+  const rotation: OppgaveFormat[] = ["flervalg", "sant_usant", "avkryssing", "finn_par", "flervalg"];
+  return rotation[(tekstNummer - 1) % rotation.length] ?? "flervalg";
+}
+
+function createFallbackOppgave(
+  o: OppgaveMal,
+  tekstNummer: number,
+  tekstTittel: string,
+  kapittel: Kapittel
+): Oppgave {
+  const n = o.nummer;
+  if (o.type === "leseforstaelse") {
+    return {
+      nummer: n,
+      type: o.type,
+      tittel: "Les og svar",
+      innhold: `Les teksten «${tekstTittel}» og svar på spørsmålene.`,
+      format: "leseforstaelse",
+      deler: [
+        {
+          merke: `${n}a`,
+          tekst: `Hva handler teksten om?`,
+          svarType: "single",
+          alternativer: [kapittel.yrke, "Matlaging", "Sport", "Reise"]
+        },
+        {
+          merke: `${n}b`,
+          tekst: `Hva er viktig i teksten om ${kapittel.arbeidsnorskTema.toLowerCase()}?`,
+          svarType: "open"
+        },
+        {
+          merke: `${n}c`,
+          tekst: "Finn ett ord i teksten som er nytt for deg. Forklar det.",
+          svarType: "open"
+        }
+      ]
+    };
+  }
+
+  if (o.type === "variert") {
+    const format = variertFormatForTekst(tekstNummer);
+    if (format === "sant_usant") {
+      return {
+        nummer: n,
+        type: o.type,
+        tittel: "Sant eller usant",
+        innhold: "Er påstandene sant eller usant ut fra teksten?",
+        format,
+        deler: [
+          { merke: `${n}a`, tekst: `Teksten handler om yrket ${kapittel.yrke}.`, svarType: "sant_usant" },
+          { merke: `${n}b`, tekst: "Alt i teksten skjer i et annet land.", svarType: "sant_usant" },
+          { merke: `${n}c`, tekst: `Grammatikktemaet er ${kapittel.grammatikk}.`, svarType: "sant_usant" }
+        ]
+      };
+    }
+    if (format === "avkryssing") {
+      return {
+        nummer: n,
+        type: o.type,
+        tittel: "Kryss av",
+        innhold: "Kryss av alle svar som passer til teksten. Flere kan være riktige.",
+        format,
+        deler: [
+          {
+            merke: `${n}a`,
+            tekst: "Hva kan du lære av teksten?",
+            svarType: "multi",
+            alternativer: [
+              `Ord om ${kapittel.yrke.toLowerCase()}`,
+              "Hvordan man snakker på jobb",
+              "Hvordan man kjører bil",
+              kapittel.arbeidsnorskTema
+            ]
+          }
+        ]
+      };
+    }
+    if (format === "finn_par") {
+      return {
+        nummer: n,
+        type: o.type,
+        tittel: "Finn par",
+        innhold: "Koble ord og betydning. Skriv bokstaven ved tallet.",
+        format,
+        par: {
+          venstre: ["1. kollega", "2. pause", "3. sikkerhet", "4. arbeidsplass"],
+          hoyre: ["A. sted der du jobber", "B. person du jobber med", "C. kort hvil", "D. å passe på at ingen blir skadet"]
+        }
+      };
+    }
+    return {
+      nummer: n,
+      type: o.type,
+      tittel: "Flervalg",
+      innhold: "Velg ett riktig svar.",
+      format: "flervalg",
+      deler: [
+        {
+          merke: `${n}a`,
+          tekst: `Hvilket yrke handler kapittelet om?`,
+          svarType: "single",
+          alternativer: [kapittel.yrke, "Lærer", "Kokk", "Sjåfør"]
+        },
+        {
+          merke: `${n}b`,
+          tekst: "Hva er viktig på en arbeidsplass?",
+          svarType: "single",
+          alternativer: ["God kommunikasjon", "Å komme for sent", "Å snakke svært lavt", "Å glemme navn"]
+        }
+      ]
+    };
+  }
+
+  if (o.type === "fyll_inn_setningsstruktur") {
+    return {
+      nummer: n,
+      type: o.type,
+      tittel: "Fyll inn med ordbank",
+      innhold: "Bruk ordene i ordbanken. Skriv ett ord på hver strek.",
+      format: "fyll_inn",
+      ordbank: ["jeg", "jobber", "som", "på", "lageret", "i", "dag", "sammen"],
+      deler: [
+        { merke: `${n}a`, tekst: `_____ _____ _____ ${kapittel.yrke.toLowerCase()}.`, svarType: "fyll_inn" },
+        { merke: `${n}b`, tekst: "Vi snakker _____ jobb _____ pausen.", svarType: "fyll_inn" },
+        { merke: `${n}c`, tekst: "Kan du hjelpe meg _____ _____?", svarType: "fyll_inn" }
+      ]
+    };
+  }
+
+  if (o.type === "skriveoppgave") {
+    return {
+      nummer: n,
+      type: o.type,
+      tittel: "Skriv",
+      innhold: `Skriv 4–6 setninger om ${kapittel.arbeidsnorskTema.toLowerCase()} i yrket ${kapittel.yrke}.`,
+      format: "skrive",
+      deler: [
+        {
+          merke: `${n}a`,
+          tekst: "Skriv om en vanlig arbeidsdag. Bruk ord fra teksten.",
+          svarType: "open"
+        }
+      ]
+    };
+  }
+
+  return {
+    nummer: n,
+    type: o.type,
+    tittel: "Muntlig øvelse",
+    innhold: "Øv med en partner. Bytt roller etterpå.",
+    format: "muntlig",
+    roller: [
+      {
+        navn: "A",
+        tekst: `Du er ny på jobb som ${kapittel.yrke.toLowerCase()}. Presenter deg og still to spørsmål.`
+      },
+      {
+        navn: "B",
+        tekst: "Du er kollega. Svar vennlig og forklar én viktig rutine på arbeidsplassen."
+      }
+    ],
+    deler: [
+      { merke: `${n}a`, tekst: "Presentere seg", svarType: "open" },
+      { merke: `${n}b`, tekst: "Stille spørsmål og svare", svarType: "open" },
+      { merke: `${n}c`, tekst: "Bruke minst tre ord fra ordlisten", svarType: "open" }
+    ]
+  };
+}
+
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const tematekster = defaultTematekster(kapittel);
   const oppgavestruktur = defaultOppgavestruktur(kapittel);
@@ -83,12 +262,7 @@ function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
       `Dette er en midlertidig tekst for «${t.tittel}» (${t.type}). ` +
       `Kapittelet handler om yrket ${kapittel.yrke}, temaet ${kapittel.arbeidsnorskTema} ` +
       `og grammatikk: ${kapittel.grammatikk}. Teksten skal erstattes av Gemini-innhold.`,
-    oppgaver: oppgavestruktur.map((o) => ({
-      nummer: o.nummer,
-      type: o.type,
-      tittel: `Oppgave ${o.nummer}: ${o.type}`,
-      innhold: `${o.beskrivelse} (knyttet til teksten «${t.tittel}»).`
-    }))
+    oppgaver: oppgavestruktur.map((o) => createFallbackOppgave(o, t.nummer, t.tittel, kapittel))
   }));
 
   return {
@@ -217,15 +391,68 @@ function normalizeGeminiPayload(raw: unknown, kapittel?: Kapittel): unknown {
     data.tekstSeksjoner = data.tekstSeksjoner.map((seksjon, si) => {
       if (!seksjon || typeof seksjon !== "object") return seksjon;
       const s = seksjon as Record<string, unknown>;
+      const seksjonNummer = typeof s.nummer === "number" ? s.nummer : si + 1;
       const oppgaver = Array.isArray(s.oppgaver)
         ? s.oppgaver.map((oppgave, oi) => {
             if (!oppgave || typeof oppgave !== "object") return oppgave;
             const o = oppgave as Record<string, unknown>;
+            const nummer = typeof o.nummer === "number" ? o.nummer : oi + 1;
+            const type = String(o.type ?? "oppgave");
+            const innhold = String(o.innhold ?? "Fullfør oppgaven.");
+            const preferredFormat =
+              type === "variert" && !o.format && !o.undertype
+                ? variertFormatForTekst(seksjonNummer)
+                : undefined;
+            const format = resolveOppgaveFormat(
+              type,
+              preferredFormat ?? (o.format != null ? String(o.format) : null),
+              o.undertype != null ? String(o.undertype) : null
+            );
+            const defaultSvar = defaultSvarTypeForFormat(format);
+            let deler = normalizeDeler(o.deler ?? o.sporsmal ?? o.deloppgaver, nummer, defaultSvar);
+            if (!deler) {
+              deler = inferDelerFromInnhold(innhold, nummer, format);
+            }
+            const ordbank = Array.isArray(o.ordbank)
+              ? o.ordbank.map((w) => String(w ?? "").trim()).filter((w) => w.length > 0)
+              : undefined;
+            let par: Oppgave["par"];
+            if (o.par && typeof o.par === "object") {
+              const p = o.par as Record<string, unknown>;
+              const venstre = Array.isArray(p.venstre)
+                ? p.venstre.map((x) => String(x ?? "").trim()).filter(Boolean)
+                : [];
+              const hoyre = Array.isArray(p.hoyre)
+                ? p.hoyre.map((x) => String(x ?? "").trim()).filter(Boolean)
+                : [];
+              if (venstre.length >= 3 && hoyre.length >= 3) {
+                par = { venstre, hoyre };
+              }
+            }
+            let roller: Oppgave["roller"];
+            if (Array.isArray(o.roller)) {
+              const parsed = o.roller
+                .map((r) => {
+                  if (!r || typeof r !== "object") return null;
+                  const role = r as Record<string, unknown>;
+                  const navn = String(role.navn ?? role.rolle ?? "").trim();
+                  const tekst = String(role.tekst ?? role.replik ?? "").trim();
+                  if (!navn || tekst.length < 5) return null;
+                  return { navn, tekst };
+                })
+                .filter((r): r is { navn: string; tekst: string } => Boolean(r));
+              if (parsed.length) roller = parsed;
+            }
             return {
-              nummer: typeof o.nummer === "number" ? o.nummer : oi + 1,
-              type: String(o.type ?? "oppgave"),
+              nummer,
+              type,
               tittel: String(o.tittel ?? `Oppgave ${oi + 1}`),
-              innhold: String(o.innhold ?? "Fullfør oppgaven.")
+              innhold: innhold.length >= 15 ? innhold : `${innhold} Fullfør oppgaven.`.trim(),
+              format,
+              ...(deler ? { deler } : {}),
+              ...(ordbank && ordbank.length >= 3 ? { ordbank } : {}),
+              ...(par ? { par } : {}),
+              ...(roller ? { roller } : {})
             };
           })
         : [];
@@ -362,8 +589,23 @@ Krav:
 - Lag nøyaktig ${tematekster.length} objekter i tekstSeksjoner (samme nummer, type og tittel som i årsplan-malen).
 - Hver tekst skal være 80–150 ord, realistisk og arbeidslivsnær, med naturlig bruk av grammatikkfokus.
 - Under hver tekst: nøyaktig ${oppgavestruktur.length} oppgaver (samme nummer/type som i malen).
-- Marker ALLE deloppgaver med oppgavenummer + bokstav: 1a, 1b, 1c, 1d, 2a, 2b, 2c osv. (ikke bare a) b) c)).
-- Hver deloppgave/alternativ på egen linje. Fasit skal bruke samme merking (1a, 1b, …).
+- Hver oppgave MÅ ha strukturerte felt for pedagogisk Word-layout (ikke bare fri tekst):
+  * format (påkrevd): leseforstaelse | flervalg | avkryssing | sant_usant | finn_par | fyll_inn | skrive | muntlig
+  * deler: liste med { merke, tekst, svarType, alternativer? }
+  * svarType: single (= ett svar, radioknapp ○) | multi (= flere svar, avkryssing ☐) | open | sant_usant | fyll_inn
+- Mapping fra årsplan-type til format:
+  * leseforstaelse → format "leseforstaelse" (blanding: noen deler med alternativer/single, noen open)
+  * variert → Roter format per tekstnr: 1=flervalg, 2=sant_usant, 3=avkryssing, 4=finn_par, 5=flervalg
+  * fyll_inn_setningsstruktur → format "fyll_inn" + ordbank (5–12 ord) + deler med streker (_____)
+  * skriveoppgave → format "skrive" + open deler
+  * muntlig → format "muntlig" + roller (A/B) + deler som sjekkliste
+- REGLER FOR KNAPPER (svært viktig):
+  * Ett riktig svar → svarType "single" (Word viser ○)
+  * Flere mulige riktige → svarType "multi" (Word viser ☐)
+  * Sant/usant → svarType "sant_usant" (Word viser ○ Sant  ○ Usant)
+  * Aldri bruk multi når det bare finnes ett riktig svar.
+- Marker deloppgaver med merke som "1a", "1b", "2a" osv. Fasit bruker samme merking.
+- For finn_par: fyll "par": { "venstre": ["1. …"], "hoyre": ["A. …"] } (3–6 par).
 - Ordliste: nøyaktig ${ordAntall} ord.
 - Ordliste «ord»-feltet MÅ være i lærbar form: verb som «å + infinitiv» (f.eks. «å rydde»); substantiv med riktig artikkel en/ei/et (f.eks. «en pause», «ei hylle», «et lager»); adjektiv uten artikkel.
 - Kapitteltest: nøyaktig ${testAntall} oppgaver.
@@ -384,7 +626,52 @@ Returner kun gyldig JSON:
       "tittel": "string",
       "tekst": "string",
       "oppgaver": [
-        { "nummer": 1, "type": "leseforstaelse", "tittel": "string", "innhold": "string" }
+        {
+          "nummer": 1,
+          "type": "leseforstaelse",
+          "format": "leseforstaelse",
+          "tittel": "Les og svar",
+          "innhold": "Les teksten og svar på spørsmålene.",
+          "deler": [
+            {
+              "merke": "1a",
+              "tekst": "Hva handler teksten om?",
+              "svarType": "single",
+              "alternativer": ["alternativ 1", "alternativ 2", "alternativ 3", "alternativ 4"]
+            },
+            {
+              "merke": "1b",
+              "tekst": "Skriv et kort svar med egne ord.",
+              "svarType": "open"
+            }
+          ]
+        },
+        {
+          "nummer": 2,
+          "type": "variert",
+          "format": "flervalg",
+          "tittel": "Flervalg",
+          "innhold": "Velg ett riktig svar.",
+          "deler": [
+            {
+              "merke": "2a",
+              "tekst": "Spørsmål?",
+              "svarType": "single",
+              "alternativer": ["A", "B", "C", "D"]
+            }
+          ]
+        },
+        {
+          "nummer": 3,
+          "type": "fyll_inn_setningsstruktur",
+          "format": "fyll_inn",
+          "tittel": "Fyll inn",
+          "innhold": "Bruk ordbanken. Skriv riktig ord på strekene.",
+          "ordbank": ["jeg", "jobber", "på", "lageret"],
+          "deler": [
+            { "merke": "3a", "tekst": "_____ _____ _____ lageret.", "svarType": "fyll_inn" }
+          ]
+        }
       ]
     }
   ],

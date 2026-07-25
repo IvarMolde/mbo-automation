@@ -1,3 +1,12 @@
+import type {
+  OppgaveDel,
+  OppgaveFormat,
+  OppgavePar,
+  OppgaveRolle
+} from "./oppgaveFormat.js";
+
+export type { OppgaveDel, OppgaveFormat, OppgavePar, OppgaveRolle };
+
 export type CefrNivaa = "A2" | "B1";
 
 export interface CefrCanDo {
@@ -40,7 +49,18 @@ export interface Oppgave {
   nummer: number;
   type: string;
   tittel: string;
+  /** Elevinstruks / oppgavetekst (alltid til stede). */
   innhold: string;
+  /** Pedagogisk layout: styrer ○ / ☐ / ordbank / linjer. */
+  format?: OppgaveFormat;
+  /** Strukturerte deloppgaver (1a, 1b, …). */
+  deler?: OppgaveDel[];
+  /** Ordbank til fyll-inn / setningsstruktur. */
+  ordbank?: string[];
+  /** Matching: venstre (tall) ↔ høyre (bokstav). */
+  par?: OppgavePar;
+  /** Rollespill / muntlig. */
+  roller?: OppgaveRolle[];
 }
 
 /** Én tematekst + tilhørende oppgaver (årsplan-struktur). */

@@ -16,7 +16,17 @@ import {
   VerticalAlign,
   WidthType
 } from "docx";
-import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, Oppgave, TekstSeksjon } from "./types.js";
+import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, Oppgave, OppgaveDel, TekstSeksjon } from "./types.js";
+import {
+  CHECK,
+  RADIO,
+  defaultSvarTypeForFormat,
+  inferDelerFromInnhold,
+  oppgaveTypeLabel,
+  resolveOppgaveFormat,
+  svarInstruks,
+  type OppgaveFormat
+} from "./oppgaveFormat.js";
 
 /** MBO design tokens (pedagogisk Word-mal 2026). */
 const C = {
@@ -484,36 +494,236 @@ export function splitOppgaveInnhold(raw: string, oppgaveNummer?: number): string
     .filter(Boolean);
 }
 
-function isDeloppgaveLine(line: string): boolean {
-  return /^\d{1,2}[a-eA-E]\b/.test(line) || /^[a-eA-E]\)\s/.test(line);
-}
-
-function oppgaveContentParagraphs(innhold: string, oppgaveNummer: number): Paragraph[] {
-  const lines = splitOppgaveInnhold(innhold, oppgaveNummer);
-  return lines.map((line, index) => {
-    const isOption = isDeloppgaveLine(line);
-    const isLast = index === lines.length - 1;
-    return new Paragraph({
-      spacing: { after: isOption ? 140 : 120, line: 300 },
-      indent: isOption ? { left: 160 } : undefined,
-      keepLines: true,
-      keepNext: !isLast,
-      children: [
-        new TextRun({
-          text: line,
-          color: C.night,
-          size: 21,
-          font: "Calibri",
-          bold: isOption
-        })
-      ]
-    });
+function para(
+  text: string,
+  opts?: {
+    bold?: boolean;
+    color?: string;
+    size?: number;
+    italics?: boolean;
+    indent?: number;
+    after?: number;
+    keepNext?: boolean;
+  }
+): Paragraph {
+  return new Paragraph({
+    spacing: { after: opts?.after ?? 100, line: 276 },
+    indent: opts?.indent != null ? { left: opts.indent } : undefined,
+    keepLines: true,
+    keepNext: opts?.keepNext,
+    children: [
+      new TextRun({
+        text,
+        bold: opts?.bold,
+        italics: opts?.italics,
+        color: opts?.color ?? C.night,
+        size: opts?.size ?? 21,
+        font: "Calibri"
+      })
+    ]
   });
 }
 
+function choiceLine(symbol: string, text: string, letter?: string): Paragraph {
+  const label = letter ? `${letter}  ` : "";
+  return new Paragraph({
+    spacing: { after: 90, line: 276 },
+    indent: { left: 200 },
+    keepLines: true,
+    children: [
+      new TextRun({
+        text: `${symbol}  ${label}${text}`,
+        color: C.night,
+        size: 21,
+        font: "Calibri"
+      })
+    ]
+  });
+}
+
+function santUsantLine(merke: string, tekst: string): Paragraph {
+  return new Paragraph({
+    spacing: { after: 120, line: 300 },
+    keepLines: true,
+    children: [
+      new TextRun({ text: `${merke}  `, bold: true, color: C.marine, size: 21, font: "Calibri" }),
+      new TextRun({ text: `${tekst}   `, color: C.night, size: 21, font: "Calibri" }),
+      new TextRun({ text: `${RADIO} Sant    ${RADIO} Usant`, color: C.teal, size: 21, font: "Calibri", bold: true })
+    ]
+  });
+}
+
+function ordbankParagraphs(ord: string[]): Paragraph[] {
+  const chips = ord.map((w) => w.trim()).filter(Boolean);
+  return [
+    para("Ordbank", { bold: true, color: C.amber, size: 18, after: 40, keepNext: true }),
+    para(chips.map((w) => `[ ${w} ]`).join("   "), { size: 20, after: 120 }),
+    para("Bruk ordene over. Skriv på strekene under.", {
+      italics: true,
+      color: C.teal,
+      size: 17,
+      after: 120
+    })
+  ];
+}
+
+function finnParParagraphs(venstre: string[], hoyre: string[]): Paragraph[] {
+  const out: Paragraph[] = [
+    para("Venstre kolonne", { bold: true, color: C.teal, size: 18, after: 60, keepNext: true })
+  ];
+  for (const item of venstre) {
+    out.push(
+      new Paragraph({
+        spacing: { after: 80, line: 276 },
+        keepLines: true,
+        children: [
+          new TextRun({ text: `${item}   →   ____`, color: C.night, size: 20, font: "Calibri" })
+        ]
+      })
+    );
+  }
+  out.push(spacer(80));
+  out.push(para("Høyre kolonne (velg bokstav)", { bold: true, color: C.teal, size: 18, after: 60 }));
+  for (const item of hoyre) {
+    out.push(para(item, { size: 20, indent: 120, after: 60 }));
+  }
+  out.push(spacer(40));
+  return out;
+}
+
+function renderDel(del: OppgaveDel, format: OppgaveFormat): Paragraph[] {
+  const out: Paragraph[] = [];
+  const svarType = del.svarType || defaultSvarTypeForFormat(format);
+
+  if (svarType === "sant_usant") {
+    out.push(santUsantLine(del.merke, del.tekst));
+    return out;
+  }
+
+  out.push(
+    para(`${del.merke}  ${del.tekst}`, {
+      bold: true,
+      color: C.marine,
+      size: 21,
+      after: 80,
+      keepNext: true
+    })
+  );
+
+  if (svarType === "single" && del.alternativer?.length) {
+    del.alternativer.forEach((alt, i) => {
+      const letter = String.fromCharCode(65 + i);
+      out.push(choiceLine(RADIO, alt, letter));
+    });
+    out.push(spacer(60));
+    return out;
+  }
+
+  if (svarType === "multi" && del.alternativer?.length) {
+    del.alternativer.forEach((alt, i) => {
+      const letter = String.fromCharCode(65 + i);
+      out.push(choiceLine(CHECK, alt, letter));
+    });
+    out.push(spacer(60));
+    return out;
+  }
+
+  if (svarType === "fyll_inn") {
+    // Ensure visible blank if model forgot underscores in the sentence
+    if (!/_{2,}|…|\.\.\./.test(del.tekst)) {
+      out.push(
+        para("______________________________", {
+          color: C.teal,
+          size: 22,
+          indent: 160,
+          after: 100
+        })
+      );
+    }
+    out.push(spacer(40));
+    return out;
+  }
+
+  // open
+  out.push(...writingLines(format === "skrive" ? 5 : 2));
+  out.push(spacer(40));
+  return out;
+}
+
+function renderOppgaveBody(oppgave: Oppgave, format: OppgaveFormat): Paragraph[] {
+  const body: Paragraph[] = [
+    para(oppgave.innhold, { size: 20, after: 100, keepNext: true }),
+    para(svarInstruks(format), {
+      italics: true,
+      color: C.teal,
+      size: 17,
+      after: 140,
+      keepNext: true
+    })
+  ];
+
+  if (format === "fyll_inn" && oppgave.ordbank?.length) {
+    body.push(...ordbankParagraphs(oppgave.ordbank));
+  }
+
+  if (format === "finn_par" && oppgave.par) {
+    body.push(...finnParParagraphs(oppgave.par.venstre, oppgave.par.hoyre));
+    return body;
+  }
+
+  if (format === "muntlig" && oppgave.roller?.length) {
+    for (const rolle of oppgave.roller) {
+      body.push(
+        para(`Rolle ${rolle.navn}`, { bold: true, color: C.amber, size: 19, after: 40, keepNext: true })
+      );
+      body.push(para(rolle.tekst, { size: 20, after: 100 }));
+    }
+    body.push(para("Sjekkliste", { bold: true, color: C.teal, size: 18, after: 60 }));
+  }
+
+  const deler =
+    oppgave.deler ??
+    inferDelerFromInnhold(oppgave.innhold, oppgave.nummer, format) ??
+    [];
+
+  if (deler.length) {
+    for (const del of deler) {
+      if (format === "muntlig") {
+        body.push(
+          new Paragraph({
+            spacing: { after: 90, line: 276 },
+            keepLines: true,
+            children: [
+              new TextRun({
+                text: `${CHECK}  ${del.merke}  ${del.tekst}`,
+                color: C.night,
+                size: 21,
+                font: "Calibri"
+              })
+            ]
+          })
+        );
+      } else {
+        body.push(...renderDel(del, format));
+      }
+    }
+  } else if (format === "skrive" || format === "muntlig") {
+    body.push(...writingLines(format === "skrive" ? 6 : 2));
+  } else {
+    // Fallback: plain split text
+    for (const line of splitOppgaveInnhold(oppgave.innhold, oppgave.nummer)) {
+      body.push(para(line, { size: 21, after: 100 }));
+    }
+    if (format === "fyll_inn") body.push(...writingLines(3));
+  }
+
+  return body;
+}
+
 function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
-  const needsLines = /skriv|muntlig|oppsummer/i.test(`${oppgave.type} ${oppgave.tittel}`);
+  const format = resolveOppgaveFormat(oppgave.type, oppgave.format);
   const num = String(oppgave.nummer).padStart(2, "0");
+  const typeTekst = oppgaveTypeLabel(oppgave.type, format);
 
   const block: Array<Paragraph | Table> = [
     spacer(280),
@@ -540,7 +750,7 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
             cell(
               [
                 new Paragraph({
-                  spacing: { after: 60 },
+                  spacing: { after: 40 },
                   keepNext: true,
                   keepLines: true,
                   children: [
@@ -554,12 +764,12 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
                   ]
                 }),
                 new Paragraph({
-                  spacing: { after: 120 },
+                  spacing: { after: 100 },
                   keepNext: true,
                   keepLines: true,
                   children: [
                     new TextRun({
-                      text: typeLabel(oppgave.type),
+                      text: typeTekst,
                       italics: true,
                       color: C.teal,
                       size: 16,
@@ -567,8 +777,7 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
                     })
                   ]
                 }),
-                ...oppgaveContentParagraphs(oppgave.innhold, oppgave.nummer),
-                ...(needsLines ? writingLines(4) : []),
+                ...renderOppgaveBody(oppgave, format),
                 spacer(80)
               ],
               CONTENT_WIDTH - 720,
@@ -699,7 +908,7 @@ export async function genererWordHefte(
 
   children.push(sectionTitle("Kapitteltest"));
   children.push(
-    bodyText("Svar på oppgavene. Hver oppgave gir 1 poeng.", {
+    bodyText("Svar på oppgavene. Hver oppgave gir 1 poeng. Skriv på linjene under hvert spørsmål.", {
       italics: true,
       color: C.teal,
       size: 20
@@ -708,13 +917,15 @@ export async function genererWordHefte(
   for (const t of arbeidshefte.kapitteltest) {
     children.push(
       new Paragraph({
-        spacing: { after: 140, line: 276 },
+        spacing: { before: 120, after: 80, line: 276 },
+        keepNext: true,
         children: [
           new TextRun({ text: `${t.nummer}. `, bold: true, color: C.amber, size: 22, font: "Calibri" }),
           new TextRun({ text: t.innhold, color: C.night, size: 21, font: "Calibri" })
         ]
       })
     );
+    children.push(...writingLines(2));
   }
 
   children.push(pageBreak());
