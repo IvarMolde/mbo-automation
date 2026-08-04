@@ -235,6 +235,18 @@ export const arbeidshefteTekstSeksjonSchema = z.object({
   oppgaver: z.array(arbeidshefteOppgaveSchema).min(3).max(6)
 });
 
+export const hverdagsmatematikkSchema = z.object({
+  kategori: z.enum(["tall", "maling_geometri", "statistikk"]),
+  kategoriLabel: z.string().min(2).max(80),
+  tittel: z.string().min(3).max(500),
+  fagtekst: z.string().min(80).max(80_000),
+  malNiva1: z.array(z.string().min(5).max(500)).min(1).max(8),
+  malNiva2: z.array(z.string().min(5).max(500)).min(1).max(8),
+  niva1: z.array(arbeidshefteOppgaveSchema).min(6).max(7),
+  niva2: z.array(arbeidshefteOppgaveSchema).min(6).max(7),
+  fasit: z.string().min(20).max(100_000)
+});
+
 export const arbeidshefteDataSchema = z.object({
   tekstSeksjoner: z.array(arbeidshefteTekstSeksjonSchema).min(3).max(6),
   grammatikkForklaring: z.object({
@@ -262,7 +274,8 @@ export const arbeidshefteDataSchema = z.object({
     )
     .min(5)
     .max(12),
-  fasit: z.string().min(20).max(100_000)
+  fasit: z.string().min(20).max(100_000),
+  hverdagsmatematikk: hverdagsmatematikkSchema
 });
 
 export type ArbeidshefteDataValidated = z.infer<typeof arbeidshefteDataSchema>;

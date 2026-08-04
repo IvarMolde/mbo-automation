@@ -980,9 +980,13 @@ function renderOm(): string {
 
       <h3>4. Automatisk ukehefte</h3>
       <p>
-        Hver uke lager verktøyet et arbeidshefte for gjeldende kapittel — tekst og oppgaver
-        genereres med KI (Google Gemini) og pakkes i et Word-dokument (.docx) som sendes på e-post
-        til mottakerne. Den faste utsendingen skjer automatisk hver onsdag.
+        Hver uke lager verktøyet et arbeidshefte for gjeldende kapittel — norsktekster, grammatikk
+        og oppgaver genereres med KI (Google Gemini) og pakkes i et Word-dokument (.docx) som sendes
+        på e-post. Heftet har også en egen del <strong>hverdagsmatematikk</strong>: én fagtekst
+        (80–150 ord) knyttet til ukas yrke/tema, deretter 6–7 oppgaver på nivå 1 og 6–7 på nivå 2
+        (samme tema, ulike innfallsvinkler). Hovedkategori roterer mellom tall, måling/geometri og
+        statistikk. Fasit for både norsk og regning ligger bakerst. Den faste utsendingen skjer
+        automatisk hver onsdag.
       </p>
 
       <h3>5. Tilpasning underveis</h3>
@@ -1121,6 +1125,7 @@ function renderVeiledning(): string {
       <div class="help-text">
         <p><strong>Når?</strong> Når du vil forberede deg i forkant, i stedet for å vente på den automatiske onsdagsutsendingen.</p>
         <p><strong>Hvordan?</strong> Velg skoleuke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
+        <p><strong>Innhold:</strong> Heftet inneholder norsk + hverdagsmatematikk (fagtekst og oppgaver nivå 1 og 2 knyttet til ukas yrke/tema). Fasit ligger bakerst.</p>
         <p class="muted">Den faste onsdagsutsendingen fortsetter uansett som normalt.</p>
       </div>
     </div>

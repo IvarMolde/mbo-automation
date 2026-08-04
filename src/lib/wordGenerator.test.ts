@@ -58,7 +58,28 @@ const hefte: ArbeidshefteData = {
     eksempel: "Dette er et eksempel."
   })),
   kapitteltest: [{ nummer: 1, innhold: "Hva betyr hygiene?" }],
-  fasit: "a".repeat(30)
+  fasit: "a".repeat(30),
+  hverdagsmatematikk: {
+    kategori: "tall",
+    kategoriLabel: "Tall",
+    tittel: "Regning på jobb som renholder",
+    fagtekst: "a".repeat(90),
+    malNiva1: ["bruke enkel addisjon"],
+    malNiva2: ["bruke multiplikasjon i praktiske situasjoner"],
+    niva1: Array.from({ length: 6 }, (_, i) => ({
+      nummer: i + 1,
+      type: "regneoppgave",
+      tittel: `N1-${i + 1}`,
+      innhold: "M1a Regn ut.".padEnd(20, ".")
+    })),
+    niva2: Array.from({ length: 6 }, (_, i) => ({
+      nummer: i + 1,
+      type: "regneoppgave",
+      tittel: `N2-${i + 1}`,
+      innhold: "M2a Regn ut.".padEnd(20, ".")
+    })),
+    fasit: "b".repeat(30)
+  }
 };
 
 describe("splitOppgaveInnhold", () => {

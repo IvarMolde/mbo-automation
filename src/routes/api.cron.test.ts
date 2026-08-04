@@ -35,7 +35,28 @@ const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
       nummer: i + 1,
       innhold: "test".repeat(3)
     })),
-    fasit: "f".repeat(20)
+    fasit: "f".repeat(20),
+    hverdagsmatematikk: {
+      kategori: "tall",
+      kategoriLabel: "Tall",
+      tittel: "Hverdagsregning",
+      fagtekst: "x".repeat(90),
+      malNiva1: ["bruke enkel addisjon"],
+      malNiva2: ["bruke multiplikasjon"],
+      niva1: Array.from({ length: 6 }, (_, i) => ({
+        nummer: i + 1,
+        type: "regneoppgave",
+        tittel: `M1-${i}`,
+        innhold: "i".repeat(15)
+      })),
+      niva2: Array.from({ length: 6 }, (_, i) => ({
+        nummer: i + 1,
+        type: "regneoppgave",
+        tittel: `M2-${i}`,
+        innhold: "i".repeat(15)
+      })),
+      fasit: "m".repeat(20)
+    }
   },
   mockCronKapittel: {
     nummer: 1,

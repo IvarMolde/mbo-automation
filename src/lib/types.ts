@@ -74,6 +74,20 @@ export interface KapitteltestOppgave {
   innhold: string;
 }
 
+/** Hverdagsmatematikk: fagtekst + nivå 1/2 (samme tema som norsk-uka). */
+export interface HverdagsmatematikkData {
+  kategori: "tall" | "maling_geometri" | "statistikk";
+  kategoriLabel: string;
+  tittel: string;
+  fagtekst: string;
+  malNiva1: string[];
+  malNiva2: string[];
+  niva1: Oppgave[];
+  niva2: Oppgave[];
+  /** Fasit kun for regning — vises bakerst sammen med norsk-fasit. */
+  fasit: string;
+}
+
 export interface ArbeidshefteData {
   tekstSeksjoner: TekstSeksjon[];
   /** Lærebokforklaring av kapitlets grammatikkfokus. */
@@ -81,4 +95,5 @@ export interface ArbeidshefteData {
   ordliste: OrdlisteOrd[];
   kapitteltest: KapitteltestOppgave[];
   fasit: string;
+  hverdagsmatematikk: HverdagsmatematikkData;
 }

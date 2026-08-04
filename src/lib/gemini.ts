@@ -2,8 +2,21 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
 import { getServiceAccountCredentials } from "./gcpCredentials.js";
 import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
-import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, OppgaveMal, TematekstMal } from "./types.js";
+import type {
+  ArbeidshefteData,
+  GrammatikkForklaring,
+  HverdagsmatematikkData,
+  Kapittel,
+  OppgaveMal,
+  TematekstMal
+} from "./types.js";
 import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
+import {
+  MATTE_KATEGORI_LABEL,
+  buildMattePromptBlock,
+  matteKategoriForKapittel,
+  velgUkemal
+} from "./hverdagsmatematikk.js";
 
 export type GenererArbeidshefteOptions = {
   laererTilleggsinstruks?: string;
@@ -69,6 +82,51 @@ function createFallbackGrammatikkForklaring(emne: string): GrammatikkForklaring 
   };
 }
 
+function createFallbackHverdagsmatematikk(kapittel: Kapittel): HverdagsmatematikkData {
+  const kategori = matteKategoriForKapittel(kapittel.nummer);
+  const mal = velgUkemal(kategori, kapittel.nummer);
+  const typer = [
+    "les_og_finn_tall",
+    "regneoppgave",
+    "flervalg",
+    "fyll_inn",
+    "overslag_vurder",
+    "tabell_eller_figur",
+    "kort_begrunnelse"
+  ];
+  const makeOppgaver = (niva: 1 | 2) =>
+    Array.from({ length: 6 }, (_, i) => ({
+      nummer: i + 1,
+      type: typer[i]!,
+      tittel: `Regning nivå ${niva} — oppgave ${i + 1}`,
+      innhold:
+        `M${niva}${String.fromCharCode(97 + i)} Bruk tallene i fagteksten om ${kapittel.yrke}. ` +
+        `Regn ut og svar kort. (Midlertidig fallback — erstattes av Gemini.)`
+    }));
+
+  return {
+    kategori,
+    kategoriLabel: MATTE_KATEGORI_LABEL[kategori],
+    tittel: `Hverdagsregning: ${kapittel.yrke} og ${kapittel.arbeidsnorskTema}`,
+    fagtekst:
+      `På jobb som ${kapittel.yrke.toLowerCase()} møter du tall hver dag. ` +
+      `Denne uken handler det om ${kapittel.arbeidsnorskTema.toLowerCase()}. ` +
+      `I løpet av en vanlig arbeidsdag bruker du 4 timer før lunsj og 3,5 timer etter lunsj. ` +
+      `Du kjøper inn materiell for 240 kroner, og arbeidsstedet har 12 rom som skal dekkes. ` +
+      `Halvparten av rommene er ferdige før pause. En kollega bruker 25 % av dagen på opplæring. ` +
+      `Prisen per liter rengjøringsmiddel er 36 kroner, og dere trenger 1,5 liter. ` +
+      `Les teksten nøye — oppgavene bruker disse tallene. ` +
+      `Målet er å øve praktisk regning knyttet til arbeidshverdagen din.`,
+    malNiva1: mal.niva1,
+    malNiva2: mal.niva2,
+    niva1: makeOppgaver(1),
+    niva2: makeOppgaver(2),
+    fasit:
+      "Fasit hverdagsmatematikk (fallback): M1a–M1f og M2a–M2f — regn ut fra tallene i fagteksten; " +
+      "lukkede svar skal være tall med enhet der det passer."
+  };
+}
+
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const tematekster = defaultTematekster(kapittel);
   const oppgavestruktur = defaultOppgavestruktur(kapittel);
@@ -105,7 +163,8 @@ function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
     })),
     fasit:
       kapittel.fasitInstruks ??
-      "Fasit: svar på lukkede oppgaver og eksempelsvar på åpne oppgaver (midlertidig fallback)."
+      "Fasit: svar på lukkede oppgaver og eksempelsvar på åpne oppgaver (midlertidig fallback).",
+    hverdagsmatematikk: createFallbackHverdagsmatematikk(kapittel)
   };
 }
 
@@ -309,6 +368,73 @@ function normalizeGeminiPayload(raw: unknown, kapittel?: Kapittel): unknown {
     }
   }
 
+  const matteFallback = kapittel
+    ? createFallbackHverdagsmatematikk(kapittel)
+    : createFallbackHverdagsmatematikk({
+        nummer: 1,
+        yrke: "Arbeidstaker",
+        grammatikk: "Presens",
+        arbeidsnorskTema: "Arbeid",
+        cefrNivaa: "A2",
+        cefrCanDo: { resepsjon: ["r"], samhandling: ["s"], produksjon: ["p"] }
+      });
+
+  const rawMatte = data.hverdagsmatematikk ?? data.hverdagsregning ?? data.matematikk;
+  if (!rawMatte || typeof rawMatte !== "object") {
+    data.hverdagsmatematikk = matteFallback;
+  } else {
+    const m = rawMatte as Record<string, unknown>;
+    const kategori =
+      m.kategori === "tall" || m.kategori === "maling_geometri" || m.kategori === "statistikk"
+        ? m.kategori
+        : matteFallback.kategori;
+    const normOppgaver = (arr: unknown, fallback: typeof matteFallback.niva1) => {
+      if (!Array.isArray(arr) || arr.length < 6) return fallback;
+      const mapped = arr.slice(0, 7).map((item, i) => {
+        if (!item || typeof item !== "object") {
+          return fallback[Math.min(i, fallback.length - 1)]!;
+        }
+        const o = item as Record<string, unknown>;
+        return {
+          nummer: typeof o.nummer === "number" ? o.nummer : i + 1,
+          type: String(o.type ?? "regneoppgave"),
+          tittel: String(o.tittel ?? `Oppgave ${i + 1}`),
+          innhold: String(o.innhold ?? "Regn ut og svar.").padEnd(15, ".")
+        };
+      });
+      while (mapped.length < 6) {
+        mapped.push(fallback[mapped.length]!);
+      }
+      return mapped;
+    };
+    let fagtekst = String(m.fagtekst ?? m.tekst ?? "");
+    if (fagtekst.length < 80) {
+      fagtekst = `${fagtekst} ${matteFallback.fagtekst}`.trim();
+    }
+    let fasitMatte = String(m.fasit ?? m.fasitMatematikk ?? data.fasitMatematikk ?? "");
+    if (fasitMatte.length < 20) {
+      fasitMatte = matteFallback.fasit;
+    }
+    const malNiva1 = Array.isArray(m.malNiva1)
+      ? m.malNiva1.map((x) => String(x)).filter((x) => x.length >= 5).slice(0, 8)
+      : matteFallback.malNiva1;
+    const malNiva2 = Array.isArray(m.malNiva2)
+      ? m.malNiva2.map((x) => String(x)).filter((x) => x.length >= 5).slice(0, 8)
+      : matteFallback.malNiva2;
+
+    data.hverdagsmatematikk = {
+      kategori,
+      kategoriLabel: String(m.kategoriLabel ?? MATTE_KATEGORI_LABEL[kategori]),
+      tittel: String(m.tittel ?? matteFallback.tittel).trim() || matteFallback.tittel,
+      fagtekst,
+      malNiva1: malNiva1.length ? malNiva1 : matteFallback.malNiva1,
+      malNiva2: malNiva2.length ? malNiva2 : matteFallback.malNiva2,
+      niva1: normOppgaver(m.niva1 ?? m.oppgaverNiva1, matteFallback.niva1),
+      niva2: normOppgaver(m.niva2 ?? m.oppgaverNiva2, matteFallback.niva2),
+      fasit: fasitMatte
+    };
+  }
+
   return data;
 }
 
@@ -358,6 +484,8 @@ ${cefrMdBlock}${laererBlock}
 
 ${buildArsplanMalBlock(kapittel)}
 
+${buildMattePromptBlock(kapittel.nummer, kapittel.yrke, kapittel.arbeidsnorskTema)}
+
 Krav:
 - Lag nøyaktig ${tematekster.length} objekter i tekstSeksjoner (samme nummer, type og tittel som i årsplan-malen).
 - Hver tekst skal være 80–150 ord, realistisk og arbeidslivsnær, med naturlig bruk av grammatikkfokus.
@@ -373,6 +501,7 @@ Krav:
   forklar HVA det er, NÅR vi bruker det, og HVORDAN formen lages; minst 4–8 konkrete eksempelsetninger
   (gjerne knyttet til yrket ${kapittel.yrke}); kort huskeregel; ingen akademisk sjargong.
 - Integrer grammatikk naturlig i tekster og oppgaver.
+- hverdagsmatematikk MÅ finnes (se blokken over). Pedagogikk for voksne: respektfullt, praktisk, tydelig.
 - Ikke bruk markdown eller tekst utenfor JSON.
 
 Returner kun gyldig JSON:
@@ -405,7 +534,22 @@ Returner kun gyldig JSON:
     { "ord": "en kollega", "forklaring": "substantiv: person du jobber med", "eksempel": "En kollega hjelper meg." }
   ],
   "kapitteltest": [{ "nummer": 1, "innhold": "string" }],
-  "fasit": "string"
+  "fasit": "string (norsk-delen)",
+  "hverdagsmatematikk": {
+    "kategori": "tall",
+    "kategoriLabel": "Tall",
+    "tittel": "string",
+    "fagtekst": "80-150 ord med tall knyttet til yrket",
+    "malNiva1": ["string"],
+    "malNiva2": ["string"],
+    "niva1": [
+      { "nummer": 1, "type": "regneoppgave", "tittel": "string", "innhold": "M1a …" }
+    ],
+    "niva2": [
+      { "nummer": 1, "type": "regneoppgave", "tittel": "string", "innhold": "M2a …" }
+    ],
+    "fasit": "Fasit for M1… og M2…"
+  }
 }`;
 
     const response = await model.generateContent(prompt);

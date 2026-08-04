@@ -16,7 +16,14 @@ import {
   VerticalAlign,
   WidthType
 } from "docx";
-import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, Oppgave, TekstSeksjon } from "./types.js";
+import type {
+  ArbeidshefteData,
+  GrammatikkForklaring,
+  HverdagsmatematikkData,
+  Kapittel,
+  Oppgave,
+  TekstSeksjon
+} from "./types.js";
 import {
   ekstraNivaLabel,
   type EkstraOppgaverData
@@ -100,6 +107,7 @@ function typeLabel(type: string): string {
     yrke_arbeidsnorsk: "Yrke",
     arbeidsnorsk: "Arbeidsnorsk",
     hverdagssituasjon: "Hverdagssituasjon",
+    hverdagsmatematikk: "Hverdagsmatematikk",
     grammatikk: "Grammatikk"
   };
   return map[type] ?? type;
@@ -659,6 +667,98 @@ function pageBreak(): Paragraph {
   return new Paragraph({ children: [], pageBreakBefore: true });
 }
 
+function matteMalList(label: string, mal: string[]): Array<Paragraph | Table> {
+  return [
+    new Paragraph({
+      spacing: { before: 80, after: 60 },
+      children: [
+        new TextRun({ text: label, bold: true, color: C.teal, size: 20, font: "Calibri" })
+      ]
+    }),
+    ...mal.map(
+      (m) =>
+        new Paragraph({
+          spacing: { after: 40 },
+          indent: { left: 120 },
+          children: [
+            new TextRun({ text: "▸  ", color: C.amber, size: 20, font: "Calibri" }),
+            new TextRun({ text: m, color: C.night, size: 19, font: "Calibri" })
+          ]
+        })
+    )
+  ];
+}
+
+function hverdagsmatematikkSection(matte: HverdagsmatematikkData): Array<Paragraph | Table> {
+  const fagtekstSeksjon: TekstSeksjon = {
+    nummer: 1,
+    type: "hverdagsmatematikk",
+    tittel: matte.tittel,
+    tekst: matte.fagtekst,
+    oppgaver: []
+  };
+
+  const out: Array<Paragraph | Table> = [
+    spacer(200),
+    sectionTitle("Hverdagsmatematikk"),
+    bodyText(
+      `Hovedkategori denne uken: ${matte.kategoriLabel}. Samme tema som norsk-delen. Les fagteksten først — tallene der brukes i oppgavene.`,
+      { italics: true, color: C.teal, size: 20 }
+    ),
+    ...matteMalList("Denne uken øver du (nivå 1) på å:", matte.malNiva1),
+    ...matteMalList("Og (nivå 2) på å:", matte.malNiva2),
+    spacer(80),
+    textBox(fagtekstSeksjon),
+    new Paragraph({
+      spacing: { before: 160, after: 80 },
+      children: [
+        new TextRun({
+          text: "Oppgaver — nivå 1",
+          bold: true,
+          color: C.marine,
+          size: 22,
+          font: "Calibri"
+        })
+      ]
+    }),
+    bodyText("Enkle, konkrete oppgaver. Bruk tallene i fagteksten.", {
+      italics: true,
+      color: C.teal,
+      size: 19
+    })
+  ];
+
+  for (const oppgave of matte.niva1) {
+    out.push(...oppgaveBlock(oppgave));
+  }
+
+  out.push(
+    new Paragraph({
+      spacing: { before: 160, after: 80 },
+      children: [
+        new TextRun({
+          text: "Oppgaver — nivå 2",
+          bold: true,
+          color: C.marine,
+          size: 22,
+          font: "Calibri"
+        })
+      ]
+    }),
+    bodyText("Samme situasjon, mer krevende regning. Fortsett å bruke fagteksten.", {
+      italics: true,
+      color: C.teal,
+      size: 19
+    })
+  );
+
+  for (const oppgave of matte.niva2) {
+    out.push(...oppgaveBlock(oppgave));
+  }
+
+  return out;
+}
+
 export async function genererWordHefte(
   kapittel: Kapittel,
   arbeidshefte: ArbeidshefteData,
@@ -723,6 +823,8 @@ export async function genererWordHefte(
     );
   }
 
+  children.push(...hverdagsmatematikkSection(arbeidshefte.hverdagsmatematikk));
+
   children.push(pageBreak());
   children.push(sectionTitle("Fasit"));
   children.push(
@@ -732,7 +834,34 @@ export async function genererWordHefte(
       size: 20
     })
   );
+  children.push(
+    new Paragraph({
+      spacing: { before: 80, after: 60 },
+      children: [
+        new TextRun({ text: "Norsk", bold: true, color: C.marine, size: 22, font: "Calibri" })
+      ]
+    })
+  );
   for (const line of arbeidshefte.fasit.split(/\n+/)) {
+    if (line.trim()) {
+      children.push(bodyText(line.trim()));
+    }
+  }
+  children.push(
+    new Paragraph({
+      spacing: { before: 160, after: 60 },
+      children: [
+        new TextRun({
+          text: "Hverdagsmatematikk",
+          bold: true,
+          color: C.marine,
+          size: 22,
+          font: "Calibri"
+        })
+      ]
+    })
+  );
+  for (const line of arbeidshefte.hverdagsmatematikk.fasit.split(/\n+/)) {
     if (line.trim()) {
       children.push(bodyText(line.trim()));
     }

@@ -35,7 +35,28 @@ function sampleArbeidshefte() {
       nummer: i + 1,
       innhold: "a".repeat(10)
     })),
-    fasit: "a".repeat(20)
+    fasit: "a".repeat(20),
+    hverdagsmatematikk: {
+      kategori: "tall",
+      kategoriLabel: "Tall",
+      tittel: "Hverdagsregning på jobb",
+      fagtekst: "a".repeat(90),
+      malNiva1: ["bruke enkel addisjon og subtraksjon"],
+      malNiva2: ["bruke multiplikasjon i praktiske situasjoner"],
+      niva1: Array.from({ length: 6 }, (_, i) => ({
+        nummer: i + 1,
+        type: "regneoppgave",
+        tittel: `N1 ${i + 1}`,
+        innhold: "a".repeat(15)
+      })),
+      niva2: Array.from({ length: 6 }, (_, i) => ({
+        nummer: i + 1,
+        type: "regneoppgave",
+        tittel: `N2 ${i + 1}`,
+        innhold: "a".repeat(15)
+      })),
+      fasit: "b".repeat(20)
+    }
   };
 }
 
