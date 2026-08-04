@@ -163,7 +163,6 @@ export function renderShell(opts: {
           ${nav("skolear", "Skoleår")}
           ${nav("denne-uken", "Nå")}
           ${nav("oversikt", "Årsplan")}
-          ${nav("veiledning", "Veiledning")}
           ${nav("admin", "Admin")}
           ${nav("om", "Om")}
         </nav>
@@ -178,7 +177,7 @@ export function renderShell(opts: {
     </main>
     <footer class="site-footer">
       <p>Arbeid og norsk · MBO A2–B1 · Årsplan 2026–2027</p>
-      <p class="muted">Fase 2: lås ferieuker og forskyv planen. Se Veiledning for forklaringer.</p>
+      <p class="muted">Trenger du hjelp? Se <a href="#/om">Om</a> for oppsett og bruk.</p>
     </footer>
     <nav class="mobile-nav" aria-label="Hurtignavigasjon">
       ${nav("skolear", "Skoleår")}
