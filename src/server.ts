@@ -4,6 +4,7 @@ import { env } from "./lib/config.js";
 import { apiRouter } from "./routes/api.js";
 import { planRouter } from "./routes/plan.js";
 import { recipientsRouter } from "./routes/recipients.js";
+import { schoolYearRouter } from "./routes/schoolYear.js";
 
 const app = express();
 const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
@@ -51,6 +52,7 @@ app.get("/", (_req, res) => {
 app.use("/api", apiRateLimit, apiRouter);
 app.use("/api", apiRateLimit, planRouter);
 app.use("/api", apiRateLimit, recipientsRouter);
+app.use("/api", apiRateLimit, schoolYearRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const raw = err instanceof Error ? err.message : String(err);

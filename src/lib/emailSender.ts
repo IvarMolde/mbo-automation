@@ -38,8 +38,30 @@ export async function sendHefte(
   await transporter.sendMail({
     from: env.GMAIL_USER,
     to: motaker,
-    subject: `MBO-hefte uke ${uke}: ${kapittel.yrke}`,
-    html: `<p>Vedlagt finner du arbeidsheftet for uke ${uke}.</p>${unsubscribeFooter(options?.unsubscribeToken)}`,
+    subject: `MBO-hefte skoleuke ${uke}: ${kapittel.yrke}`,
+    html: `<p>Vedlagt finner du arbeidsheftet for skoleuke ${uke}.</p>${unsubscribeFooter(options?.unsubscribeToken)}`,
+    attachments: [{ filename: `${base}.docx`, content: wordBuffer }]
+  });
+}
+
+export async function sendEkstraOppgaver(
+  motaker: string,
+  kapittel: Kapittel,
+  wordBuffer: Buffer,
+  uke: number,
+  niva: "enklere" | "vanskeligere",
+  options?: { unsubscribeToken?: string }
+): Promise<void> {
+  const transporter = getTransporter();
+  const nivaLabel = niva === "enklere" ? "Enklere" : "Vanskeligere";
+  const base = `Ekstra_${nivaLabel}_Kap_${String(kapittel.nummer).padStart(2, "0")}_uke${uke}`;
+
+  await transporter.sendMail({
+    from: env.GMAIL_USER,
+    to: motaker,
+    subject: `MBO ekstraoppgaver (${nivaLabel.toLowerCase()}) skoleuke ${uke}: ${kapittel.yrke}`,
+    html: `<p>Vedlagt finner du <strong>ekstraoppgaver (${nivaLabel.toLowerCase()})</strong> for skoleuke ${uke}.</p>
+<p>Dette er et tillegg til hovedheftet og sendes bare når du ber om det.</p>${unsubscribeFooter(options?.unsubscribeToken)}`,
     attachments: [{ filename: `${base}.docx`, content: wordBuffer }]
   });
 }

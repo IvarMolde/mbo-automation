@@ -17,6 +17,10 @@ import {
   WidthType
 } from "docx";
 import type { ArbeidshefteData, GrammatikkForklaring, Kapittel, Oppgave, TekstSeksjon } from "./types.js";
+import {
+  ekstraNivaLabel,
+  type EkstraOppgaverData
+} from "./ekstraOppgaverTypes.js";
 
 /** MBO design tokens (pedagogisk Word-mal 2026). */
 const C = {
@@ -92,9 +96,11 @@ function metaLabel(label: string, value: string): Paragraph {
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
     lareverk: "Læreverk",
-    yrke_arbeidsnorsk: "Yrke + arbeidsnorsk",
+    yrke: "Yrke",
+    yrke_arbeidsnorsk: "Yrke",
     arbeidsnorsk: "Arbeidsnorsk",
-    hverdagssituasjon: "Hverdagssituasjon"
+    hverdagssituasjon: "Hverdagssituasjon",
+    grammatikk: "Grammatikk"
   };
   return map[type] ?? type;
 }
@@ -169,7 +175,7 @@ function headerBar(kapittel: Kapittel, uke: number): Table {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: `Uke ${uke}`, bold: true, color: C.white, size: 20, font: "Calibri" })
+                  new TextRun({ text: `Skoleuke ${uke}`, bold: true, color: C.white, size: 20, font: "Calibri" })
                 ]
               })
             ],
@@ -772,6 +778,172 @@ export async function genererWordHefte(
                   new TextRun({ text: "Side ", color: C.teal, size: 14, font: "Calibri" }),
                   new TextRun({ children: [PageNumber.CURRENT], color: C.teal, size: 14, font: "Calibri" }),
                   new TextRun({ text: " · Molde voksenopplæringssenter", color: C.teal, size: 14, font: "Calibri" })
+                ]
+              })
+            ]
+          })
+        },
+        children
+      }
+    ]
+  });
+
+  return Buffer.from(await Packer.toBuffer(doc));
+}
+
+export async function genererWordEkstra(
+  kapittel: Kapittel,
+  data: EkstraOppgaverData,
+  uke: number
+): Promise<Buffer> {
+  const nivaLabel = ekstraNivaLabel[data.niva];
+
+  const children: Array<Paragraph | Table> = [
+    headerBar(kapittel, uke),
+    spacer(160),
+    new Paragraph({
+      spacing: { after: 60 },
+      children: [
+        new TextRun({
+          text: `Ekstraoppgaver · ${nivaLabel}`,
+          bold: true,
+          color: C.amber,
+          size: 22,
+          font: "Calibri"
+        })
+      ]
+    }),
+    new Paragraph({
+      spacing: { after: 120 },
+      children: [
+        new TextRun({
+          text: kapittel.yrke,
+          bold: true,
+          color: C.marine,
+          size: 36,
+          font: "Calibri"
+        })
+      ]
+    }),
+    metaLabel("Skoleuke", String(uke)),
+    metaLabel("Kapittel", `${kapittel.nummer}`),
+    metaLabel("Grammatikk", kapittel.grammatikk),
+    metaLabel("Nivå", nivaLabel),
+    bodyText(
+      "Dette er ekstra trening i tillegg til hovedheftet. Oppgavene følger samme oppsett, tilpasset nivået.",
+      { italics: true, color: C.teal, size: 20 }
+    ),
+    spacer(80)
+  ];
+
+  for (const seksjon of data.tekstSeksjoner) {
+    children.push(spacer(120));
+    children.push(textBox(seksjon));
+    children.push(
+      new Paragraph({
+        spacing: { before: 140, after: 80 },
+        children: [
+          new TextRun({
+            text: `Oppgaver til tekst ${seksjon.nummer}`,
+            bold: true,
+            color: C.marine,
+            size: 22,
+            font: "Calibri"
+          })
+        ]
+      })
+    );
+    for (const oppgave of seksjon.oppgaver) {
+      children.push(...oppgaveBlock(oppgave));
+    }
+  }
+
+  if (data.grammatikk) {
+    children.push(
+      bodyText(
+        "Grammatikk: Les forklaringen først. Den forteller hva grammatikken gjør, og hvorfor den er nyttig i norsk.",
+        { italics: true, color: C.teal, size: 20 }
+      )
+    );
+    children.push(...grammatikkSection(data.grammatikk.forklaring));
+    children.push(sectionTitle("Eksempeltekst med grammatikk"));
+    children.push(
+      textBox({
+        nummer: 1,
+        type: "grammatikk",
+        tittel: data.grammatikk.eksempeltekst.tittel,
+        tekst: data.grammatikk.eksempeltekst.tekst,
+        oppgaver: []
+      })
+    );
+    children.push(
+      new Paragraph({
+        spacing: { before: 140, after: 80 },
+        children: [
+          new TextRun({
+            text: "Oppgaver til grammatikk",
+            bold: true,
+            color: C.marine,
+            size: 22,
+            font: "Calibri"
+          })
+        ]
+      })
+    );
+    for (const oppgave of data.grammatikk.oppgaver) {
+      children.push(...oppgaveBlock(oppgave));
+    }
+  }
+
+  children.push(pageBreak());
+  children.push(sectionTitle("Fasit"));
+  children.push(
+    bodyText("Til lærer / egenkontroll.", { italics: true, color: C.teal, size: 20 })
+  );
+  for (const line of data.fasit.split(/\n+/)) {
+    if (line.trim()) children.push(bodyText(line.trim()));
+  }
+
+  const doc = new Document({
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN }
+          }
+        },
+        headers: {
+          default: new Header({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [
+                  new TextRun({
+                    text: `MBO · Ekstra · ${nivaLabel} · Kap. ${kapittel.nummer}`,
+                    color: C.teal,
+                    size: 14,
+                    font: "Calibri",
+                    italics: true
+                  })
+                ]
+              })
+            ]
+          })
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: "Side ", color: C.teal, size: 14, font: "Calibri" }),
+                  new TextRun({ children: [PageNumber.CURRENT], color: C.teal, size: 14, font: "Calibri" }),
+                  new TextRun({
+                    text: " · Molde voksenopplæringssenter",
+                    color: C.teal,
+                    size: 14,
+                    font: "Calibri"
+                  })
                 ]
               })
             ]

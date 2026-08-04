@@ -65,6 +65,46 @@ export const manueltSendResponseSchema = successMessageResponseSchema.extend({
   sentTo: z.array(z.string().email())
 });
 
+/** Manuell utsending av ekstraoppgaver (eget dokument per nivå). */
+export const ekstraSendSchema = z.object({
+  uke: z.number().int().min(1).max(53),
+  nivaer: z.array(z.enum(["enklere", "vanskeligere"])).min(1).max(2),
+  temaer: z
+    .array(z.enum(["lareverk", "yrke", "arbeidsnorsk", "hverdagssituasjon", "grammatikk"]))
+    .min(1)
+    .max(5),
+  mode: z.enum(["all", "one"]).default("one"),
+  motaker: z.string().email().optional()
+}).superRefine((val, ctx) => {
+  if (val.mode === "one" && !val.motaker) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "motaker er påkrevd når mode er one",
+      path: ["motaker"]
+    });
+  }
+  // unique nivaer
+  if (new Set(val.nivaer).size !== val.nivaer.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "nivaer kan ikke ha duplikater",
+      path: ["nivaer"]
+    });
+  }
+});
+
+export const ekstraSendResponseSchema = successMessageResponseSchema.extend({
+  kapittel: z.number().int().positive(),
+  uke: z.number().int().min(1).max(53),
+  sent: z.array(
+    z.object({
+      niva: z.enum(["enklere", "vanskeligere"]),
+      contentSource: z.enum(["gemini", "fallback"]),
+      sentTo: z.array(z.string().email())
+    })
+  )
+});
+
 export const errorResponseSchema = z.object({
   success: z.literal(false),
   error: z.string().min(1),

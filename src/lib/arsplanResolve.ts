@@ -7,6 +7,8 @@ import { env } from "./config.js";
 import { getCefrCanDoForNivaa, getKapittel, getKapittelForUkeModulo } from "./parser.js";
 import { computeEffectiveSchedule } from "./planSchedule.js";
 import { getPlanStateCached } from "./planStore.js";
+import { applyProfileToArsplan } from "./schoolYearGenerate.js";
+import { getSchoolYearCached } from "./schoolYearStore.js";
 import type { CefrNivaa, Kapittel } from "./types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -110,7 +112,9 @@ export function resolveKapittelForIsoUke(
     return { type: "overstyring", kapittel: k };
   }
 
-  const plan = getArsplan();
+  // Prefer skoleår-overlaid plan when profile is loaded (await loadSchoolYearProfile first).
+  const base = getArsplan();
+  const plan = base ? applyProfileToArsplan(base, getSchoolYearCached()) : null;
   if (!plan) {
     return { type: "fallback", kapittel: getKapittelForUkeModulo(isoUke) };
   }

@@ -21,7 +21,7 @@ const SESSION_KEY = "mbo-admin-session-v1";
  * endres, og hold begge forklaringene i tråd med nye funksjoner i appen.
  */
 const APP_FASE = "Fase 2";
-const DOCS_UPDATED = "23. juli 2026";
+const DOCS_UPDATED = "4. august 2026";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -37,6 +37,11 @@ let planSource: "local" | "server" | "base" = "base";
 let adminFlash: string | null = null;
 /** Uken som er valgt i «Tilpass yrke og grammatikk», overlever re-render */
 let customizeUke: number | null = null;
+/** Skoleår-status fra API */
+let schoolYearInfo: PlanApiResponse["schoolYear"] | null = null;
+let schoolYearFlash: string | null = null;
+/** Status for ekstraoppgaver-sending på Nå */
+let ekstraFlash: string | null = null;
 
 type RecipientRow = {
   email: string;
@@ -61,6 +66,7 @@ function parseView(): { view: ViewId; periode?: string } {
     return { view: "denne-uken" };
   }
   if (
+    view === "skolear" ||
     view === "oversikt" ||
     view === "denne-uken" ||
     view === "veiledning" ||
@@ -69,7 +75,7 @@ function parseView(): { view: ViewId; periode?: string } {
   ) {
     return { view, periode };
   }
-  return { view: "oversikt" };
+  return { view: "denne-uken" };
 }
 
 function getSessionToken(): string {
@@ -106,6 +112,7 @@ function adoptServerPlan(data: PlanApiResponse): void {
   planOperations = data.state.operations as PlanState["operations"];
   effectiveUker = data.effective.uker;
   planSource = data.effective.hasChanges ? "server" : "base";
+  schoolYearInfo = data.schoolYear ?? null;
   const synced: PlanState = {
     version: 1,
     updatedAt: data.state.updatedAt,
@@ -387,15 +394,15 @@ function currentWeekLabel(): string {
   const year = getIsoWeekYear();
   const match = findUke(plan, uke, effectiveUker);
   if (match?.status === "locked") {
-    return `ISO-uke ${uke} (${year}) · låst`;
+    return `Skoleuke ${uke} (${year}) · låst`;
   }
   if (match?.kapittel) {
-    return `ISO-uke ${uke} (${year}) · Kap. ${match.kapittel.nummer} ${match.kapittel.yrke}`;
+    return `Skoleuke ${uke} (${year}) · Kap. ${match.kapittel.nummer} ${match.kapittel.yrke}`;
   }
   if (match?.status === "empty") {
-    return `ISO-uke ${uke} (${year}) · innhenting`;
+    return `Skoleuke ${uke} (${year}) · innhenting`;
   }
-  return `ISO-uke ${uke} (${year}) · ikke i inneværende skoleårsplan`;
+  return `Skoleuke ${uke} (${year}) · ikke i inneværende skoleårsplan`;
 }
 
 interface PlanChangeCounts {
@@ -634,6 +641,137 @@ function renderCalendarChip(u: UkeVisning): string {
   `;
 }
 
+function renderEkstraPanel(uke: number): string {
+  const recipientOptions = recipients
+    .filter((r) => r.active)
+    .map((r) => `<option value="${escapeHtml(r.email)}">${escapeHtml(r.email)}</option>`)
+    .join("");
+
+  if (!isLoggedIn()) {
+    return `
+      <section class="panel ekstra-panel" aria-label="Ekstraoppgaver">
+        <h2>Ekstraoppgaver</h2>
+        <p class="muted">Logg inn under <a href="#/admin">Admin</a> for å sende ekstraoppgaver som eget Word-dokument på e-post.</p>
+      </section>`;
+  }
+
+  return `
+    <section class="panel ekstra-panel" aria-label="Ekstraoppgaver">
+      <h2>Ekstraoppgaver</h2>
+      <p class="help-text">
+        Lager <strong>egne Word-dokumenter</strong> som tillegg til hovedheftet.
+        Sendes <strong>ikke</strong> automatisk — bare når du ber om det.
+        Velger du både enklere og vanskeligere, går det som <strong>to separate e-poster</strong>.
+      </p>
+      ${ekstraFlash ? `<p class="admin-flash" role="status">${escapeHtml(ekstraFlash)}</p>` : ""}
+      <form id="ekstra-form" class="admin-form">
+        <label for="ekstra-uke">Skoleuke</label>
+        <input id="ekstra-uke" name="uke" type="number" min="1" max="53" required value="${uke}" />
+
+        <fieldset class="send-mode">
+          <legend>Nivå (kan velge begge)</legend>
+          <label class="radio-row"><input type="checkbox" name="niva" value="enklere" checked /> Enklere</label>
+          <label class="radio-row"><input type="checkbox" name="niva" value="vanskeligere" /> Vanskeligere</label>
+        </fieldset>
+
+        <fieldset class="send-mode">
+          <legend>Temaer (én, flere eller alle)</legend>
+          <label class="radio-row"><input type="checkbox" name="tema" value="lareverk" checked /> Læreverk</label>
+          <label class="radio-row"><input type="checkbox" name="tema" value="yrke" checked /> Yrke</label>
+          <label class="radio-row"><input type="checkbox" name="tema" value="arbeidsnorsk" checked /> Arbeidsnorsk</label>
+          <label class="radio-row"><input type="checkbox" name="tema" value="hverdagssituasjon" /> Hverdagssituasjon</label>
+          <label class="radio-row"><input type="checkbox" name="tema" value="grammatikk" checked /> Grammatikk</label>
+        </fieldset>
+        <p class="muted">Grammatikk følger ukas grammatikktema, med forklaring, hensikt, eksempeltekst og oppgaver.</p>
+
+        <fieldset class="send-mode">
+          <legend>Mottakere</legend>
+          <label class="radio-row">
+            <input type="radio" name="mode" value="all" checked /> Alle aktive mottakere
+          </label>
+          <label class="radio-row">
+            <input type="radio" name="mode" value="one" /> Én adresse
+          </label>
+          <label for="ekstra-motaker" class="sr-only">E-postadresse</label>
+          <input id="ekstra-motaker" name="motaker" type="email" list="ekstra-recipient-list" placeholder="navn@example.com" />
+          <datalist id="ekstra-recipient-list">${recipientOptions}</datalist>
+        </fieldset>
+
+        <button type="submit" class="btn">Send ekstraoppgaver</button>
+      </form>
+    </section>`;
+}
+
+function renderSkolear(): string {
+  const sy = schoolYearInfo;
+  const holidays = [
+    { name: "Høstferie", startDate: "", endDate: "" },
+    { name: "Juleferie", startDate: "", endDate: "" },
+    { name: "Vinterferie", startDate: "", endDate: "" },
+    { name: "Påskeferie", startDate: "", endDate: "" }
+  ];
+
+  const status = sy?.configured
+    ? `<div class="panel plan-status" role="status">
+        <div class="plan-status-head">
+          <span class="plan-status-pill">Aktivt skoleår</span>
+          <p class="plan-status-lead">${escapeHtml(sy.label || plan.metadata.skolear || "Skoleår")} · ${escapeHtml(sy.startDate ?? "")} – ${escapeHtml(sy.endDate ?? "")}</p>
+        </div>
+        <p class="muted">Ferieuker: ${(sy.holidayWeeks ?? []).map((w) => `uke ${w}`).join(", ") || "ingen"}</p>
+      </div>`
+    : `<div class="panel note" role="status">Ingen skoleår-profil er lagret ennå. Fyll inn start, slutt og ferier, og generer planen.</div>`;
+
+  if (!isLoggedIn()) {
+    return `
+      ${status}
+      <div class="panel">
+        <h2>Sett opp skoleåret</h2>
+        <p>Logg inn under <a href="#/admin">Admin</a> for å lagre start, slutt og feriedager. Deretter genereres årsplanen automatisk.</p>
+      </div>`;
+  }
+
+  return `
+    ${status}
+    ${schoolYearFlash ? `<p class="admin-flash" role="status">${escapeHtml(schoolYearFlash)}</p>` : ""}
+    <div class="panel">
+      <h2>Generer plan for skoleåret</h2>
+      <p class="help-text">
+        Oppgi når skoleåret starter og slutter, og hvilke ferieperioder som gjelder her.
+        Kapitlene fordeles automatisk på undervisningsukene. Ferier låses som skoleuker uten undervisning.
+      </p>
+      <form id="skolear-form" class="admin-form">
+        <label for="sy-label">Navn (valgfritt)</label>
+        <input id="sy-label" name="label" type="text" maxlength="200" placeholder="Molde voksenopplæring 2026–2027" value="${escapeHtml(sy?.label ?? "")}" />
+
+        <label for="sy-start">Skoleåret starter</label>
+        <input id="sy-start" name="startDate" type="date" required value="${escapeHtml(sy?.startDate ?? "2026-08-17")}" />
+
+        <label for="sy-end">Skoleåret slutter</label>
+        <input id="sy-end" name="endDate" type="date" required value="${escapeHtml(sy?.endDate ?? "2027-06-18")}" />
+
+        <h3 class="custom-list-title">Feriedager / ferieuker</h3>
+        <p class="muted">Fyll inn datointervall. Tomme rader hoppes over.</p>
+        <div id="sy-holidays" class="admin-grid">
+          ${holidays
+            .map(
+              (h, i) => `
+            <div class="admin-form">
+              <label for="sy-h-name-${i}">Navn</label>
+              <input id="sy-h-name-${i}" name="hName" type="text" value="${escapeHtml(h.name)}" />
+              <label for="sy-h-start-${i}">Fra dato</label>
+              <input id="sy-h-start-${i}" name="hStart" type="date" />
+              <label for="sy-h-end-${i}">Til dato</label>
+              <input id="sy-h-end-${i}" name="hEnd" type="date" />
+            </div>`
+            )
+            .join("")}
+        </div>
+        <button type="submit" class="btn">Lagre og generer plan</button>
+      </form>
+    </div>
+  `;
+}
+
 function renderDenneUken(): string {
   const uke = getIsoWeekNumber();
   const year = getIsoWeekYear();
@@ -645,7 +783,7 @@ function renderDenneUken(): string {
   const hero = `
     <div class="panel highlight now-hero">
       <p class="now-kicker">Der vi er nå</p>
-      <p class="now-week">ISO-uke ${uke} <span class="now-year">· ${year}</span></p>
+      <p class="now-week">Skoleuke ${uke} <span class="now-year">· ${year}</span></p>
       <p class="lede">${
         outsidePlan
           ? `Uke ${uke} er utenfor skoleåret ${escapeHtml(plan.metadata.skolear ?? "")}. Se hele årsplanen nedenfor.`
@@ -665,6 +803,7 @@ function renderDenneUken(): string {
     </section>`;
 
   const detail = match ? `<section class="now-detail">${renderUkeCard(match, true)}</section>` : "";
+  const ekstra = renderEkstraPanel(uke);
 
   const calendar = `
     <section class="cal-section" aria-label="Kalender for hele skoleåret">
@@ -682,7 +821,7 @@ function renderDenneUken(): string {
       </ul>
     </section>`;
 
-  return `${hero}${status}${strip}${detail}${calendar}`;
+  return `${hero}${status}${strip}${detail}${ekstra}${calendar}`;
 }
 
 function renderOm(): string {
@@ -695,9 +834,14 @@ function renderOm(): string {
         Dette er planleggings- og publiseringsverktøyet for årsplanen i
         <strong>${escapeHtml(m.kurs ?? "Arbeid og norsk")}</strong> ved
         ${escapeHtml(m.organisasjon ?? "Molde voksenopplæring")}. Verktøyet holder
-        oversikt over hva klassen skal jobbe med hver uke gjennom hele skoleåret, lar deg
+        oversikt over hva klassen skal jobbe med hver skoleuke gjennom hele skoleåret, lar deg
         tilpasse planen når hverdagen endrer seg, og lager og sender ukentlige arbeidshefter
         automatisk — slik at du bruker mindre tid på administrasjon og mer tid på undervisning.
+      </p>
+      <p>
+        Under <a href="#/skolear">Skoleår</a> setter du start, slutt og ferier for stedet ditt
+        (skole eller tiltaksbedrift). På <a href="#/denne-uken">Nå</a> kan du sende ekstraoppgaver
+        (enklere og/eller vanskeligere) som egne Word-dokumenter — aldri automatisk.
       </p>
     </div>
 
@@ -788,10 +932,20 @@ function renderVeiledning(): string {
         tilpasse, sende hefte, styre mottakere) må du logge inn under <a href="#/admin">Admin</a>.
       </p>
       <ul class="help-steps">
+        <li><strong>Vil du sette opp skoleåret?</strong> Gå til <a href="#/skolear">Skoleår</a>.</li>
         <li><strong>Vil du se hvor dere er?</strong> Gå til <a href="#/denne-uken">Nå</a>.</li>
         <li><strong>Vil du se hele skoleåret?</strong> Gå til <a href="#/oversikt">Årsplan</a>.</li>
         <li><strong>Vil du endre noe?</strong> Logg inn under <a href="#/admin">Admin</a>.</li>
       </ul>
+    </div>
+
+    <div class="panel prose">
+      <h2>0. Sett opp skoleåret</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Først i skoleåret, eller når stedet ditt har andre ferier enn standardplanen.</p>
+        <p><strong>Hvordan?</strong> Under <a href="#/skolear">Skoleår</a> fyller du inn start, slutt og ferieperioder. Trykk «Lagre og generer plan». Undervisningsukene får kapitler automatisk; ferieuker låses.</p>
+        <p><strong>Språk:</strong> Vi snakker om <em>skoleuke</em> (f.eks. skoleuke 34), ikke «ISO-uke».</p>
+      </div>
     </div>
 
     <div class="panel prose">
@@ -817,7 +971,8 @@ function renderVeiledning(): string {
     <div class="panel prose">
       <h2>Fanene i menyen</h2>
       <div class="help-text">
-        <p><strong>Nå</strong> — forrige, inneværende og neste uke side om side, pluss en fargekodet kalender for hele skoleåret. Klikk et månedsnavn for å hoppe til måneden i Årsplan. Din daglige startside.</p>
+        <p><strong>Skoleår</strong> — første valg: start, slutt og ferier. Her genereres planen for stedet ditt.</p>
+        <p><strong>Nå</strong> — forrige, inneværende og neste skoleuke, kalender, og ekstraoppgaver ved behov.</p>
         <p><strong>Årsplan</strong> — alle ukene med kapittel, yrke, grammatikk, nivå, tematekster og oppgaver. Åpne en uke for full detalj.</p>
         <p><strong>Admin</strong> — logg inn for å endre planen og styre utsending.</p>
         <p><strong>Om</strong> — bakgrunn og hvordan verktøyet fungerer under panseret.</p>
@@ -872,8 +1027,18 @@ function renderVeiledning(): string {
       <h2>6. Send hefte manuelt</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Når du vil forberede deg i forkant, i stedet for å vente på den automatiske onsdagsutsendingen.</p>
-        <p><strong>Hvordan?</strong> Velg uke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
+        <p><strong>Hvordan?</strong> Velg skoleuke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
         <p class="muted">Den faste onsdagsutsendingen fortsetter uansett som normalt.</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>6b. Send ekstraoppgaver</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Når noen elever trenger enklere trening, og/eller andre trenger vanskeligere utfordring.</p>
+        <p><strong>Hvordan?</strong> På <a href="#/denne-uken">Nå</a>: huk av nivå (enklere og/eller vanskeligere), huk av temaer (læreverk, yrke, arbeidsnorsk, hverdagssituasjon, grammatikk), velg mottakere, og trykk «Send ekstraoppgaver».</p>
+        <p><strong>Hva skjer?</strong> Hvert nivå blir et <strong>eget Word-dokument</strong> og egen e-post. Sendes aldri automatisk. Grammatikkdelen har forklaring (inkl. hensikt), eksempeltekst og oppgaver basert på ukas grammatikktema.</p>
+        <p><strong>Design:</strong> Samme Word-mal som hovedheftet (farger, struktur, språk).</p>
       </div>
     </div>
 
@@ -896,7 +1061,7 @@ function renderVeiledning(): string {
     <div class="panel prose help-box">
       <h2>Merkene og fargene</h2>
       <ul class="legend-list">
-        <li><span class="badge badge-now">Denne uken</span> — inneværende ISO-uke</li>
+        <li><span class="badge badge-now">Denne uken</span> — inneværende skoleuke</li>
         <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
         <li><span class="badge badge-tilpasset">Tilpasset</span> — yrke eller grammatikk er endret for uken</li>
         <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning</li>
@@ -1145,7 +1310,7 @@ function renderSendHeftePanel(): string {
         Den automatiske onsdagsutsendingen fortsetter som før.
       </p>
       <form id="send-hefte-form" class="admin-form send-hefte-form">
-        <label for="send-uke">ISO-uke</label>
+        <label for="send-uke">Skoleuke</label>
         <input id="send-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
         <p class="muted" id="send-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
 
@@ -1220,7 +1385,7 @@ function renderAdmin(): string {
           <p><strong>Når?</strong> Ferie og helligdager uten undervisning.</p>
           <p><strong>Hva skjer?</strong> Uken blir <em>Låst</em>. Innhold flyttes til neste ledige uke.</p>
         </div>
-        <label for="lock-uke">Ukenummer (ISO-uke)</label>
+        <label for="lock-uke">Skoleuke</label>
         <input id="lock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
         <label for="lock-note">Notat (valgfritt)</label>
         <input id="lock-note" name="note" type="text" maxlength="300" placeholder="F.eks. Høstferie" />
@@ -1233,7 +1398,7 @@ function renderAdmin(): string {
           <p><strong>Når?</strong> Feil låst uke, eller ferien ble endret.</p>
           <p><strong>Hva skjer?</strong> Ferie-merket fjernes. Innhold trekkes ikke automatisk tilbake.</p>
         </div>
-        <label for="unlock-uke">Ukenummer (ISO-uke)</label>
+        <label for="unlock-uke">Skoleuke</label>
         <input id="unlock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
         <button type="submit" class="btn">Lås opp</button>
       </form>
@@ -1267,15 +1432,20 @@ function renderAdmin(): string {
 
 function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: string } {
   switch (view) {
+    case "skolear":
+      return {
+        title: "Skoleår",
+        subtitle: "Sett start, slutt og ferier — så genereres planen for undervisningsukene."
+      };
     case "denne-uken":
       return {
         title: "Nå",
-        subtitle: "Forrige, denne og neste uke — og kalender for hele skoleåret."
+        subtitle: "Forrige, denne og neste skoleuke — kalender, og ekstraoppgaver ved behov."
       };
     case "veiledning":
       return {
         title: "Veiledning",
-        subtitle: "Steg-for-steg: se planen, logg inn, lås, forskyv, tilpass og send hefte."
+        subtitle: "Steg-for-steg: skoleår, se planen, logg inn, tilpass og send hefte eller ekstraoppgaver."
       };
     case "om":
       return {
@@ -1547,12 +1717,131 @@ function bindAdminForms(): void {
   });
 }
 
+function bindSkolearForm(): void {
+  document.getElementById("skolear-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const fd = new FormData(form);
+    const names = fd.getAll("hName").map(String);
+    const starts = fd.getAll("hStart").map(String);
+    const ends = fd.getAll("hEnd").map(String);
+    const holidays: Array<{ name: string; startDate: string; endDate: string }> = [];
+    for (let i = 0; i < names.length; i += 1) {
+      const name = names[i]?.trim() ?? "";
+      const startDate = starts[i]?.trim() ?? "";
+      const endDate = ends[i]?.trim() ?? "";
+      if (!startDate && !endDate) continue;
+      if (!name || !startDate || !endDate) {
+        schoolYearFlash = "Fyll inn navn, fra- og til-dato for hver ferie du bruker — eller la raden stå tom.";
+        render();
+        return;
+      }
+      holidays.push({ name, startDate, endDate });
+    }
+
+    schoolYearFlash = "Genererer skoleårsplan…";
+    render();
+    try {
+      const res = await fetch(`${API_BASE}/api/skolear/apply`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getSessionToken()}`
+        },
+        body: JSON.stringify({
+          label: String(fd.get("label") ?? "").trim() || undefined,
+          startDate: String(fd.get("startDate")),
+          endDate: String(fd.get("endDate")),
+          holidays
+        })
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        teachingWeeks?: number;
+        holidayWeeks?: number;
+      };
+      if (!res.ok || !data.success) {
+        schoolYearFlash = data.error ?? "Kunne ikke lagre skoleår.";
+        render();
+        return;
+      }
+      await refreshPlanFromApi();
+      schoolYearFlash =
+        data.message ??
+        `Plan generert: ${data.teachingWeeks ?? "?"} undervisningsuker, ${data.holidayWeeks ?? "?"} ferieuker.`;
+      render();
+    } catch {
+      schoolYearFlash = "Kunne ikke nå serveren.";
+      render();
+    }
+  });
+}
+
+function bindEkstraForm(): void {
+  document.getElementById("ekstra-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const fd = new FormData(form);
+    const nivaer = fd.getAll("niva").map(String) as Array<"enklere" | "vanskeligere">;
+    const temaer = fd.getAll("tema").map(String);
+    if (nivaer.length === 0) {
+      ekstraFlash = "Huk av minst ett nivå (enklere og/eller vanskeligere).";
+      render();
+      return;
+    }
+    if (temaer.length === 0) {
+      ekstraFlash = "Huk av minst ett tema.";
+      render();
+      return;
+    }
+    const mode = String(fd.get("mode") || "all") as "all" | "one";
+    const motaker = String(fd.get("motaker") ?? "").trim();
+    if (mode === "one" && !motaker) {
+      ekstraFlash = "Skriv inn e-postadresse når du sender til én mottaker.";
+      render();
+      return;
+    }
+
+    ekstraFlash = "Genererer og sender ekstraoppgaver… Dette kan ta litt tid.";
+    render();
+    try {
+      const res = await fetch(`${API_BASE}/api/hefte/ekstra`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getSessionToken()}`
+        },
+        body: JSON.stringify({
+          uke: Number(fd.get("uke")),
+          nivaer,
+          temaer,
+          mode,
+          motaker: mode === "one" ? motaker : undefined
+        })
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      };
+      ekstraFlash = data.success ? (data.message ?? "Sendt.") : (data.error ?? "Sending feilet.");
+      render();
+    } catch {
+      ekstraFlash = "Kunne ikke nå serveren. Prøv igjen om litt.";
+      render();
+    }
+  });
+}
+
 function render(): void {
   if (!app) return;
   const { view, periode } = parseView();
   const copy = pageCopy(view, periode);
   let content = "";
-  if (view === "denne-uken") content = renderDenneUken();
+  if (view === "skolear") content = renderSkolear();
+  else if (view === "denne-uken") content = renderDenneUken();
   else if (view === "veiledning") content = renderVeiledning();
   else if (view === "om") content = renderOm();
   else if (view === "admin") content = renderAdmin();
@@ -1587,6 +1876,17 @@ function render(): void {
     if (isLoggedIn() && !recipientsFetched && !recipientsLoading) {
       void refreshRecipients().then(() => {
         if (parseView().view === "admin") render();
+      });
+    }
+  }
+  if (view === "skolear") {
+    bindSkolearForm();
+  }
+  if (view === "denne-uken") {
+    bindEkstraForm();
+    if (isLoggedIn() && !recipientsFetched && !recipientsLoading) {
+      void refreshRecipients().then(() => {
+        if (parseView().view === "denne-uken") render();
       });
     }
   }

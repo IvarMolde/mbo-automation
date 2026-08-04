@@ -26,6 +26,7 @@ const envSchema = z.object({
   ARSPLAN_JSON_PATH: z.string().min(1).optional(),
   CEFR_MARKDOWN_PATH: z.string().min(1).optional(),
   PLAN_STATE_PATH: z.string().min(1).optional(),
+  SCHOOL_YEAR_STATE_PATH: z.string().min(1).optional(),
   TURSO_DATABASE_URL: z.string().min(1).optional(),
   TURSO_AUTH_TOKEN: z.string().min(1).optional()
 });

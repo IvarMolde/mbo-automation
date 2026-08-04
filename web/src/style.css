@@ -1157,6 +1157,13 @@ a.cal-month-name:hover {
   gap: 0.4rem;
 }
 
+.ekstra-panel h2 {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-display);
+  color: var(--marine);
+  font-size: 1.25rem;
+}
+
 @media (min-width: 720px) {
   .week-strip {
     grid-template-columns: repeat(3, 1fr);

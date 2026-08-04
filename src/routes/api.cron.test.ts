@@ -59,6 +59,7 @@ const { mockArbeidshefte, mockCronKapittel } = vi.hoisted(() => ({
 
 vi.mock("../lib/emailSender.js", () => ({
   sendHefte: vi.fn().mockResolvedValue(undefined),
+  sendEkstraOppgaver: vi.fn().mockResolvedValue(undefined),
   sendTestEmail: vi.fn().mockResolvedValue(undefined),
   sendMissingArsplanUkeEmail: vi.fn().mockResolvedValue(undefined)
 }));
@@ -73,7 +74,8 @@ vi.mock("../lib/gemini.js", () => ({
 }));
 
 vi.mock("../lib/wordGenerator.js", () => ({
-  genererWordHefte: vi.fn().mockResolvedValue(Buffer.from("docx"))
+  genererWordHefte: vi.fn().mockResolvedValue(Buffer.from("docx")),
+  genererWordEkstra: vi.fn().mockResolvedValue(Buffer.from("docx"))
 }));
 
 describe("api cron", () => {

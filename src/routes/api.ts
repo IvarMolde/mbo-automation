@@ -1,7 +1,8 @@
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { env } from "../lib/config.js";
-import { sendHefte, sendMissingArsplanUkeEmail, sendTestEmail } from "../lib/emailSender.js";
+import { sendEkstraOppgaver, sendHefte, sendMissingArsplanUkeEmail, sendTestEmail } from "../lib/emailSender.js";
+import { genererEkstraOppgaver } from "../lib/ekstraOppgaver.js";
 import { genererArbeidshefte } from "../lib/gemini.js";
 import { type Kapittel } from "../lib/types.js";
 import { getIsoWeekNumber } from "../lib/week.js";
@@ -10,10 +11,13 @@ import { loadPlanState } from "../lib/planStore.js";
 import { listActiveRecipientEmails, loadRecipientsState } from "../lib/recipientsStore.js";
 import { AdminAuthError, requireAdmin } from "../lib/requireAdmin.js";
 import { getAllKapitler, getKapittel } from "../lib/parser.js";
-import { genererWordHefte } from "../lib/wordGenerator.js";
+import { loadSchoolYearProfile } from "../lib/schoolYearStore.js";
+import { genererWordEkstra, genererWordHefte } from "../lib/wordGenerator.js";
 import {
   cronResponseSchema,
   errorResponseSchema,
+  ekstraSendResponseSchema,
+  ekstraSendSchema,
   genererResponseSchema,
   genererSchema,
   manueltSendResponseSchema,
@@ -100,6 +104,7 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
 
     const uke = getIsoWeekNumber(new Date());
     await loadPlanState();
+    await loadSchoolYearProfile();
     const resolution = resolveKapittelForIsoUke(uke);
     if (resolution.type === "mangler_uke") {
       for (const email of recipients) {
@@ -147,6 +152,7 @@ apiRouter.post("/hefte/send", async (req, res) => {
     requireAdmin(req);
     const body = manueltSendSchema.parse(req.body);
     await loadPlanState();
+    await loadSchoolYearProfile();
 
     const kapittel = resolveKapittelFromRequest({ uke: body.uke });
     const files = await genererFilerForKapittel(kapittel, body.uke);
@@ -176,13 +182,71 @@ apiRouter.post("/hefte/send", async (req, res) => {
       success: true,
       message:
         files.contentSource === "gemini"
-          ? `Hefte for uke ${body.uke} er sendt.`
-          : `Hefte for uke ${body.uke} er sendt (fallback — Gemini feilet).`,
+          ? `Hefte for skoleuke ${body.uke} er sendt.`
+          : `Hefte for skoleuke ${body.uke} er sendt (fallback — Gemini feilet).`,
       kapittel: kapittel.nummer,
       uke: body.uke,
       contentSource: files.contentSource,
       geminiError: files.contentSource === "fallback" ? sanitizeGeminiError(files.geminiError) : undefined,
       sentTo: emails
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+/** Ekstraoppgaver: ett Word per valgt nivå, separate e-poster. Sendes aldri automatisk. */
+apiRouter.post("/hefte/ekstra", async (req, res) => {
+  try {
+    requireAdmin(req);
+    const body = ekstraSendSchema.parse(req.body);
+    await loadPlanState();
+    await loadSchoolYearProfile();
+
+    const kapittel = resolveKapittelFromRequest({ uke: body.uke });
+
+    let emails: string[];
+    if (body.mode === "one") {
+      emails = [body.motaker!.trim().toLowerCase()];
+    } else {
+      emails = await listActiveRecipientEmails();
+      if (emails.length === 0) {
+        throw new ApiError(500, "Ingen aktive mottakere. Legg til minst én under Admin.");
+      }
+    }
+
+    const recipientState = await loadRecipientsState();
+    const tokenByEmail = new Map(
+      recipientState.recipients.map((r) => [r.email, r.unsubscribeToken] as const)
+    );
+
+    const sent: Array<{
+      niva: "enklere" | "vanskeligere";
+      contentSource: "gemini" | "fallback";
+      sentTo: string[];
+    }> = [];
+
+    // Separate sending per nivå (as agreed)
+    for (const niva of body.nivaer) {
+      const gen = await genererEkstraOppgaver(kapittel, { niva, temaer: body.temaer });
+      const word = await genererWordEkstra(kapittel, gen.data, body.uke);
+      for (const email of emails) {
+        await sendEkstraOppgaver(email, kapittel, word, body.uke, niva, {
+          unsubscribeToken: tokenByEmail.get(email)
+        });
+      }
+      sent.push({ niva, contentSource: gen.source, sentTo: emails });
+    }
+
+    const allGemini = sent.every((s) => s.contentSource === "gemini");
+    sendValidatedJson(res, ekstraSendResponseSchema, {
+      success: true,
+      message: allGemini
+        ? `Ekstraoppgaver for skoleuke ${body.uke} er sendt (${sent.length} dokument${sent.length > 1 ? "er" : ""}).`
+        : `Ekstraoppgaver for skoleuke ${body.uke} er sendt (delvis/fallback).`,
+      kapittel: kapittel.nummer,
+      uke: body.uke,
+      sent
     });
   } catch (error) {
     handleError(res, error);

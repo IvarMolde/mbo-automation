@@ -1,4 +1,4 @@
-export type ViewId = "oversikt" | "denne-uken" | "perioder" | "veiledning" | "admin" | "om";
+export type ViewId = "skolear" | "oversikt" | "denne-uken" | "perioder" | "veiledning" | "admin" | "om";
 
 export interface ArsplanMetadata {
   tittel: string;
@@ -121,5 +121,13 @@ export interface PlanApiResponse {
   };
   auth?: {
     configured: boolean;
+  };
+  schoolYear?: {
+    configured: boolean;
+    label?: string;
+    startDate?: string;
+    endDate?: string;
+    holidayWeeks?: number[];
+    appliedAt?: string;
   };
 }

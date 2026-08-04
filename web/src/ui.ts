@@ -151,6 +151,7 @@ export function renderShell(opts: {
           Meny
         </button>
         <nav id="hovedmeny" class="main-nav" aria-label="Hovedmeny">
+          ${nav("skolear", "Skoleår")}
           ${nav("denne-uken", "Nå")}
           ${nav("oversikt", "Årsplan")}
           ${nav("veiledning", "Veiledning")}
@@ -171,9 +172,9 @@ export function renderShell(opts: {
       <p class="muted">Fase 2: lås ferieuker og forskyv planen. Se Veiledning for forklaringer.</p>
     </footer>
     <nav class="mobile-nav" aria-label="Hurtignavigasjon">
+      ${nav("skolear", "Skoleår")}
       ${nav("denne-uken", "Nå")}
       ${nav("oversikt", "Årsplan")}
-      ${nav("veiledning", "Hjelp")}
       ${nav("admin", "Admin")}
     </nav>
   `;

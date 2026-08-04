@@ -10,6 +10,8 @@ import { getArsplan } from "../lib/arsplanResolve.js";
 import { appendOperation, computeEffectiveSchedule } from "../lib/planSchedule.js";
 import { getPlanStoreMeta, loadPlanState, savePlanState } from "../lib/planStore.js";
 import { AdminAuthError, requireAdmin } from "../lib/requireAdmin.js";
+import { getScheduleArsplan, getScheduleArsplanCached } from "../lib/scheduleArsplan.js";
+import { loadSchoolYearProfile } from "../lib/schoolYearStore.js";
 
 export const planRouter = Router();
 
@@ -49,7 +51,7 @@ planRouter.post("/plan/login", (req, res) => {
 
 planRouter.get("/plan", async (_req, res) => {
   try {
-    const plan = getArsplan();
+    const plan = await getScheduleArsplan();
     if (!plan) {
       res.status(503).json({ success: false, error: "Årsplan mangler." });
       return;
@@ -57,6 +59,7 @@ planRouter.get("/plan", async (_req, res) => {
     const state = await loadPlanState();
     const effective = computeEffectiveSchedule(plan, state);
     const meta = getPlanStoreMeta();
+    const schoolYear = await loadSchoolYearProfile();
     res.json({
       success: true,
       metadata: plan.metadata,
@@ -69,7 +72,17 @@ planRouter.get("/plan", async (_req, res) => {
         operations: state.operations
       },
       store: meta,
-      auth: { configured: adminAuthConfigured() }
+      auth: { configured: adminAuthConfigured() },
+      schoolYear: schoolYear?.applied
+        ? {
+            configured: true,
+            label: schoolYear.label,
+            startDate: schoolYear.startDate,
+            endDate: schoolYear.endDate,
+            holidayWeeks: schoolYear.holidayWeeks,
+            appliedAt: schoolYear.appliedAt
+          }
+        : { configured: false }
     });
   } catch (error) {
     handlePlanError(res, error);
@@ -84,6 +97,7 @@ const lockSchema = z.object({
 planRouter.post("/plan/lock", async (req, res) => {
   try {
     requireAdmin(req);
+    await loadSchoolYearProfile();
     const body = lockSchema.parse(req.body);
     const state = await loadPlanState();
     const next = appendOperation(state, {
@@ -102,6 +116,7 @@ planRouter.post("/plan/lock", async (req, res) => {
 planRouter.post("/plan/unlock", async (req, res) => {
   try {
     requireAdmin(req);
+    await loadSchoolYearProfile();
     const body = lockSchema.pick({ uke: true }).parse(req.body);
     const state = await loadPlanState();
     const next = appendOperation(state, {
@@ -125,6 +140,7 @@ const shiftSchema = z.object({
 planRouter.post("/plan/shift", async (req, res) => {
   try {
     requireAdmin(req);
+    await loadSchoolYearProfile();
     const body = shiftSchema.parse(req.body);
     const state = await loadPlanState();
     const next = appendOperation(state, {
@@ -151,6 +167,7 @@ const overrideWeekSchema = z.object({
 planRouter.post("/plan/override-week", async (req, res) => {
   try {
     requireAdmin(req);
+    await loadSchoolYearProfile();
     const body = overrideWeekSchema.parse(req.body);
     if (body.yrke === undefined && body.grammatikk === undefined) {
       throw new PlanApiError(400, "Oppgi minst yrke eller grammatikk (eller null for å nullstille felt).");
@@ -174,6 +191,7 @@ planRouter.post("/plan/override-week", async (req, res) => {
 planRouter.post("/plan/clear-week-override", async (req, res) => {
   try {
     requireAdmin(req);
+    await loadSchoolYearProfile();
     const body = z.object({ uke: z.number().int().min(1).max(53) }).parse(req.body);
     const state = await loadPlanState();
     const next = appendOperation(state, {
@@ -191,6 +209,7 @@ planRouter.post("/plan/clear-week-override", async (req, res) => {
 planRouter.post("/plan/reset", async (req, res) => {
   try {
     requireAdmin(req);
+    await loadSchoolYearProfile();
     const state = await loadPlanState();
     const next = appendOperation(state, {
       type: "reset",
@@ -204,7 +223,7 @@ planRouter.post("/plan/reset", async (req, res) => {
 });
 
 function scheduleSnapshot(state: Parameters<typeof computeEffectiveSchedule>[1]) {
-  const plan = getArsplan();
+  const plan = getScheduleArsplanCached() ?? getArsplan();
   if (!plan) return null;
   return computeEffectiveSchedule(plan, state);
 }
