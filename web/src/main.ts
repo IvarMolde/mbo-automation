@@ -149,12 +149,18 @@ async function refreshPlanFromApi(): Promise<void> {
     apiMeta = data.store;
     apiStateUpdatedAt = data.state.updatedAt;
     planOperations = data.state.operations as PlanState["operations"];
+    // Skoleår-profil må alltid inn — også uten innlogging — ellers blir ranking/UI stående på uke 34.
+    schoolYearInfo = data.schoolYear ?? null;
+    setSchoolYearStartWeek(data.schoolYear?.configured ? data.schoolYear.startWeek : null);
 
     const local = loadLocalPlanState();
     const localHasChanges = local.operations.some((op) => op.type !== "reset");
-    if (data.effective.hasChanges && !localHasChanges) {
+    const schoolYearActive = Boolean(data.schoolYear?.configured);
+
+    // Når Skoleår er aktivt, er serverens ukefordeling sannheten (ikke lokal omregning mot gammel fasit).
+    if (schoolYearActive || (data.effective.hasChanges && !localHasChanges)) {
       effectiveUker = data.effective.uker;
-      planSource = "server";
+      planSource = data.effective.hasChanges || schoolYearActive ? "server" : "base";
     } else if (localHasChanges) {
       effectiveUker = getLocalEffectiveUker(plan);
       planOperations = local.operations;
@@ -166,6 +172,8 @@ async function refreshPlanFromApi(): Promise<void> {
   } catch (err) {
     loadError = err instanceof Error ? err.message : "Kunne ikke hente dynamisk plan";
     apiMeta = null;
+    schoolYearInfo = null;
+    setSchoolYearStartWeek(null);
     plan = planJson as ArsplanDokument;
     applyLocalSchedule();
   }
@@ -1149,12 +1157,13 @@ function renderOm(): string {
           systemet følger. Det du ser under Årsplan og Nå, kommer herfra (pluss eventuelle tilpasninger).
         </li>
         <li>
-          <strong>KI som lager ukeinnholdet</strong> — når heftet skal lages, sendes ukas kapittel
-          til Googles språkmodell <strong>Gemini 2.5 Flash</strong> (via Vertex AI).
-          Modellen skriver tekster og oppgaver ut fra årsplan-malen: norskdelen og
-          hverdagsmatematikk (fagtekst + nivå 1 og 2), på språk tilpasset voksne A2–B1.
-          Resultatet pakkes i samme Word-design hver uke. Hvis KI midlertidig feiler, brukes en
-          reservedeløsning slik at utsendingen ikke stopper helt.
+          <strong>KI som lager ukeinnholdet</strong> — når heftet skal lages (onsdag eller manuelt),
+          sendes ukas kapittel til Google sin språkmodell
+          <strong>Gemini 2.5 Flash</strong> (modell-id: <code>gemini-2.5-flash</code>, via Vertex AI).
+          Det er denne modellen som genererer tekstene og oppgavene i heftet — både norskdelen og
+          hverdagsmatematikk (fagtekst + nivå 1 og 2) — ut fra årsplan-malen, på språk tilpasset
+          voksne A2–B1. Resultatet pakkes i samme Word-design hver uke. Hvis KI midlertidig feiler,
+          brukes en reservedeløsning slik at utsendingen ikke stopper helt.
         </li>
         <li>
           <strong>Utsending</strong> — Word-filen sendes på e-post til aktive mottakere.
@@ -1163,13 +1172,13 @@ function renderOm(): string {
       </ol>
       <p>
         <strong>Nettsiden</strong> du bruker nå, er den lette overflaten (publisert via GitHub Pages).
-        <strong>Motoren</strong> bak — planlagring, Gemini, Word og e-post — kjører som et API
+        <strong>Motoren</strong> bak — planlagring, Gemini 2.5 Flash, Word og e-post — kjører som et API
         (Vercel) med planlagt onsdagsjobb. Data lagres i database (Turso).
         Passord og API-nøkler ligger som hemmeligheter på serveren og vises aldri i nettleseren.
       </p>
       <p>
         Pedagogisk poeng: læreren styrer <em>hva</em> som skal jobbes med (planen og tilpasningene);
-        Gemini hjelper med å <em>formulere</em> tekster og oppgaver innenfor den rammen —
+        Gemini 2.5 Flash hjelper med å <em>formulere</em> tekster og oppgaver innenfor den rammen —
         ikke å erstatte din faglige vurdering.
       </p>
       <p class="muted">Sist oppdatert ${escapeHtml(DOCS_UPDATED)}.</p>
@@ -1970,6 +1979,7 @@ function bindSkolearForm(): void {
         message?: string;
         teachingWeeks?: number;
         holidayWeeks?: number;
+        profile?: { startWeek?: number; startDate?: string };
       };
       if (!res.ok || !data.success) {
         schoolYearFlash = data.error ?? "Kunne ikke lagre skoleår.";
@@ -1977,9 +1987,14 @@ function bindSkolearForm(): void {
         return;
       }
       await refreshPlanFromApi();
+      const startWeek = data.profile?.startWeek ?? schoolYearInfo?.startWeek;
       schoolYearFlash =
-        data.message ??
-        `Plan generert: ${data.teachingWeeks ?? "?"} undervisningsuker, ${data.holidayWeeks ?? "?"} hele ferieuker låst.`;
+        (data.message ?? "Skoleåret er lagret og planen er generert.") +
+        (startWeek != null
+          ? ` Planen starter skoleuke ${startWeek}${
+              data.profile?.startDate ? ` (${data.profile.startDate})` : ""
+            }. ${data.teachingWeeks ?? "?"} undervisningsuker · ${data.holidayWeeks ?? "?"} hele ferieuker låst.`
+          : ` ${data.teachingWeeks ?? "?"} undervisningsuker · ${data.holidayWeeks ?? "?"} hele ferieuker låst.`);
       render();
     } catch {
       schoolYearFlash = "Kunne ikke nå serveren.";
