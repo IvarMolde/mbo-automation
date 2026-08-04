@@ -1309,8 +1309,12 @@ function weekSendPreview(uke: number): string {
   if (!kap) return `Kapittel ${row.kapittelNummer ?? "?"} (mangler detaljer)`;
   const yrke = row.overrideYrke ?? kap.yrke;
   const gram = row.overrideGrammatikk ?? kap.grammatikk;
+  const tema = row.overrideTema ?? kap.arbeidsnorskTema;
+  const regning = matteKategoriLabelForKapittel(kap.nummer);
   const tip = row.tilpasset ? " · tilpasset" : "";
-  return `Kap. ${kap.nummer} — ${yrke} · ${gram}${tip}`;
+  return `Kap. ${kap.nummer} — ${yrke} · ${gram} · Regning: ${regning} (nivå 1 og 2)${
+    tema ? ` · Tema: ${tema}` : ""
+  }${tip}`;
 }
 
 function catalogOptions(kind: "yrke" | "grammatikk"): string[] {
