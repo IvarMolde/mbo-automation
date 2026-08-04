@@ -6,6 +6,7 @@ import {
   saveLocalPlanState
 } from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
+import { renderMonthCalendarHtml } from "./monthCalendar";
 import { computeEffectiveSchedule, type PlanOperation, type PlanState } from "./schedule";
 import type { ArsplanDokument, EffectiveUke, PlanApiResponse, UkeVisning, ViewId } from "./types";
 import { renderShell, renderUkeCard } from "./ui";
@@ -894,7 +895,13 @@ function renderDenneUken(): string {
       </ul>
     </section>`;
 
-  return `${hero}${status}${strip}${detail}${ekstra}${calendar}`;
+  return `
+    <div class="now-layout">
+      ${renderMonthCalendarHtml(escapeHtml)}
+      <div class="now-main">
+        ${hero}${status}${strip}${detail}${ekstra}${calendar}
+      </div>
+    </div>`;
 }
 
 function renderOm(): string {
@@ -1045,7 +1052,7 @@ function renderVeiledning(): string {
       <h2>Fanene i menyen</h2>
       <div class="help-text">
         <p><strong>Skoleår</strong> — første valg: start, slutt og ferier. Her genereres planen for stedet ditt.</p>
-        <p><strong>Nå</strong> — forrige, inneværende og neste skoleuke, kalender, og ekstraoppgaver ved behov.</p>
+        <p><strong>Nå</strong> — månedskalender til venstre (dato + ukenummer, lys grønn sirkel på i dag), forrige/neste skoleuke, årskalender, og ekstraoppgaver ved behov.</p>
         <p><strong>Årsplan</strong> — alle ukene med kapittel, yrke, grammatikk, nivå, tematekster og oppgaver. Åpne en uke for full detalj.</p>
         <p><strong>Admin</strong> — logg inn for å endre planen og styre utsending.</p>
         <p><strong>Om</strong> — bakgrunn og hvordan verktøyet fungerer under panseret.</p>

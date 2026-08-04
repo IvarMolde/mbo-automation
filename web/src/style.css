@@ -174,6 +174,122 @@ a:hover {
   padding: 1.5rem 1.25rem calc(var(--mobile-nav-h) + 2rem);
 }
 
+.main:has(.now-layout) {
+  max-width: 1320px;
+}
+
+.now-layout {
+  display: grid;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.now-main {
+  min-width: 0;
+}
+
+.month-cal {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 0.85rem 0.75rem 0.7rem;
+}
+
+.month-cal-title {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--marine);
+  text-align: center;
+}
+
+.mcal-grid {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.mcal-row {
+  display: grid;
+  grid-template-columns: 2.1rem 1fr;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.mcal-week {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--teal);
+  text-align: center;
+  line-height: 1.1;
+}
+
+.mcal-week-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.mcal-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.1rem;
+}
+
+.mcal-dow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.mcal-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  min-height: 1.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.mcal-day.is-out-month {
+  color: #9aadb6;
+  font-weight: 500;
+}
+
+.mcal-day.is-today {
+  background: #c8e6c9;
+  color: #1b5e20;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px color-mix(in srgb, #81c784 70%, transparent);
+}
+
+.month-cal-legend {
+  margin: 0.55rem 0 0;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+@media (min-width: 960px) {
+  .now-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .month-cal {
+    position: sticky;
+    top: calc(var(--header-h) + 0.75rem);
+  }
+}
+
 .page-header h1 {
   margin: 0 0 0.35rem;
   font-family: var(--font-display);
