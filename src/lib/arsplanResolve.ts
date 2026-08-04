@@ -137,6 +137,8 @@ export function resolveKapittelForIsoUke(
     const kapittel = mapArsplanKapitelTilKapittel(ch);
     if (effective.overrideYrke) kapittel.yrke = effective.overrideYrke;
     if (effective.overrideGrammatikk) kapittel.grammatikk = effective.overrideGrammatikk;
+    if (effective.overrideTema) kapittel.arbeidsnorskTema = effective.overrideTema;
+    if (effective.overrideFokus) kapittel.periodeFokus = effective.overrideFokus;
     return { type: "arsplan", kapittel };
   }
 
@@ -154,5 +156,7 @@ export function resolveKapittelForIsoUke(
   const ov = schedule.weekOverrides[String(isoUke)];
   if (ov?.yrke) kapittel.yrke = ov.yrke;
   if (ov?.grammatikk) kapittel.grammatikk = ov.grammatikk;
+  if (ov?.tema) kapittel.arbeidsnorskTema = ov.tema;
+  if (ov?.fokus) kapittel.periodeFokus = ov.fokus;
   return { type: "arsplan", kapittel };
 }

@@ -2,13 +2,38 @@ import type { ArsplanDokument } from "../schemas/planlegging.js";
 import type { PlanOperation, PlanState, WeekFieldOverride } from "./planState.js";
 import { emptyPlanState } from "./planState.js";
 
-/** School-year sort: autumn weeks (34–53) before spring (1–33). */
-export function schoolYearRank(uke: number): number {
-  return uke >= 34 ? uke : uke + 100;
+/** Default when no Skoleår-profil er satt (historisk fasit startet uke 34). */
+const DEFAULT_YEAR_START_WEEK = 34;
+
+let activeYearStartWeek = DEFAULT_YEAR_START_WEEK;
+
+/** Sett første skoleuke i året (fra Skoleår-profil). Påvirker sortering/forskyvning. */
+export function setSchoolYearStartWeek(week: number | null | undefined): void {
+  if (week != null && Number.isInteger(week) && week >= 1 && week <= 53) {
+    activeYearStartWeek = week;
+  } else {
+    activeYearStartWeek = DEFAULT_YEAR_START_WEEK;
+  }
 }
 
-export function compareSchoolYear(a: number, b: number): number {
-  return schoolYearRank(a) - schoolYearRank(b);
+export function getSchoolYearStartWeek(): number {
+  return activeYearStartWeek;
+}
+
+/**
+ * School-year sort: weeks from yearStart through 53, then 1..(yearStart-1).
+ * Eksempel startuke 32: 32…53, deretter 1…31.
+ */
+export function schoolYearRank(uke: number, yearStartWeek = activeYearStartWeek): number {
+  return uke >= yearStartWeek ? uke : uke + 100;
+}
+
+export function compareSchoolYear(
+  a: number,
+  b: number,
+  yearStartWeek = activeYearStartWeek
+): number {
+  return schoolYearRank(a, yearStartWeek) - schoolYearRank(b, yearStartWeek);
 }
 
 export type EffectiveUkeStatus = "teaching" | "locked" | "empty";
@@ -22,10 +47,12 @@ export interface EffectiveUke {
   maned: string;
   periodeFokus: string;
   endret: boolean;
-  /** Lærer har tilpasset yrke og/eller grammatikk for uken */
+  /** Lærer har tilpasset yrke, grammatikk og/eller manuelt tema for uken */
   tilpasset: boolean;
   overrideYrke?: string;
   overrideGrammatikk?: string;
+  overrideTema?: string;
+  overrideFokus?: string;
 }
 
 export interface EffectiveSchedule {
@@ -188,7 +215,7 @@ export function lockedWeeksFromState(state: PlanState): number[] {
   return [...locked].sort(compareSchoolYear);
 }
 
-/** Fold field overrides (yrke/grammatikk) from the operation log. */
+/** Fold field overrides (yrke/grammatikk/tema) from the operation log. */
 export function foldWeekOverrides(state: PlanState): Map<number, WeekFieldOverride> {
   const map = new Map<number, WeekFieldOverride>();
   for (const op of state.operations) {
@@ -210,7 +237,15 @@ export function foldWeekOverrides(state: PlanState): Map<number, WeekFieldOverri
       if (op.grammatikk == null || op.grammatikk === "") delete cur.grammatikk;
       else cur.grammatikk = op.grammatikk;
     }
-    if (!cur.yrke && !cur.grammatikk) map.delete(op.uke);
+    if ("tema" in op) {
+      if (op.tema == null || op.tema === "") delete cur.tema;
+      else cur.tema = op.tema;
+    }
+    if ("fokus" in op) {
+      if (op.fokus == null || op.fokus === "") delete cur.fokus;
+      else cur.fokus = op.fokus;
+    }
+    if (!cur.yrke && !cur.grammatikk && !cur.tema && !cur.fokus) map.delete(op.uke);
     else map.set(op.uke, cur);
   }
   return map;
@@ -232,7 +267,7 @@ export function computeEffectiveSchedule(
     else if (s.kapittelNummer == null) status = "empty";
 
     const ov = overrides.get(s.uke);
-    const tilpasset = Boolean(ov?.yrke || ov?.grammatikk);
+    const tilpasset = Boolean(ov?.yrke || ov?.grammatikk || ov?.tema || ov?.fokus);
     const endret = s.locked || s.kapittelNummer !== baseKap || tilpasset;
 
     return {
@@ -241,11 +276,13 @@ export function computeEffectiveSchedule(
       kapittelNummer: s.locked ? null : s.kapittelNummer,
       baseKapittelNummer: baseKap,
       maned: s.maned,
-      periodeFokus: s.periodeFokus,
+      periodeFokus: ov?.fokus ?? s.periodeFokus,
       endret,
       tilpasset,
       overrideYrke: ov?.yrke,
-      overrideGrammatikk: ov?.grammatikk
+      overrideGrammatikk: ov?.grammatikk,
+      overrideTema: ov?.tema,
+      overrideFokus: ov?.fokus
     };
   });
 

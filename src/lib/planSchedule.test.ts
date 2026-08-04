@@ -72,4 +72,21 @@ describe("planSchedule", () => {
     const cleared = computeEffectiveSchedule(miniPlan(), state);
     expect(cleared.uker.find((u) => u.uke === 40)?.tilpasset).toBe(false);
   });
+
+  it("lar lærer legge inn manuelt tema og fokus", () => {
+    let state = emptyPlanState("t0");
+    state = appendOperation(state, {
+      type: "overrideWeek",
+      uke: 40,
+      at: "t1",
+      tema: "Brannøvelse på arbeidsplassen",
+      fokus: "Sikkerhet på jobb"
+    });
+    const eff = computeEffectiveSchedule(miniPlan(), state);
+    const u40 = eff.uker.find((u) => u.uke === 40);
+    expect(u40?.tilpasset).toBe(true);
+    expect(u40?.overrideTema).toBe("Brannøvelse på arbeidsplassen");
+    expect(u40?.overrideFokus).toBe("Sikkerhet på jobb");
+    expect(u40?.periodeFokus).toBe("Sikkerhet på jobb");
+  });
 });

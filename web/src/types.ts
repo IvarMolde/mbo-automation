@@ -85,6 +85,8 @@ export interface EffectiveUke {
   tilpasset?: boolean;
   overrideYrke?: string;
   overrideGrammatikk?: string;
+  overrideTema?: string;
+  overrideFokus?: string;
 }
 
 export interface UkeVisning {
@@ -109,7 +111,10 @@ export interface PlanApiResponse {
     uker: EffectiveUke[];
     lockedWeeks: number[];
     hasChanges: boolean;
-    weekOverrides?: Record<string, { yrke?: string; grammatikk?: string }>;
+    weekOverrides?: Record<
+      string,
+      { yrke?: string; grammatikk?: string; tema?: string; fokus?: string }
+    >;
   };
   state: {
     updatedAt: string;
@@ -127,6 +132,7 @@ export interface PlanApiResponse {
     label?: string;
     startDate?: string;
     endDate?: string;
+    startWeek?: number;
     holidayWeeks?: number[];
     holidays?: Array<{
       name: string;

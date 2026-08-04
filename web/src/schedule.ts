@@ -3,6 +3,8 @@ import type { ArsplanDokument, EffectiveStatus, EffectiveUke } from "./types";
 export type WeekFieldOverride = {
   yrke?: string;
   grammatikk?: string;
+  tema?: string;
+  fokus?: string;
 };
 
 export type PlanOperation =
@@ -16,6 +18,8 @@ export type PlanOperation =
       note?: string;
       yrke?: string | null;
       grammatikk?: string | null;
+      tema?: string | null;
+      fokus?: string | null;
     }
   | { type: "clearWeekOverride"; uke: number; at: string }
   | { type: "reset"; at: string };
@@ -26,16 +30,35 @@ export interface PlanState {
   updatedAt: string;
 }
 
+export function schoolYearRank(uke: number, yearStartWeek = getSchoolYearStartWeek()): number {
+  return uke >= yearStartWeek ? uke : uke + 100;
+}
+
+export function compareSchoolYear(
+  a: number,
+  b: number,
+  yearStartWeek = getSchoolYearStartWeek()
+): number {
+  return schoolYearRank(a, yearStartWeek) - schoolYearRank(b, yearStartWeek);
+}
+
+const DEFAULT_YEAR_START_WEEK = 34;
+let activeYearStartWeek = DEFAULT_YEAR_START_WEEK;
+
+export function setSchoolYearStartWeek(week: number | null | undefined): void {
+  if (week != null && Number.isInteger(week) && week >= 1 && week <= 53) {
+    activeYearStartWeek = week;
+  } else {
+    activeYearStartWeek = DEFAULT_YEAR_START_WEEK;
+  }
+}
+
+export function getSchoolYearStartWeek(): number {
+  return activeYearStartWeek;
+}
+
 export function emptyPlanState(now = new Date().toISOString()): PlanState {
   return { version: 1, operations: [], updatedAt: now };
-}
-
-export function schoolYearRank(uke: number): number {
-  return uke >= 34 ? uke : uke + 100;
-}
-
-export function compareSchoolYear(a: number, b: number): number {
-  return schoolYearRank(a) - schoolYearRank(b);
 }
 
 export interface EffectiveSchedule {
@@ -215,7 +238,15 @@ export function foldWeekOverrides(state: PlanState): Map<number, WeekFieldOverri
       if (op.grammatikk == null || op.grammatikk === "") delete cur.grammatikk;
       else cur.grammatikk = op.grammatikk;
     }
-    if (!cur.yrke && !cur.grammatikk) map.delete(op.uke);
+    if ("tema" in op) {
+      if (op.tema == null || op.tema === "") delete cur.tema;
+      else cur.tema = op.tema;
+    }
+    if ("fokus" in op) {
+      if (op.fokus == null || op.fokus === "") delete cur.fokus;
+      else cur.fokus = op.fokus;
+    }
+    if (!cur.yrke && !cur.grammatikk && !cur.tema && !cur.fokus) map.delete(op.uke);
     else map.set(op.uke, cur);
   }
   return map;
@@ -236,7 +267,7 @@ export function computeEffectiveSchedule(
     if (s.locked) status = "locked";
     else if (s.kapittelNummer == null) status = "empty";
     const ov = overrides.get(s.uke);
-    const tilpasset = Boolean(ov?.yrke || ov?.grammatikk);
+    const tilpasset = Boolean(ov?.yrke || ov?.grammatikk || ov?.tema || ov?.fokus);
 
     return {
       uke: s.uke,
@@ -244,11 +275,13 @@ export function computeEffectiveSchedule(
       kapittelNummer: s.locked ? null : s.kapittelNummer,
       baseKapittelNummer: baseKap,
       maned: s.maned,
-      periodeFokus: s.periodeFokus,
+      periodeFokus: ov?.fokus ?? s.periodeFokus,
       endret: s.locked || s.kapittelNummer !== baseKap || tilpasset,
       tilpasset,
       overrideYrke: ov?.yrke,
-      overrideGrammatikk: ov?.grammatikk
+      overrideGrammatikk: ov?.grammatikk,
+      overrideTema: ov?.tema,
+      overrideFokus: ov?.fokus
     };
   });
 

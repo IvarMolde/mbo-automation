@@ -1,5 +1,9 @@
 import type { ArsplanDokument } from "../schemas/planlegging.js";
-import { compareSchoolYear, schoolYearRank } from "./planSchedule.js";
+import {
+  compareSchoolYear,
+  schoolYearRank,
+  setSchoolYearStartWeek
+} from "./planSchedule.js";
 import type {
   BreakSummary,
   GeneratedUke,
@@ -120,7 +124,7 @@ export function isoWeeksInRange(startIso: string, endIso: string): number[] {
     cursor = addDays(cursor, 1);
     guard += 1;
   }
-  return ordered.sort(compareSchoolYear);
+  return ordered.sort((a, b) => compareSchoolYear(a, b, getIsoWeekParts(start).week));
 }
 
 type WeekCoverage = { week: number; dates: string[]; weekdayCount: number };
@@ -338,9 +342,12 @@ export function generateSchoolYearPlan(
   },
   plan: ArsplanDokument
 ): SchoolYearProfile {
+  const startWeek = getIsoWeekParts(parseDateOnly(input.startDate)).week;
+  setSchoolYearStartWeek(startWeek);
+
   const allWeeks = isoWeeksInRange(input.startDate, input.endDate);
   const holidaySet = holidayWeekSet(input.holidays);
-  const holidayWeeks = [...holidaySet].sort(compareSchoolYear);
+  const holidayWeeks = [...holidaySet].sort((a, b) => compareSchoolYear(a, b, startWeek));
   const teachingWeeks = allWeeks.filter((w) => !holidaySet.has(w));
   const generatedUker = distributeChapters(teachingWeeks, plan, input.startDate, input.endDate);
   const breakSummary = summarizeBreaks(input.holidays);
@@ -351,6 +358,7 @@ export function generateSchoolYearPlan(
     label: input.label?.trim() || undefined,
     startDate: input.startDate,
     endDate: input.endDate,
+    startWeek,
     holidays: input.holidays,
     holidayWeeks,
     breakSummary,
@@ -406,6 +414,10 @@ export function applyProfileToArsplan(
   if (!profile?.applied || !profile.generatedUker.length) {
     return plan;
   }
+  const startWeek =
+    profile.startWeek ?? getIsoWeekParts(parseDateOnly(profile.startDate)).week;
+  setSchoolYearStartWeek(startWeek);
+
   const teachingRows = profile.generatedUker.filter((u) => u.kapittel != null);
   const uker = teachingRows.map((u) => ({
     uke: u.uke,
@@ -423,7 +435,7 @@ export function applyProfileToArsplan(
         maned: monthNameForWeek(uke, profile.startDate, profile.endDate),
         periodeFokus: "Ferie"
       }))
-    ].sort((a, b) => compareSchoolYear(a.uke, b.uke)),
+    ].sort((a, b) => compareSchoolYear(a.uke, b.uke, startWeek)),
     plan
   );
 
@@ -434,7 +446,7 @@ export function applyProfileToArsplan(
       ...(profile.label ? { tittel: profile.label } : {}),
       skolear: profile.label || plan.metadata.skolear,
       periode: `${profile.startDate} – ${profile.endDate}`,
-      notat: "Generert fra Skoleår-profil (start, slutt og ferier)."
+      notat: `Generert fra Skoleår-profil (starter skoleuke ${startWeek}).`
     },
     perioder,
     uker

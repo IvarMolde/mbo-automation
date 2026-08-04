@@ -26,7 +26,11 @@ export const planOperationSchema = z.discriminatedUnion("type", [
     note: z.string().max(300).optional(),
     /** null = fjern overstyring for feltet; utelatt = ikke endre feltet */
     yrke: z.string().max(300).nullable().optional(),
-    grammatikk: z.string().max(2000).nullable().optional()
+    grammatikk: z.string().max(2000).nullable().optional(),
+    /** Manuelt tema / arbeidsnorsk (fritekst) */
+    tema: z.string().max(500).nullable().optional(),
+    /** Kort periodenfokus / begrunnelse for manuell uke */
+    fokus: z.string().max(500).nullable().optional()
   }),
   z.object({
     type: z.literal("clearWeekOverride"),
@@ -51,6 +55,8 @@ export type PlanState = z.infer<typeof planStateSchema>;
 export type WeekFieldOverride = {
   yrke?: string;
   grammatikk?: string;
+  tema?: string;
+  fokus?: string;
 };
 
 export function emptyPlanState(now = new Date().toISOString()): PlanState {

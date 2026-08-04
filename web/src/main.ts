@@ -7,7 +7,7 @@ import {
 } from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
 import { renderMonthCalendarHtml } from "./monthCalendar";
-import { computeEffectiveSchedule, type PlanOperation, type PlanState } from "./schedule";
+import { computeEffectiveSchedule, setSchoolYearStartWeek, type PlanOperation, type PlanState } from "./schedule";
 import type { ArsplanDokument, EffectiveUke, PlanApiResponse, UkeVisning, ViewId } from "./types";
 import { renderShell, renderUkeCard } from "./ui";
 import "./style.css";
@@ -114,6 +114,7 @@ function adoptServerPlan(data: PlanApiResponse): void {
   effectiveUker = data.effective.uker;
   planSource = data.effective.hasChanges ? "server" : "base";
   schoolYearInfo = data.schoolYear ?? null;
+  setSchoolYearStartWeek(data.schoolYear?.configured ? data.schoolYear.startWeek : null);
   const synced: PlanState = {
     version: 1,
     updatedAt: data.state.updatedAt,
@@ -190,7 +191,14 @@ async function runPlanAction(op: PlanOperation): Promise<string | null> {
         : op.type === "shift"
           ? { fromUke: op.fromUke, weeks: op.weeks, note: op.note }
           : op.type === "overrideWeek"
-            ? { uke: op.uke, note: op.note, yrke: op.yrke, grammatikk: op.grammatikk }
+            ? {
+                uke: op.uke,
+                note: op.note,
+                yrke: op.yrke,
+                grammatikk: op.grammatikk,
+                tema: op.tema,
+                fokus: op.fokus
+              }
             : op.type === "clearWeekOverride"
               ? { uke: op.uke }
               : {};
@@ -453,7 +461,7 @@ function renderPlanStatus(opts: { showLegend?: boolean } = {}): string {
   const legend = opts.showLegend
     ? `<ul class="legend-list compact plan-status-legend">
         <li><span class="badge badge-lock">Låst</span> ferie</li>
-        <li><span class="badge badge-tilpasset">Tilpasset</span> yrke/grammatikk</li>
+        <li><span class="badge badge-tilpasset">Tilpasset</span> tema/yrke/grammatikk</li>
         <li><span class="badge badge-empty">Innhenting</span> etter forskyvning</li>
         <li><span class="badge badge-changed">Endret</span> kapittel flyttet</li>
       </ul>`
@@ -766,7 +774,7 @@ function renderSkolear(): string {
     ? `<div class="panel plan-status" role="status">
         <div class="plan-status-head">
           <span class="plan-status-pill">Aktivt skoleår</span>
-          <p class="plan-status-lead">${escapeHtml(sy.label || plan.metadata.skolear || "Skoleår")} · ${escapeHtml(sy.startDate ?? "")} – ${escapeHtml(sy.endDate ?? "")}</p>
+          <p class="plan-status-lead">${escapeHtml(sy.label || plan.metadata.skolear || "Skoleår")} · starter skoleuke ${sy.startWeek ?? "—"} · ${escapeHtml(sy.startDate ?? "")} – ${escapeHtml(sy.endDate ?? "")}</p>
         </div>
         ${renderBreakSummaryHtml(sy)}
       </div>`
@@ -786,11 +794,13 @@ function renderSkolear(): string {
     ${schoolYearFlash ? `<p class="admin-flash" role="status">${escapeHtml(schoolYearFlash)}</p>` : ""}
     <div class="panel">
       <h2>Generer plan for skoleåret</h2>
-      <p class="help-text">
+        <p class="help-text">
         <strong>Ferieperioder</strong> (f.eks. høst- og juleferie) låser hele skoleuker uten undervisning
         når perioden dekker minst tre ukedager.<br/>
         <strong>Ekstra fridager</strong> (kurs, planlegging, 1. mai …) registreres på dato —
-        skoleuken fortsetter med undervisning de andre dagene.
+        skoleuken fortsetter med undervisning de andre dagene.<br/>
+        Planen <strong>starter på skoleuken til startdatoen</strong> og hopper over ferieuker automatisk.
+        Ferier styres her — ikke under Admin.
       </p>
       <form id="skolear-form" class="admin-form">
         <label for="sy-label">Navn (valgfritt)</label>
@@ -866,6 +876,9 @@ function renderDenneUken(): string {
     </div>`;
 
   const status = renderPlanStatus();
+  const skolearHint = schoolYearInfo?.configured
+    ? ""
+    : `<div class="panel note" role="status">Skoleåret er ikke satt opp ennå. Gå til <a href="#/skolear">Skoleår</a> og definer start, slutt og ferier — ellers følger planen den gamle fasiten fra uke 34.</div>`;
 
   const strip = outsidePlan
     ? ""
@@ -899,7 +912,7 @@ function renderDenneUken(): string {
     <div class="now-layout">
       ${renderMonthCalendarHtml(escapeHtml)}
       <div class="now-main">
-        ${hero}${status}${strip}${detail}${ekstra}${calendar}
+        ${hero}${skolearHint}${status}${strip}${detail}${ekstra}${calendar}
       </div>
     </div>`;
 }
@@ -974,11 +987,12 @@ function renderOm(): string {
 
       <h3>5. Tilpasning underveis</h3>
       <p>
-        I <a href="#/admin">Admin</a> kan du <strong>låse ferieuker</strong>,
-        <strong>forskyve planen</strong> når klassen trenger mer tid, og
-        <strong>tilpasse yrke og grammatikk</strong> for enkeltuker med rullegardinmeny.
-        Du kan også <strong>sende et hefte manuelt</strong> for en valgt uke, f.eks. for å
-        forberede deg i forkant, og <strong>styre hvem som mottar</strong> heftet.
+        I <a href="#/admin">Admin</a> kan du <strong>låse eller låse opp uker</strong>
+        hvis skoleruta endrer seg midt i året, <strong>forskyve planen</strong> når klassen
+        trenger mer tid, og <strong>tilpasse enkeltuker</strong> — yrke, grammatikk eller
+        manuelt tema (f.eks. en spesiell hendelse eller noe som ble glemt i årsplanen).
+        Heftet bruker samme Word-mal; du styrer bare innholdet. Du kan også
+        <strong>sende et hefte manuelt</strong> og <strong>styre mottakere</strong>.
       </p>
 
       <h3>6. Innlogging og lagring</h3>
@@ -1022,9 +1036,10 @@ function renderVeiledning(): string {
     <div class="panel prose">
       <h2>0. Sett opp skoleåret</h2>
       <div class="help-text">
-        <p><strong>Når?</strong> Først i skoleåret, eller når stedet ditt har andre ferier enn standardplanen.</p>
-        <p><strong>Hvordan?</strong> Under <a href="#/skolear">Skoleår</a> fyller du inn start, slutt, <em>ferieperioder</em> (hele uker uten undervisning) og eventuelt <em>ekstra fridager</em> (kurs, planlegging — uken fortsetter). Trykk «Lagre og generer plan». Oppsummeringen viser tydelig hva som er hele ferieuker og hva som bare er enkeltdager.</p>
-        <p><strong>Språk:</strong> Vi snakker om <em>skoleuke</em> (f.eks. skoleuke 34), ikke «ISO-uke».</p>
+        <p><strong>Når?</strong> Først — før du bruker Nå/Årsplan som «fasit» for stedet ditt.</p>
+        <p><strong>Hvordan?</strong> Under <a href="#/skolear">Skoleår</a> fyller du inn start, slutt, <em>ferieperioder</em> (hele uker uten undervisning) og eventuelt <em>ekstra fridager</em> (kurs, planlegging — uken fortsetter). Trykk «Lagre og generer plan».</p>
+        <p><strong>Viktig:</strong> Planen starter på skoleuken til startdatoen du velger (ikke alltid uke 34), og hopper over ferieuker. Ferier styres her — ikke under Admin.</p>
+        <p><strong>Språk:</strong> Vi snakker om <em>skoleuke</em> (f.eks. skoleuke 32), ikke «ISO-uke».</p>
       </div>
     </div>
 
@@ -1068,38 +1083,36 @@ function renderVeiledning(): string {
     </div>
 
     <div class="panel prose">
-      <h2>2. Lås uke</h2>
+      <h2>2. Ferie og skolerute</h2>
       <div class="help-text">
-        <p><strong>Når?</strong> Når det ikke skal være undervisning: høstferie, jul, vinterferie, 1. mai, 17. mai.</p>
-        <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-lock">Låst</span>. Kapitler som lå der, flyttes til neste ledige uke. Planen hopper over ferien.</p>
-        <p><strong>Eksempel:</strong> Lås uke 40 som høstferie → innholdet fra uke 40 kommer i uke 41 (eller neste ulåste uke).</p>
+        <p><strong>Hvor?</strong> Under <a href="#/skolear">Skoleår</a> for startoppsett. Under <a href="#/admin">Admin</a> kan du også låse eller låse opp enkeltuker hvis noe endrer seg midt i året.</p>
+        <p><strong>Hva skjer?</strong> Ferieperioder merkes <span class="badge badge-lock">Låst</span> (uten undervisning). Kapitlene fordeles på undervisningsukene fra startdatoen din.</p>
       </div>
     </div>
 
     <div class="panel prose">
-      <h2>3. Lås opp uke</h2>
-      <div class="help-text">
-        <p><strong>Når?</strong> Hvis du låste feil uke, eller ferien ble flyttet.</p>
-        <p><strong>Hva skjer?</strong> Ferie-merket fjernes. Innhold trekkes ikke automatisk tilbake. Bruk forskyvning eller tilbakestill hvis du vil rydde planen.</p>
-      </div>
-    </div>
-
-    <div class="panel prose">
-      <h2>4. Forskyv plan</h2>
+      <h2>3. Forskyv plan (Admin)</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Klassen ble ikke ferdig med et emne og trenger mer tid.</p>
-        <p><strong>Hva skjer?</strong> Fra valgt uke og fremover skyves kapitlene frem. De første ukene blir <span class="badge badge-empty">Innhenting</span> (ingen nytt kapittel). Låste uker hoppes over.</p>
-        <p><strong>Eksempel:</strong> Fra uke 36, 1 uke frem → uke 36 blir innhenting, og kapittelet som sto der flyttes til neste ledige uke.</p>
+        <p><strong>Hva skjer?</strong> Fra valgt skoleuke skyves kapitlene frem. De første ukene blir <span class="badge badge-empty">Innhenting</span>. Ferieuker fra Skoleår hoppes over.</p>
       </div>
     </div>
 
     <div class="panel prose">
-      <h2>5. Tilpass yrke og grammatikk</h2>
+      <h2>4. Lås eller lås opp uke (Admin)</h2>
       <div class="help-text">
-        <p><strong>Når?</strong> Når du vil bytte yrke og/eller grammatikk for én uke, uten å endre grunnplanen.</p>
-        <p><strong>Hvordan?</strong> I Admin velger du uke og bruker rullegardinmenyene for yrke og grammatikk. Velg «Bruk kapitlets standard» for å nullstille et felt.</p>
-        <p><strong>Hvordan vet jeg at det ble lagret?</strong> Etter lagring blir uken stående valgt med de nye verdiene, du får en bekreftelse, og uken dukker opp i listen «Tilpassede uker» der du også kan redigere eller nullstille den.</p>
-        <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-tilpasset">Tilpasset</span>, og både oversikten og heftet som sendes for uken bruker de nye valgene.</p>
+        <p><strong>Når?</strong> Skoleåret endrer seg midtveis — ekstra fridag, kursuke, eller en ferieuke som likevel skal ha undervisning.</p>
+        <p><strong>Hva skjer?</strong> Låste uker får ikke hefte. Låser du opp, kommer kapittelet tilbake i planen (eventuelt etter forskyvning).</p>
+      </div>
+    </div>
+
+    <div class="panel prose">
+      <h2>5. Tilpass uke — tema, yrke og grammatikk</h2>
+      <div class="help-text">
+        <p><strong>Når?</strong> Når du vil bytte yrke/grammatikk, eller legge inn et <em>manuelt tema</em> som ikke sto i årsplanen (spesiell hendelse, glemt emne, lokalt prosjekt).</p>
+        <p><strong>Hvordan?</strong> I Admin velger du uke. Yrke og grammatikk kan velges fra listen eller skrives fritt. Under «Manuelt tema» skriver du fritekst; valgfritt også kort periodenfokus. Word-malen er den samme — KI lager hefte ut fra det du skrev.</p>
+        <p><strong>Hvordan vet jeg at det ble lagret?</strong> Uken blir stående valgt, du får bekreftelse, og den dukker opp under «Tilpassede uker».</p>
+        <p><strong>Hva skjer?</strong> Uken merkes <span class="badge badge-tilpasset">Tilpasset</span>. Oversikt og hefte bruker dine valg.</p>
       </div>
     </div>
 
@@ -1113,7 +1126,7 @@ function renderVeiledning(): string {
     </div>
 
     <div class="panel prose">
-      <h2>6b. Send ekstraoppgaver</h2>
+      <h2>7. Send ekstraoppgaver</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Når noen elever trenger enklere trening, og/eller andre trenger vanskeligere utfordring.</p>
         <p><strong>Hvordan?</strong> På <a href="#/denne-uken">Nå</a>: huk av nivå (enklere og/eller vanskeligere), huk av temaer (læreverk, yrke, arbeidsnorsk, hverdagssituasjon, grammatikk), velg mottakere, og trykk «Send ekstraoppgaver».</p>
@@ -1123,7 +1136,7 @@ function renderVeiledning(): string {
     </div>
 
     <div class="panel prose">
-      <h2>7. E-postmottakere</h2>
+      <h2>8. E-postmottakere</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Når flere skal motta ukeheftet, eller noen skal fjernes.</p>
         <p><strong>Hvordan?</strong> Legg til navn og e-post i mottakerlisten i Admin. Alle aktive adresser får onsdagsheftet, og hver e-post har egen avmeldingslenke.</p>
@@ -1131,10 +1144,10 @@ function renderVeiledning(): string {
     </div>
 
     <div class="panel prose">
-      <h2>8. Tilbakestill</h2>
+      <h2>9. Tilbakestill</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Bare hvis du vil slette alle lås, forskyvninger og tilpasninger.</p>
-        <p><strong>Obs:</strong> Da er du tilbake til grunnplanen. Handlingen kan ikke angres.</p>
+        <p><strong>Obs:</strong> Da er du tilbake til grunnplanen. Kjør «Lagre og generer plan» under Skoleår på nytt hvis ferieuker skal låses igjen. Handlingen kan ikke angres.</p>
       </div>
     </div>
 
@@ -1143,70 +1156,13 @@ function renderVeiledning(): string {
       <ul class="legend-list">
         <li><span class="badge badge-now">Denne uken</span> — inneværende skoleuke</li>
         <li><span class="badge badge-lock">Låst</span> — ferie / ingen undervisning</li>
-        <li><span class="badge badge-tilpasset">Tilpasset</span> — yrke eller grammatikk er endret for uken</li>
+        <li><span class="badge badge-tilpasset">Tilpasset</span> — tema, yrke eller grammatikk er endret for uken</li>
         <li><span class="badge badge-empty">Innhenting</span> — ekstra tid etter forskyvning</li>
         <li><span class="badge badge-changed">Endret</span> — kapittelet er flyttet fra grunnplanen</li>
       </ul>
       <p>De samme fargene brukes i kalenderen under <a href="#/denne-uken">Nå</a>.</p>
       <p class="after-link"><a class="btn" href="#/admin">Gå til Admin og prøv</a></p>
       <p class="muted">Veiledningen sist oppdatert ${escapeHtml(DOCS_UPDATED)} (${escapeHtml(APP_FASE)}).</p>
-    </div>
-  `;
-}
-
-function lockedWeekNotes(): Map<number, string | undefined> {
-  const notes = new Map<number, string | undefined>();
-  for (const op of planOperations) {
-    if (op.type === "reset") {
-      notes.clear();
-      continue;
-    }
-    if (op.type === "lock") notes.set(op.uke, op.note);
-    if (op.type === "unlock") notes.delete(op.uke);
-  }
-  return notes;
-}
-
-function renderLockedWeeksPanel(): string {
-  const locked = (effectiveUker ?? []).filter((u) => u.status === "locked");
-  const notes = lockedWeekNotes();
-  const syncHint = !isLoggedIn()
-    ? "Logg inn for å endre planen. Alle ser den lagrede serverplanen."
-    : apiMeta?.writable
-      ? "Du er innlogget. Endringer lagres på server og gjelder for onsdagens hefte."
-      : "Du er innlogget, men serverplan er ikke skrivbar (Turso mangler).";
-
-  if (locked.length === 0) {
-    return `
-      <div class="panel highlight locked-summary" id="locked-summary">
-        <h2>Låste uker nå</h2>
-        <p class="lede">Ingen uker er låst ennå.</p>
-        <p class="muted">${escapeHtml(syncHint)}</p>
-        ${adminFlash && isLoggedIn() ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
-      </div>
-    `;
-  }
-
-  const items = locked
-    .map((u) => {
-      const note = notes.get(u.uke);
-      return `<li>
-        <a href="#/oversikt">Uke ${u.uke}</a>
-        <span class="badge badge-lock">Låst</span>
-        ${note ? ` — ${escapeHtml(note)}` : ""}
-        <span class="muted"> · ${escapeHtml(u.maned || "")}</span>
-      </li>`;
-    })
-    .join("");
-
-  return `
-    <div class="panel highlight locked-summary" id="locked-summary">
-      <h2>Låste uker nå (${locked.length})</h2>
-      <p class="lede">Disse ukene er markert som ferie / uten undervisning:</p>
-      <ul class="locked-list">${items}</ul>
-      <p class="muted">${escapeHtml(syncHint)}</p>
-      <p><a class="btn" href="#/oversikt">Se dem i Oversikt</a></p>
-      ${adminFlash && isLoggedIn() ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
     </div>
   `;
 }
@@ -1282,6 +1238,12 @@ function renderCustomizedWeeksList(): string {
     .map((u) => {
       const baseKap =
         u.kapittelNummer != null ? plan.kapitler.find((k) => k.nummer === u.kapittelNummer) : undefined;
+      const tema = u.overrideTema
+        ? `<span class="custom-field"><span class="custom-field-label">Tema</span> ${escapeHtml(u.overrideTema)}</span>`
+        : "";
+      const fokus = u.overrideFokus
+        ? `<span class="custom-field"><span class="custom-field-label">Fokus</span> ${escapeHtml(u.overrideFokus)}</span>`
+        : "";
       const yrke = u.overrideYrke
         ? `<span class="custom-field"><span class="custom-field-label">Yrke</span> ${escapeHtml(u.overrideYrke)}</span>`
         : "";
@@ -1289,12 +1251,14 @@ function renderCustomizedWeeksList(): string {
         ? `<span class="custom-field"><span class="custom-field-label">Grammatikk</span> ${escapeHtml(u.overrideGrammatikk)}</span>`
         : "";
       const baseHint = baseKap
-        ? `<span class="muted custom-base">Grunnplan: ${escapeHtml(baseKap.yrke)} · ${escapeHtml(baseKap.grammatikk)}</span>`
+        ? `<span class="muted custom-base">Grunnplan: ${escapeHtml(baseKap.yrke)} · ${escapeHtml(baseKap.grammatikk)}${
+            baseKap.arbeidsnorskTema ? ` · ${escapeHtml(baseKap.arbeidsnorskTema)}` : ""
+          }</span>`
         : "";
       return `<li>
         <div class="custom-item-main">
           <strong>Uke ${u.uke}</strong> <span class="badge badge-tilpasset">Tilpasset</span>
-          <div class="custom-fields">${yrke}${gram}</div>
+          <div class="custom-fields">${tema}${fokus}${yrke}${gram}</div>
           ${baseHint}
         </div>
         <div class="custom-item-actions">
@@ -1315,31 +1279,27 @@ function renderCustomizePanel(): string {
     : undefined;
   const selectedYrke = row?.overrideYrke ?? "";
   const selectedGram = row?.overrideGrammatikk ?? "";
+  const selectedTema = row?.overrideTema ?? "";
+  const selectedFokus = row?.overrideFokus ?? "";
   const isTilpasset = Boolean(row?.tilpasset);
 
   const yrkeOpts = catalogOptions("yrke")
-    .map(
-      (y) =>
-        `<option value="${escapeHtml(y)}"${y === selectedYrke ? " selected" : ""}>${escapeHtml(y)}</option>`
-    )
+    .map((y) => `<option value="${escapeHtml(y)}"></option>`)
     .join("");
   const gramOpts = catalogOptions("grammatikk")
-    .map(
-      (g) =>
-        `<option value="${escapeHtml(g)}"${g === selectedGram ? " selected" : ""}>${escapeHtml(g)}</option>`
-    )
+    .map((g) => `<option value="${escapeHtml(g)}"></option>`)
     .join("");
 
   const statusLine = isTilpasset
-    ? `<p class="custom-status is-active" role="status">Uke ${selectedUke} er tilpasset. Valgene under viser hva som gjelder nå.</p>`
-    : `<p class="custom-status" role="status">Uke ${selectedUke} følger grunnplanen. Velg yrke og/eller grammatikk for å tilpasse.</p>`;
+    ? `<p class="custom-status is-active" role="status">Uke ${selectedUke} er tilpasset. Feltene under viser hva som gjelder nå.</p>`
+    : `<p class="custom-status" role="status">Uke ${selectedUke} følger grunnplanen. Tilpass yrke/grammatikk, eller skriv inn et manuelt tema.</p>`;
 
   return `
     <div class="panel highlight" id="customize-panel">
-      <h2>Tilpass yrke og grammatikk</h2>
+      <h2>Tilpass uke</h2>
       <p class="lede">
-        Velg en uke, og bytt yrke og/eller grammatikk med rullegardinmeny.
-        Endringen gjelder oversikten og heftet som sendes for den uken.
+        Bytt yrke eller grammatikk, eller skriv inn et manuelt tema (spesiell hendelse, glemt emne).
+        Heftet bruker samme Word-mal — du styrer innholdet.
       </p>
       <form id="customize-form" class="admin-form send-hefte-form">
         <label for="custom-uke">Velg uke å tilpasse</label>
@@ -1347,20 +1307,30 @@ function renderCustomizePanel(): string {
         <p class="muted" id="custom-uke-preview">${escapeHtml(weekSendPreview(selectedUke))}</p>
         ${statusLine}
 
+        <label for="custom-tema">Manuelt tema (arbeidsnorsk)</label>
+        <input id="custom-tema" name="tema" type="text" maxlength="500"
+          value="${escapeHtml(selectedTema)}"
+          placeholder="${baseKap?.arbeidsnorskTema ? `Standard: ${escapeHtml(baseKap.arbeidsnorskTema)}` : "F.eks. Brannøvelse på arbeidsplassen"}" />
+
+        <label for="custom-fokus">Periodenfokus (valgfritt)</label>
+        <input id="custom-fokus" name="fokus" type="text" maxlength="500"
+          value="${escapeHtml(selectedFokus)}"
+          placeholder="Kort begrunnelse eller fokus for uken" />
+
         <label for="custom-yrke">Yrke</label>
-        <select id="custom-yrke" name="yrke">
-          <option value="">Bruk kapitlets standard${baseKap ? ` (${escapeHtml(baseKap.yrke)})` : ""}</option>
-          ${yrkeOpts}
-        </select>
+        <input id="custom-yrke" name="yrke" type="text" list="custom-yrke-list" maxlength="200"
+          value="${escapeHtml(selectedYrke)}"
+          placeholder="${baseKap ? `Standard: ${escapeHtml(baseKap.yrke)}` : "La stå tom for kapitlets standard"}" />
+        <datalist id="custom-yrke-list">${yrkeOpts}</datalist>
 
         <label for="custom-grammatikk">Grammatikk</label>
-        <select id="custom-grammatikk" name="grammatikk">
-          <option value="">Bruk kapitlets standard${baseKap ? ` (${escapeHtml(baseKap.grammatikk)})` : ""}</option>
-          ${gramOpts}
-        </select>
+        <input id="custom-grammatikk" name="grammatikk" type="text" list="custom-gram-list" maxlength="200"
+          value="${escapeHtml(selectedGram)}"
+          placeholder="${baseKap ? `Standard: ${escapeHtml(baseKap.grammatikk)}` : "La stå tom for kapitlets standard"}" />
+        <datalist id="custom-gram-list">${gramOpts}</datalist>
 
         <label for="custom-note">Notat (valgfritt)</label>
-        <input id="custom-note" name="note" type="text" maxlength="300" placeholder="F.eks. Klassen vil jobbe med renhold" />
+        <input id="custom-note" name="note" type="text" maxlength="300" placeholder="F.eks. Spesiell hendelse i klassen" />
 
         <div class="btn-row">
           <button type="submit" class="btn">Lagre tilpasning</button>
@@ -1433,16 +1403,18 @@ function renderAdmin(): string {
         <button type="submit" class="btn">Logg inn</button>
         ${adminFlash ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
       </form>
-      ${renderLockedWeeksPanel()}
     `;
   }
 
+  const syConfigured = Boolean(schoolYearInfo?.configured);
+
   return `
     <div class="panel prose help-box">
-      <h2>Admin — tilpass planen</h2>
+      <h2>Admin — tilpasninger underveis</h2>
       <p>
-        Du er innlogget. Endringer lagres på serveren og synes i listen under og i
-        <a href="#/oversikt">Oversikt</a> med merket <span class="badge badge-lock">Låst</span>.
+        Du er innlogget. <strong>Skolerute og ferier</strong> settes under
+        <a href="#/skolear">Skoleår</a>. Her justerer du <em>underveis</em>: manuelt tema,
+        yrke/grammatikk, forskyvning, lås/lås opp enkeltuker, mottakere og manuell sending.
       </p>
       <p class="muted">
         ${apiStateUpdatedAt ? `Sist oppdatert på server: ${escapeHtml(apiStateUpdatedAt)}. ` : ""}
@@ -1450,7 +1422,22 @@ function renderAdmin(): string {
       </p>
     </div>
 
-    ${renderLockedWeeksPanel()}
+    ${
+      syConfigured
+        ? `<div class="panel plan-status" role="status">
+            <div class="plan-status-head">
+              <span class="plan-status-pill">Skolerute aktiv</span>
+              <p class="plan-status-lead">Starter skoleuke ${schoolYearInfo?.startWeek ?? "—"} · ${escapeHtml(schoolYearInfo?.startDate ?? "")} – ${escapeHtml(schoolYearInfo?.endDate ?? "")}</p>
+            </div>
+            <p class="plan-status-help"><a href="#/skolear">Endre skolerute og ferier under Skoleår</a></p>
+          </div>`
+        : `<div class="panel note" role="status">
+            <p><strong>Skoleår er ikke satt opp ennå.</strong> Gå til
+            <a href="#/skolear">Skoleår</a> og lagre start, slutt og ferier — ellers følger oversikten den gamle fasiten fra uke 34.</p>
+          </div>`
+    }
+
+    ${adminFlash ? `<p class="admin-flash" role="status">${escapeHtml(adminFlash)}</p>` : ""}
 
     ${renderCustomizePanel()}
 
@@ -1459,37 +1446,13 @@ function renderAdmin(): string {
     ${renderRecipientsPanel()}
 
     <div class="admin-grid">
-      <form id="lock-form" class="panel admin-form">
-        <h2>Lås uke</h2>
-        <div class="help-text">
-          <p><strong>Når?</strong> Ferie og helligdager uten undervisning.</p>
-          <p><strong>Hva skjer?</strong> Uken blir <em>Låst</em>. Innhold flyttes til neste ledige uke.</p>
-        </div>
-        <label for="lock-uke">Skoleuke</label>
-        <input id="lock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
-        <label for="lock-note">Notat (valgfritt)</label>
-        <input id="lock-note" name="note" type="text" maxlength="300" placeholder="F.eks. Høstferie" />
-        <button type="submit" class="btn">Lås uke</button>
-      </form>
-
-      <form id="unlock-form" class="panel admin-form">
-        <h2>Lås opp uke</h2>
-        <div class="help-text">
-          <p><strong>Når?</strong> Feil låst uke, eller ferien ble endret.</p>
-          <p><strong>Hva skjer?</strong> Ferie-merket fjernes. Innhold trekkes ikke automatisk tilbake.</p>
-        </div>
-        <label for="unlock-uke">Skoleuke</label>
-        <input id="unlock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
-        <button type="submit" class="btn">Lås opp</button>
-      </form>
-
       <form id="shift-form" class="panel admin-form">
         <h2>Forskyv plan</h2>
         <div class="help-text">
-          <p><strong>Når?</strong> Dere trenger mer tid på et emne.</p>
-          <p><strong>Hva skjer?</strong> Kapitler fra valgt uke skyves frem. Første uker blir <em>Innhenting</em>.</p>
+          <p><strong>Når?</strong> Dere trenger mer tid på et emne midt i året.</p>
+          <p><strong>Hva skjer?</strong> Kapitler fra valgt skoleuke skyves frem. Første uker blir <em>Innhenting</em>. Ferieuker fra Skoleår hoppes over.</p>
         </div>
-        <label for="shift-from">Fra uke (der dere trenger mer tid)</label>
+        <label for="shift-from">Fra skoleuke</label>
         <input id="shift-from" name="fromUke" type="number" min="1" max="53" required value="${ukeNow}" />
         <label for="shift-weeks">Hvor mange uker skal planen skyves frem?</label>
         <input id="shift-weeks" name="weeks" type="number" min="1" max="20" required value="1" />
@@ -1498,13 +1461,37 @@ function renderAdmin(): string {
         <button type="submit" class="btn">Forskyv</button>
       </form>
 
-      <form id="reset-form" class="panel admin-form">
-        <h2>Tilbakestill</h2>
+      <form id="lock-form" class="panel admin-form">
+        <h2>Lås uke</h2>
         <div class="help-text">
-          <p><strong>Når?</strong> Bare hvis du vil slette alle lås og forskyvninger.</p>
-          <p><strong>Obs:</strong> Kan ikke angres.</p>
+          <p><strong>Når?</strong> Ekstra fridag, kursuke eller ferie som ikke sto i Skoleår.</p>
+          <p><strong>Hva skjer?</strong> Uken merkes <em>Låst</em> — ingen undervisning og ingen hefte.</p>
         </div>
-        <button type="submit" class="btn btn-danger">Tilbakestill til grunnplan</button>
+        <label for="lock-uke">Skoleuke</label>
+        <input id="lock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
+        <label for="lock-note">Notat (valgfritt)</label>
+        <input id="lock-note" name="note" type="text" maxlength="300" placeholder="F.eks. Planleggingsdag" />
+        <button type="submit" class="btn">Lås uke</button>
+      </form>
+
+      <form id="unlock-form" class="panel admin-form">
+        <h2>Lås opp uke</h2>
+        <div class="help-text">
+          <p><strong>Når?</strong> En låst uke skal likevel ha undervisning.</p>
+          <p><strong>Hva skjer?</strong> Låsen fjernes. Kapittelet kommer tilbake (evt. etter forskyvning).</p>
+        </div>
+        <label for="unlock-uke">Skoleuke</label>
+        <input id="unlock-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
+        <button type="submit" class="btn">Lås opp</button>
+      </form>
+
+      <form id="reset-form" class="panel admin-form">
+        <h2>Tilbakestill tilpasninger</h2>
+        <div class="help-text">
+          <p><strong>Når?</strong> Hvis du vil fjerne forskyvninger, lås og tilpasninger.</p>
+          <p><strong>Obs:</strong> Skoleruta (start/slutt/ferier) endres ikke her — bruk <a href="#/skolear">Skoleår</a>. Kan ikke angres.</p>
+        </div>
+        <button type="submit" class="btn btn-danger">Tilbakestill tilpasninger</button>
       </form>
     </div>
   `;
@@ -1534,10 +1521,10 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       };
     case "admin":
       return {
-        title: "Admin — tilpass planen",
+        title: "Admin — tilpasninger",
         subtitle: isLoggedIn()
-          ? "Lås ferieuker, forskyv undervisning og administrer e-postmottakere."
-          : "Logg inn med admin-passord for å redigere planen."
+          ? "Manuelt tema, yrke/grammatikk, forskyv, lås/lås opp, mottakere og sending. Skolerute under Skoleår."
+          : "Logg inn med admin-passord for å gjøre tilpasninger."
       };
     default:
       return {
@@ -1597,17 +1584,21 @@ function bindAdminForms(): void {
     customizeUke = uke;
     if (customPreview) customPreview.textContent = weekSendPreview(uke);
     const row = (effectiveUker ?? []).find((u) => u.uke === uke);
-    const yrkeSelect = document.getElementById("custom-yrke") as HTMLSelectElement | null;
-    const gramSelect = document.getElementById("custom-grammatikk") as HTMLSelectElement | null;
-    if (yrkeSelect) yrkeSelect.value = row?.overrideYrke ?? "";
-    if (gramSelect) gramSelect.value = row?.overrideGrammatikk ?? "";
+    const yrkeInput = document.getElementById("custom-yrke") as HTMLInputElement | null;
+    const gramInput = document.getElementById("custom-grammatikk") as HTMLInputElement | null;
+    const temaInput = document.getElementById("custom-tema") as HTMLInputElement | null;
+    const fokusInput = document.getElementById("custom-fokus") as HTMLInputElement | null;
+    if (yrkeInput) yrkeInput.value = row?.overrideYrke ?? "";
+    if (gramInput) gramInput.value = row?.overrideGrammatikk ?? "";
+    if (temaInput) temaInput.value = row?.overrideTema ?? "";
+    if (fokusInput) fokusInput.value = row?.overrideFokus ?? "";
     const statusEl = document.querySelector("#customize-panel .custom-status");
     if (statusEl) {
       const tilpasset = Boolean(row?.tilpasset);
       statusEl.classList.toggle("is-active", tilpasset);
       statusEl.textContent = tilpasset
-        ? `Uke ${uke} er tilpasset. Valgene under viser hva som gjelder nå.`
-        : `Uke ${uke} følger grunnplanen. Velg yrke og/eller grammatikk for å tilpasse.`;
+        ? `Uke ${uke} er tilpasset. Feltene under viser hva som gjelder nå.`
+        : `Uke ${uke} følger grunnplanen. Tilpass yrke/grammatikk, eller skriv inn et manuelt tema.`;
     }
   });
 
@@ -1615,13 +1606,17 @@ function bindAdminForms(): void {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
     const uke = Number(fd.get("uke"));
-    const yrkeRaw = String(fd.get("yrke") ?? "");
-    const gramRaw = String(fd.get("grammatikk") ?? "");
+    const yrkeRaw = String(fd.get("yrke") ?? "").trim();
+    const gramRaw = String(fd.get("grammatikk") ?? "").trim();
+    const temaRaw = String(fd.get("tema") ?? "").trim();
+    const fokusRaw = String(fd.get("fokus") ?? "").trim();
     const note = String(fd.get("note") ?? "") || undefined;
     const yrke = yrkeRaw === "" ? null : yrkeRaw;
     const grammatikk = gramRaw === "" ? null : gramRaw;
+    const tema = temaRaw === "" ? null : temaRaw;
+    const fokus = fokusRaw === "" ? null : fokusRaw;
     customizeUke = uke;
-    if (yrke === null && grammatikk === null) {
+    if (yrke === null && grammatikk === null && tema === null && fokus === null) {
       setFlash(`Nullstiller tilpasning for uke ${uke}…`);
       render();
       const err = await runPlanAction({
@@ -1640,15 +1635,19 @@ function bindAdminForms(): void {
       uke,
       yrke,
       grammatikk,
+      tema,
+      fokus,
       note,
       at: new Date().toISOString()
     });
     const deler = [
+      tema ? `tema «${tema}»` : null,
+      fokus ? `fokus «${fokus}»` : null,
       yrke ? `yrke «${yrke}»` : null,
       grammatikk ? `grammatikk «${grammatikk}»` : null
     ]
       .filter(Boolean)
-      .join(" og ");
+      .join(", ");
     setFlash(
       err
         ? `Kunne ikke lagre: ${err}`
@@ -1731,6 +1730,22 @@ function bindAdminForms(): void {
     });
   });
 
+  document.getElementById("shift-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target as HTMLFormElement);
+    setFlash("Forskyver…");
+    render();
+    const err = await runPlanAction({
+      type: "shift",
+      fromUke: Number(fd.get("fromUke")),
+      weeks: Number(fd.get("weeks")),
+      note: String(fd.get("note") ?? "") || undefined,
+      at: new Date().toISOString()
+    });
+    setFlash(err ? `Kunne ikke forskyve: ${err}` : "Plan forskjøvet. Se Årsplan.");
+    render();
+  });
+
   document.getElementById("lock-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
@@ -1743,15 +1758,7 @@ function bindAdminForms(): void {
       note: String(fd.get("note") ?? "") || undefined,
       at: new Date().toISOString()
     });
-    const locked = (effectiveUker ?? [])
-      .filter((u) => u.status === "locked")
-      .map((u) => u.uke)
-      .join(", ");
-    setFlash(
-      err
-        ? `Kunne ikke låse uke ${uke}: ${err}`
-        : `Uke ${uke} er låst på server. Låste uker nå: ${locked || String(uke)}.`
-    );
+    setFlash(err ? `Kunne ikke låse: ${err}` : `Uke ${uke} er låst.`);
     render();
   });
 
@@ -1770,29 +1777,13 @@ function bindAdminForms(): void {
     render();
   });
 
-  document.getElementById("shift-form")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target as HTMLFormElement);
-    setFlash("Forskyver…");
-    render();
-    const err = await runPlanAction({
-      type: "shift",
-      fromUke: Number(fd.get("fromUke")),
-      weeks: Number(fd.get("weeks")),
-      note: String(fd.get("note") ?? "") || undefined,
-      at: new Date().toISOString()
-    });
-    setFlash(err ? `Kunne ikke forskyve: ${err}` : "Plan forskjøvet. Se Oversikt.");
-    render();
-  });
-
   document.getElementById("reset-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!window.confirm("Tilbakestille hele planen til grunnplanen?")) return;
+    if (!window.confirm("Tilbakestille forskyvninger, lås og tilpasninger? Skoleruta under Skoleår beholdes.")) return;
     setFlash("Tilbakestiller…");
     render();
     const err = await runPlanAction({ type: "reset", at: new Date().toISOString() });
-    setFlash(err ? `Kunne ikke tilbakestille: ${err}` : "Tilbakestilt til grunnplan.");
+    setFlash(err ? `Kunne ikke tilbakestille: ${err}` : "Tilpasninger tilbakestilt. Kjør «Lagre og generer plan» under Skoleår på nytt hvis ferieuker skal låses igjen.");
     render();
   });
 }

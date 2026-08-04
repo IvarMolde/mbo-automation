@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient, type Client } from "@libsql/client";
 import { env } from "./config.js";
+import { setSchoolYearStartWeek } from "./planSchedule.js";
 import { schoolYearProfileSchema, type SchoolYearProfile } from "./schoolYearState.js";
+import { getIsoWeekParts, parseDateOnly } from "./schoolYearGenerate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -46,13 +48,25 @@ async function ensureTursoTable(): Promise<void> {
   await tursoReady;
 }
 
+function activateProfile(profile: SchoolYearProfile | null): SchoolYearProfile | null {
+  if (profile?.applied) {
+    const startWeek =
+      profile.startWeek ??
+      (profile.startDate ? getIsoWeekParts(parseDateOnly(profile.startDate)).week : undefined);
+    setSchoolYearStartWeek(startWeek);
+  } else {
+    setSchoolYearStartWeek(null);
+  }
+  return profile;
+}
+
 function readLocalFile(): SchoolYearProfile | null {
   const path = localStatePath();
   if (!existsSync(path)) return null;
   try {
     const raw: unknown = JSON.parse(readFileSync(path, "utf8"));
     const parsed = schoolYearProfileSchema.safeParse(raw);
-    return parsed.success ? parsed.data : null;
+    return parsed.success ? activateProfile(parsed.data) : null;
   } catch {
     return null;
   }
@@ -90,7 +104,7 @@ export async function loadSchoolYearProfile(): Promise<SchoolYearProfile | null>
     }
     const raw: unknown = JSON.parse(String(row.payload));
     const parsed = schoolYearProfileSchema.safeParse(raw);
-    memoryProfile = parsed.success ? parsed.data : null;
+    memoryProfile = parsed.success ? activateProfile(parsed.data) : null;
     memoryLoaded = true;
     return memoryProfile;
   }
@@ -107,6 +121,7 @@ export async function saveSchoolYearProfile(profile: SchoolYearProfile): Promise
     );
   }
   const validated = schoolYearProfileSchema.parse(profile);
+  activateProfile(validated);
   if (meta.backend === "turso") {
     await ensureTursoTable();
     await getTurso().execute({
@@ -128,4 +143,5 @@ export async function saveSchoolYearProfile(profile: SchoolYearProfile): Promise
 export function resetSchoolYearCacheForTests(): void {
   memoryProfile = null;
   memoryLoaded = false;
+  setSchoolYearStartWeek(null);
 }

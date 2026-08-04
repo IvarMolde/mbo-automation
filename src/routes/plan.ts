@@ -79,6 +79,7 @@ planRouter.get("/plan", async (_req, res) => {
             label: schoolYear.label,
             startDate: schoolYear.startDate,
             endDate: schoolYear.endDate,
+            startWeek: schoolYear.startWeek,
             holidayWeeks: schoolYear.holidayWeeks,
             holidays: schoolYear.holidays,
             breakSummary: schoolYear.breakSummary,
@@ -163,7 +164,9 @@ const overrideWeekSchema = z.object({
   uke: z.number().int().min(1).max(53),
   note: z.string().max(300).optional(),
   yrke: z.string().max(300).nullable().optional(),
-  grammatikk: z.string().max(2000).nullable().optional()
+  grammatikk: z.string().max(2000).nullable().optional(),
+  tema: z.string().max(500).nullable().optional(),
+  fokus: z.string().max(500).nullable().optional()
 });
 
 planRouter.post("/plan/override-week", async (req, res) => {
@@ -171,8 +174,16 @@ planRouter.post("/plan/override-week", async (req, res) => {
     requireAdmin(req);
     await loadSchoolYearProfile();
     const body = overrideWeekSchema.parse(req.body);
-    if (body.yrke === undefined && body.grammatikk === undefined) {
-      throw new PlanApiError(400, "Oppgi minst yrke eller grammatikk (eller null for å nullstille felt).");
+    if (
+      body.yrke === undefined &&
+      body.grammatikk === undefined &&
+      body.tema === undefined &&
+      body.fokus === undefined
+    ) {
+      throw new PlanApiError(
+        400,
+        "Oppgi minst yrke, grammatikk, tema eller fokus (eller null for å nullstille felt)."
+      );
     }
     const state = await loadPlanState();
     const next = appendOperation(state, {
@@ -181,6 +192,8 @@ planRouter.post("/plan/override-week", async (req, res) => {
       note: body.note,
       yrke: body.yrke,
       grammatikk: body.grammatikk,
+      tema: body.tema,
+      fokus: body.fokus,
       at: new Date().toISOString()
     });
     await savePlanState(next);

@@ -51,6 +51,8 @@ export const schoolYearProfileSchema = z.object({
   label: z.string().max(200).optional(),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  /** Første skoleuke i året (beregnet fra startDate) — styrer sortering */
+  startWeek: z.number().int().min(1).max(53).optional(),
   holidays: z.array(holidaySchema).max(60).default([]),
   /** Skoleuker uten undervisning (kun fra ferieperioder med nok ukedager) */
   holidayWeeks: z.array(z.number().int().min(1).max(53)).default([]),

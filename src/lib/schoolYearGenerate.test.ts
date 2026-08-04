@@ -88,4 +88,21 @@ describe("schoolYearGenerate", () => {
     expect(profile.generatedUker.some((u) => u.kapittel === 1)).toBe(true);
     expect(profile.generatedUker.every((u) => !profile.holidayWeeks.includes(u.uke))).toBe(true);
   });
+
+  it("starts chapter distribution at the defined school-year start week", () => {
+    const profile = generateSchoolYearPlan(
+      {
+        label: "Start uke 32",
+        startDate: "2026-08-03",
+        endDate: "2027-06-18",
+        holidays: [{ name: "Høst", startDate: "2026-10-05", endDate: "2026-10-09", kind: "period" }]
+      },
+      plan
+    );
+    expect(profile.startWeek).toBe(32);
+    const teaching = profile.generatedUker.filter((u) => u.kapittel != null);
+    expect(teaching[0]?.uke).toBe(32);
+    expect(teaching[0]?.kapittel).toBe(1);
+    expect(profile.holidayWeeks).not.toContain(32);
+  });
 });
