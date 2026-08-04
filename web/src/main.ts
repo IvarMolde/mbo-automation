@@ -49,6 +49,11 @@ let schoolYearInfo: PlanApiResponse["schoolYear"] | null = null;
 let schoolYearFlash: string | null = null;
 /** Status for ekstraoppgaver-sending på Nå */
 let ekstraFlash: string | null = null;
+/**
+ * Senteruke i ukekort-stripen på Nå (skoleuke-nummer).
+ * null = følg inneværende kalenderuke.
+ */
+let nowStripCenterUke: number | null = null;
 
 type RecipientRow = {
   email: string;
@@ -575,11 +580,23 @@ function weekStatusClass(u: UkeVisning): string {
   return "status-teaching";
 }
 
+function weekStripRoleLabel(
+  role: "prev" | "now" | "next",
+  u: UkeVisning | undefined,
+  todayUke: number
+): string {
+  if (role === "prev") return "Uken før";
+  if (role === "next") return "Uken etter";
+  if (u && u.uke === todayUke) return "Denne uken";
+  return "Valgt uke";
+}
+
 function renderWeekSummaryCard(
   u: UkeVisning | undefined,
-  role: "prev" | "now" | "next"
+  role: "prev" | "now" | "next",
+  todayUke: number
 ): string {
-  const roleLabel = role === "prev" ? "Forrige uke" : role === "now" ? "Denne uken" : "Neste uke";
+  const roleLabel = weekStripRoleLabel(role, u, todayUke);
   if (!u) {
     return `
       <article class="week-summary is-${role} is-empty-slot">
@@ -593,9 +610,12 @@ function renderWeekSummaryCard(
   const regning = k ? escapeHtml(matteKategoriLabelForKapittel(k.nummer)) : "";
   const kapLine = k ? `Kapittel ${k.nummer} · ${escapeHtml(k.tittel)}` : "";
   const jump = `#/oversikt?m=${encodeURIComponent(u.maned || "")}`;
+  const isActualNow = u.uke === todayUke;
   return `
-    <article class="week-summary is-${role} ${weekStatusClass(u)}">
-      <p class="week-role">${roleLabel}</p>
+    <article class="week-summary is-${role} ${weekStatusClass(u)}${isActualNow ? " is-actual-now" : ""}">
+      <p class="week-role">${roleLabel}${
+        isActualNow && role !== "now" ? ` <span class="badge badge-now">I dag</span>` : ""
+      }</p>
       <p class="week-num">Uke ${u.uke}<span class="week-maned">${escapeHtml(u.maned || "")}</span></p>
       <h3 class="week-headline">${weekHeadline(u)}</h3>
       ${k ? `<p class="week-gram"><span class="week-gram-label">Grammatikk</span> ${gram}</p>` : ""}
@@ -620,6 +640,16 @@ function renderWeekSummaryCard(
       <a class="week-jump" href="${jump}">Se i årsplanen →</a>
     </article>
   `;
+}
+
+function weekNavChevron(dir: "prev" | "next"): string {
+  const path =
+    dir === "prev"
+      ? "M14.5 5.5 8 12l6.5 6.5"
+      : "M9.5 5.5 16 12l-6.5 6.5";
+  return `<svg class="week-nav-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path d="${path}" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
 }
 
 function renderCalendarGrid(uker: UkeVisning[]): string {
@@ -898,21 +928,39 @@ function renderSkolear(): string {
 }
 
 function renderDenneUken(): string {
-  const uke = getIsoWeekNumber();
+  const todayUke = getIsoWeekNumber();
   const year = getIsoWeekYear();
   const uker = buildUkeVisninger(plan, effectiveUker);
-  const idx = uker.findIndex((u) => u.uke === uke);
-  const match = idx >= 0 ? uker[idx] : findUke(plan, uke, effectiveUker);
+  const todayIdx = uker.findIndex((u) => u.uke === todayUke);
+  const todayMatch = todayIdx >= 0 ? uker[todayIdx] : findUke(plan, todayUke, effectiveUker);
 
-  const outsidePlan = idx < 0 && !match;
+  let centerIdx = todayIdx;
+  if (nowStripCenterUke != null) {
+    const focused = uker.findIndex((u) => u.uke === nowStripCenterUke);
+    if (focused >= 0) centerIdx = focused;
+    else nowStripCenterUke = null;
+  }
+  if (centerIdx < 0 && uker.length) {
+    centerIdx = 0;
+    nowStripCenterUke = uker[0]!.uke;
+  }
+
+  const center = centerIdx >= 0 ? uker[centerIdx] : todayMatch;
+  const prevUke = centerIdx > 0 ? uker[centerIdx - 1] : undefined;
+  const nextUke = centerIdx >= 0 && centerIdx < uker.length - 1 ? uker[centerIdx + 1] : undefined;
+  const canPrev = centerIdx > 0;
+  const canNext = centerIdx >= 0 && centerIdx < uker.length - 1;
+  const browsingAway = center != null && center.uke !== todayUke;
+
+  const outsidePlan = todayIdx < 0 && !todayMatch && !uker.length;
   const hero = `
     <div class="panel highlight now-hero">
       <p class="now-kicker">Der vi er nå</p>
-      <p class="now-week">Skoleuke ${uke} <span class="now-year">· ${year}</span></p>
+      <p class="now-week">Skoleuke ${todayUke} <span class="now-year">· ${year}</span></p>
       <p class="lede">${
         outsidePlan
-          ? `Uke ${uke} er utenfor skoleåret ${escapeHtml(plan.metadata.skolear ?? "")}. Se hele årsplanen nedenfor.`
-          : "Rask oversikt over forrige, inneværende og neste uke — pluss hele skoleåret."
+          ? `Uke ${todayUke} er utenfor skoleåret ${escapeHtml(plan.metadata.skolear ?? "")}. Se hele årsplanen nedenfor.`
+          : "Bla mellom ukene med pilene — tre uker vises om gangen. Under ser du detaljer for den valgte uken."
       }</p>
     </div>`;
 
@@ -921,17 +969,39 @@ function renderDenneUken(): string {
     ? ""
     : `<div class="panel note" role="status">Skoleåret er ikke satt opp ennå. Gå til <a href="#/skolear">Skoleår</a> og definer start, slutt og ferier — ellers følger planen den gamle fasiten fra uke 34.</div>`;
 
-  const strip = outsidePlan
+  const strip = outsidePlan || centerIdx < 0
     ? ""
     : `
-    <section class="week-strip" aria-label="Forrige, denne og neste uke">
-      ${renderWeekSummaryCard(idx > 0 ? uker[idx - 1] : undefined, "prev")}
-      ${renderWeekSummaryCard(match, "now")}
-      ${renderWeekSummaryCard(idx >= 0 && idx < uker.length - 1 ? uker[idx + 1] : undefined, "next")}
+    <section class="week-strip-section" aria-label="Bla mellom skoleuker">
+      <div class="week-strip-toolbar">
+        <p class="week-strip-hint muted">Viser uke ${prevUke?.uke ?? "—"} · <strong>${center?.uke ?? "—"}</strong> · ${nextUke?.uke ?? "—"}</p>
+        ${
+          browsingAway
+            ? `<button type="button" class="btn btn-ghost week-strip-today" id="week-strip-today">Tilbake til denne uken</button>`
+            : ""
+        }
+      </div>
+      <div class="week-strip-wrap">
+        <button type="button" class="week-nav week-nav-prev" id="week-strip-prev"
+          aria-label="Bla én uke tilbake" ${canPrev ? "" : "disabled"}>
+          ${weekNavChevron("prev")}
+          <span class="week-nav-label">Tilbake</span>
+        </button>
+        <div class="week-strip" aria-live="polite">
+          ${renderWeekSummaryCard(prevUke, "prev", todayUke)}
+          ${renderWeekSummaryCard(center, "now", todayUke)}
+          ${renderWeekSummaryCard(nextUke, "next", todayUke)}
+        </div>
+        <button type="button" class="week-nav week-nav-next" id="week-strip-next"
+          aria-label="Bla én uke frem" ${canNext ? "" : "disabled"}>
+          <span class="week-nav-label">Frem</span>
+          ${weekNavChevron("next")}
+        </button>
+      </div>
     </section>`;
 
-  const detail = match ? `<section class="now-detail">${renderUkeCard(match, true)}</section>` : "";
-  const ekstra = renderEkstraPanel(uke);
+  const detail = center ? `<section class="now-detail">${renderUkeCard(center, true)}</section>` : "";
+  const ekstra = renderEkstraPanel(center?.uke ?? todayUke);
 
   const calendar = `
     <section class="cal-section" aria-label="Kalender for hele skoleåret">
@@ -993,7 +1063,7 @@ function renderOm(): string {
       <h3>Fanene i menyen</h3>
       <div class="help-text">
         <p><strong>Skoleår</strong> — start, slutt og ferier for stedet ditt. Her genereres planen første gang.</p>
-        <p><strong>Nå</strong> — hvor klassen er: månedskalender, forrige/denne/neste skoleuke, årskalender, og ekstraoppgaver ved behov.</p>
+        <p><strong>Nå</strong> — hvor klassen er: månedskalender, tre ukekort du kan bla i med piler, årskalender, og ekstraoppgaver ved behov.</p>
         <p><strong>Årsplan</strong> — hele året uke for uke: kapittel, yrke, grammatikk, regning (hovedkategori), tematekster og oppgaver.</p>
         <p><strong>Admin</strong> — innlogging, tilpasninger underveis, mottakere og manuell sending.</p>
         <p><strong>Om</strong> — denne siden: oppsett, virkemåte og bruksanvisning.</p>
@@ -1591,7 +1661,7 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
     case "denne-uken":
       return {
         title: "Nå",
-        subtitle: "Forrige, denne og neste skoleuke — kalender, og ekstraoppgaver ved behov."
+        subtitle: "Bla mellom ukene, se detaljer og kalender — og send ekstraoppgaver ved behov."
       };
     case "om":
       return {
@@ -2106,6 +2176,7 @@ function render(): void {
     bindSkolearForm();
   }
   if (view === "denne-uken") {
+    bindWeekStripNav();
     bindEkstraForm();
     if (isLoggedIn() && !recipientsFetched && !recipientsLoading) {
       void refreshRecipients().then(() => {
@@ -2113,6 +2184,43 @@ function render(): void {
       });
     }
   }
+}
+
+function bindWeekStripNav(): void {
+  const uker = buildUkeVisninger(plan, effectiveUker);
+  if (!uker.length) return;
+
+  const todayUke = getIsoWeekNumber();
+  const resolveCenterIdx = (): number => {
+    if (nowStripCenterUke != null) {
+      const i = uker.findIndex((u) => u.uke === nowStripCenterUke);
+      if (i >= 0) return i;
+    }
+    const todayIdx = uker.findIndex((u) => u.uke === todayUke);
+    return todayIdx >= 0 ? todayIdx : 0;
+  };
+
+  document.getElementById("week-strip-prev")?.addEventListener("click", () => {
+    const idx = resolveCenterIdx();
+    if (idx <= 0) return;
+    nowStripCenterUke = uker[idx - 1]!.uke;
+    render();
+    document.querySelector(".week-strip-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
+  document.getElementById("week-strip-next")?.addEventListener("click", () => {
+    const idx = resolveCenterIdx();
+    if (idx < 0 || idx >= uker.length - 1) return;
+    nowStripCenterUke = uker[idx + 1]!.uke;
+    render();
+    document.querySelector(".week-strip-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+
+  document.getElementById("week-strip-today")?.addEventListener("click", () => {
+    nowStripCenterUke = null;
+    render();
+    document.querySelector(".week-strip-section")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
 }
 
 window.addEventListener("hashchange", () => {
