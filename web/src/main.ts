@@ -22,7 +22,6 @@ const SESSION_KEY = "mbo-admin-session-v1";
  * Vedlikehold: Oppdater DOCS_UPDATED hver gang «Om»-teksten endres,
  * og hold forklaringen i tråd med nye funksjoner i appen.
  */
-const APP_FASE = "Fase 2";
 const DOCS_UPDATED = "4. august 2026";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -956,13 +955,14 @@ function renderOm(): string {
   const niva = m.norskniva?.length ? m.norskniva.join(", ") : "—";
   return `
     <div class="panel prose help-box">
-      <h2>Velkommen</h2>
+      <h2>Hva dette programmet er</h2>
       <p>
         Dette er planleggings- og publiseringsverktøyet for
         <strong>${escapeHtml(m.kurs ?? "Arbeid og norsk")}</strong> ved
         ${escapeHtml(m.organisasjon ?? "Molde voksenopplæring")}.
-        Her ser du årsplanen uke for uke, tilpasser den når hverdagen endrer seg,
-        og får ukentlige arbeidshefter (norsk + hverdagsmatematikk) som Word-fil på e-post.
+        Målet er enkelt: du skal alltid vite <em>hva klassen jobber med denne uken</em>,
+        kunne justere planen når livet griper inn, og få et ferdig arbeidshefte
+        (norsk + hverdagsmatematikk) som Word-fil på e-post — uten å lage alt fra scratch hver uke.
       </p>
       <p>
         Du trenger ikke være innlogget for å <em>se</em> planen.
@@ -975,7 +975,7 @@ function renderOm(): string {
         <li>Komme i gang</li>
         <li>Slik bruker du funksjonene</li>
         <li>Merker og farger</li>
-        <li>Litt om teknikken</li>
+        <li>Hvordan systemet er satt sammen (inkl. Google KI)</li>
       </ol>
     </div>
 
@@ -1138,13 +1138,41 @@ function renderOm(): string {
     </div>
 
     <div class="panel prose">
-      <h2>5. Litt om teknikken</h2>
+      <h2>5. Hvordan systemet er satt sammen</h2>
       <p>
-        Nettsiden er en lett app som publiseres via GitHub Pages.
-        Motoren (plan, KI, Word og e-post) kjører som API på Vercel med planlagt onsdagsutsending.
-        Data lagres i database (Turso). Sensitive nøkler ligger som miljøvariabler og vises aldri i nettleseren.
+        Tenk på programmet som tre lag som samarbeider — omtrent som planbok, kopimaskin og postgang:
       </p>
-      <p class="muted">Versjon: ${escapeHtml(APP_FASE)} · Sist oppdatert ${escapeHtml(DOCS_UPDATED)}.</p>
+      <ol>
+        <li>
+          <strong>Årsplanen (grunnlaget)</strong> — kapittel, yrke, grammatikk, tematekster og
+          hverdagsmatematikk-kategori ligger lagret som strukturert plan. Det er «malen» læreren og
+          systemet følger. Det du ser under Årsplan og Nå, kommer herfra (pluss eventuelle tilpasninger).
+        </li>
+        <li>
+          <strong>KI som lager ukeinnholdet</strong> — når heftet skal lages, sendes ukas kapittel
+          til Googles språkmodell <strong>Gemini 2.5 Flash</strong> (via Vertex AI).
+          Modellen skriver tekster og oppgaver ut fra årsplan-malen: norskdelen og
+          hverdagsmatematikk (fagtekst + nivå 1 og 2), på språk tilpasset voksne A2–B1.
+          Resultatet pakkes i samme Word-design hver uke. Hvis KI midlertidig feiler, brukes en
+          reservedeløsning slik at utsendingen ikke stopper helt.
+        </li>
+        <li>
+          <strong>Utsending</strong> — Word-filen sendes på e-post til aktive mottakere.
+          Det skjer automatisk hver onsdag, og når du trykker «Send hefte» i Admin.
+        </li>
+      </ol>
+      <p>
+        <strong>Nettsiden</strong> du bruker nå, er den lette overflaten (publisert via GitHub Pages).
+        <strong>Motoren</strong> bak — planlagring, Gemini, Word og e-post — kjører som et API
+        (Vercel) med planlagt onsdagsjobb. Data lagres i database (Turso).
+        Passord og API-nøkler ligger som hemmeligheter på serveren og vises aldri i nettleseren.
+      </p>
+      <p>
+        Pedagogisk poeng: læreren styrer <em>hva</em> som skal jobbes med (planen og tilpasningene);
+        Gemini hjelper med å <em>formulere</em> tekster og oppgaver innenfor den rammen —
+        ikke å erstatte din faglige vurdering.
+      </p>
+      <p class="muted">Sist oppdatert ${escapeHtml(DOCS_UPDATED)}.</p>
     </div>
   `;
 }
@@ -1558,8 +1586,9 @@ function pageCopy(view: ViewId, periode?: string): { title: string; subtitle: st
       };
     case "om":
       return {
-        title: "Om",
-        subtitle: "Oppsett, hvordan programmet virker, og hvordan du bruker det — steg for steg."
+        title: "Om programmet",
+        subtitle:
+          "Her får du en pedagogisk innføring: hvordan årsplan, ukehefte og KI-henger sammen — og hvordan du bruker verktøyet i praksis."
       };
     case "admin":
       return {
