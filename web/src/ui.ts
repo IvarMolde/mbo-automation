@@ -2,14 +2,20 @@ import type { UkeVisning, ViewId } from "./types";
 import { escapeHtml } from "./plan";
 import { matteKategoriLabelForKapittel } from "./hverdagsmatematikk";
 
+function humanizeTypeKey(type: string): string {
+  const spaced = type.replace(/_/g, " ").trim();
+  if (!spaced) return type;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
-    lareverk: "Læreverk",
+    lareverk: "Tema",
     yrke_arbeidsnorsk: "Yrke / arbeidsnorsk",
     arbeidsnorsk: "Arbeidsnorsk",
     hverdagssituasjon: "Hverdagssituasjon"
   };
-  return map[type] ?? type;
+  return map[type] ?? humanizeTypeKey(type);
 }
 
 function statusBadges(uke: UkeVisning): string {
@@ -85,7 +91,7 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
           ${k.oppgavestruktur
             .map(
               (o) =>
-                `<li><strong>${escapeHtml(o.type)}</strong> — ${escapeHtml(o.beskrivelse)}</li>`
+                `<li><strong>${escapeHtml(typeLabel(o.type))}</strong> — ${escapeHtml(o.beskrivelse)}</li>`
             )
             .join("")}
         </ol>`

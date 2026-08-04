@@ -717,7 +717,7 @@ function renderEkstraPanel(uke: number): string {
 
         <fieldset class="send-mode">
           <legend>Temaer (én, flere eller alle)</legend>
-          <label class="radio-row"><input type="checkbox" name="tema" value="lareverk" checked /> Læreverk</label>
+          <label class="radio-row"><input type="checkbox" name="tema" value="lareverk" checked /> Tema</label>
           <label class="radio-row"><input type="checkbox" name="tema" value="yrke" checked /> Yrke</label>
           <label class="radio-row"><input type="checkbox" name="tema" value="arbeidsnorsk" checked /> Arbeidsnorsk</label>
           <label class="radio-row"><input type="checkbox" name="tema" value="hverdagssituasjon" /> Hverdagssituasjon</label>
@@ -1168,7 +1168,7 @@ function renderVeiledning(): string {
       <h2>7. Send ekstraoppgaver</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Når noen elever trenger enklere trening, og/eller andre trenger vanskeligere utfordring.</p>
-        <p><strong>Hvordan?</strong> På <a href="#/denne-uken">Nå</a>: huk av nivå (enklere og/eller vanskeligere), huk av temaer (læreverk, yrke, arbeidsnorsk, hverdagssituasjon, grammatikk), velg mottakere, og trykk «Send ekstraoppgaver».</p>
+        <p><strong>Hvordan?</strong> På <a href="#/denne-uken">Nå</a>: huk av nivå (enklere og/eller vanskeligere), huk av temaer (tema, yrke, arbeidsnorsk, hverdagssituasjon, grammatikk), velg mottakere, og trykk «Send ekstraoppgaver».</p>
         <p><strong>Hva skjer?</strong> Hvert nivå blir et <strong>eget Word-dokument</strong> og egen e-post. Sendes aldri automatisk. Grammatikkdelen har forklaring (inkl. hensikt), eksempeltekst og oppgaver basert på ukas grammatikktema.</p>
         <p><strong>Design:</strong> Samme Word-mal som hovedheftet (farger, struktur, språk).</p>
       </div>

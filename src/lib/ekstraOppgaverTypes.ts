@@ -15,7 +15,7 @@ export type EkstraTema = z.infer<typeof ekstraTemaSchema>;
 export type EkstraNiva = z.infer<typeof ekstraNivaSchema>;
 
 export const ekstraTemaLabel: Record<EkstraTema, string> = {
-  lareverk: "Læreverk",
+  lareverk: "Tema",
   yrke: "Yrke",
   arbeidsnorsk: "Arbeidsnorsk",
   hverdagssituasjon: "Hverdagssituasjon",

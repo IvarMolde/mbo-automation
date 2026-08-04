@@ -100,17 +100,27 @@ function metaLabel(label: string, value: string): Paragraph {
   });
 }
 
+function humanizeTypeKey(type: string): string {
+  const spaced = type.replace(/_/g, " ").trim();
+  if (!spaced) return type;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
-    lareverk: "Læreverk",
+    lareverk: "Tema",
     yrke: "Yrke",
     yrke_arbeidsnorsk: "Yrke",
     arbeidsnorsk: "Arbeidsnorsk",
     hverdagssituasjon: "Hverdagssituasjon",
     hverdagsmatematikk: "Hverdagsmatematikk",
-    grammatikk: "Grammatikk"
+    grammatikk: "Grammatikk",
+    fyll_inn_setningsstruktur: "Fyll inn setningsstruktur",
+    leseforstaelse: "Leseforståelse",
+    skriveoppgave: "Skriveoppgave",
+    muntlig: "Muntlig"
   };
-  return map[type] ?? type;
+  return map[type] ?? humanizeTypeKey(type);
 }
 
 function cell(
