@@ -61,7 +61,9 @@ export const manueltSendSchema = z.object({
 export const manueltSendResponseSchema = successMessageResponseSchema.extend({
   kapittel: z.number().int().positive(),
   uke: z.number().int().min(1).max(53),
-  contentSource: z.enum(["gemini", "fallback"]),
+  /** sent = ferdig i samme request; accepted = generering/sending fortsetter i bakgrunn (Vercel). */
+  status: z.enum(["sent", "accepted"]).default("sent"),
+  contentSource: z.enum(["gemini", "fallback"]).optional(),
   sentTo: z.array(z.string().email())
 });
 

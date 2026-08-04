@@ -39,7 +39,14 @@ let adminFlash: string | null = null;
 /** Resultat etter «Send hefte» — egen boks i panelet */
 type SendHefteUiResult =
   | { kind: "pending"; uke: number }
-  | { kind: "success"; uke: number; kapittel?: number; sentTo: string[]; note?: string }
+  | {
+      kind: "success";
+      uke: number;
+      kapittel?: number;
+      sentTo: string[];
+      note?: string;
+      status?: "sent" | "accepted";
+    }
   | { kind: "error"; message: string };
 let sendHefteResult: SendHefteUiResult | null = null;
 /** Uken som er valgt i «Tilpass yrke og grammatikk», overlever re-render */
@@ -388,6 +395,7 @@ async function sendHefteManualWithMessage(input: {
   kapittel?: number;
   sentTo?: string[];
   note?: string;
+  status?: "sent" | "accepted";
 }> {
   try {
     const res = await fetch(`${API_BASE}/api/hefte/send`, {
@@ -406,6 +414,7 @@ async function sendHefteManualWithMessage(input: {
       kapittel?: number;
       uke?: number;
       contentSource?: string;
+      status?: "sent" | "accepted";
     };
     if (res.status === 401) {
       setSessionToken("");
@@ -414,19 +423,28 @@ async function sendHefteManualWithMessage(input: {
     if (!res.ok || !data.success) {
       return { error: data.error ?? `Sending feilet (${res.status})` };
     }
+    const status = data.status === "accepted" ? "accepted" : "sent";
+    let note: string | undefined;
+    if (status === "accepted") {
+      note =
+        "Generering pågår i bakgrunnen. Sjekk innboksen om noen minutter (også søppelpost). " +
+        "Du trenger ikke vente i denne fanen.";
+    } else if (data.contentSource === "fallback") {
+      note = "Innholdet ble laget med reservedeløsning (Gemini feilet).";
+    }
     return {
       error: null,
       uke: data.uke ?? input.uke,
       kapittel: data.kapittel,
       sentTo: data.sentTo ?? [],
-      note:
-        data.contentSource === "fallback"
-          ? "Innholdet ble laget med reservedeløsning (Gemini feilet)."
-          : undefined
+      status,
+      note
     };
   } catch {
     return {
-      error: "Kunne ikke nå serveren. Vent gjerne 2 min og sjekk innboksen før du prøver igjen."
+      error:
+        "Tilkoblingen ble brutt før svar kom — ofte fordi genereringen tok lang tid. " +
+        "Sjekk innboksen før du prøver igjen (heftet kan likevel være sendt). Vent gjerne 2–3 minutter."
     };
   }
 }
@@ -1173,7 +1191,7 @@ function renderOm(): string {
       <div class="help-text">
         <p><strong>Når?</strong> Du vil forberede deg før den faste onsdagsutsendingen.</p>
         <p><strong>Hvordan?</strong> Admin → Send hefte: velg skoleuke og mottaker(e), trykk Send.
-          Det kan ta 1–2 minutter.</p>
+          Det kan ta noen minutter.</p>
         <p><strong>Etter sending:</strong> Du får bekreftelse med liste over e-postadresser.
           Sjekk innboksen (og søppelpost) innen kort tid. Onsdagsjobben fortsetter som normalt.</p>
       </div>
@@ -1455,7 +1473,7 @@ function renderSendHefteResult(): string {
       <div class="send-result send-result-pending" role="status" aria-live="polite">
         <p class="send-result-kicker">Sender…</p>
         <h3 class="send-result-title">Genererer hefte for skoleuke ${sendHefteResult.uke}</h3>
-        <p class="send-result-lead">Dette kan ta 1–2 minutter. Vent til bekreftelsen kommer.</p>
+        <p class="send-result-lead">Dette kan ta noen minutter. Vent til bekreftelsen kommer.</p>
       </div>`;
   }
 
@@ -1468,7 +1486,8 @@ function renderSendHefteResult(): string {
       </div>`;
   }
 
-  const { uke, kapittel, sentTo, note } = sendHefteResult;
+  const { uke, kapittel, sentTo, note, status } = sendHefteResult;
+  const accepted = status === "accepted";
   const items = sentTo
     .map((email) => {
       const { name } = recipientDisplay(email);
@@ -1484,11 +1503,14 @@ function renderSendHefteResult(): string {
 
   return `
     <div class="send-result send-result-success" role="status" aria-live="polite" id="send-hefte-result">
-      <p class="send-result-kicker">Sendt</p>
-      <h3 class="send-result-title">Heftet er sendt</h3>
+      <p class="send-result-kicker">${accepted ? "Startet" : "Sendt"}</p>
+      <h3 class="send-result-title">${accepted ? "Generering er startet" : "Heftet er sendt"}</h3>
       <p class="send-result-lead">
-        Du mottar arbeidsheftet på e-post innen kort tid
-        (sjekk også søppelpost hvis det drøyer).
+        ${
+          accepted
+            ? "Serveren lager heftet nå. Du mottar det på e-post når det er ferdig (ofte 1–3 minutter). Sjekk også søppelpost."
+            : "Du mottar arbeidsheftet på e-post innen kort tid (sjekk også søppelpost hvis det drøyer)."
+        }
       </p>
       <p class="send-result-meta">Skoleuke ${uke}${kapLine}</p>
       ${note ? `<p class="send-result-note">${escapeHtml(note)}</p>` : ""}
@@ -1537,7 +1559,7 @@ function renderSendHeftePanel(): string {
         </fieldset>
 
         <button type="submit" class="btn" ${busy ? "disabled" : ""}>${busy ? "Sender…" : "Send hefte"}</button>
-        <p class="muted">Kan ta 1–2 minutter (Gemini lager innhold + Word-fil).</p>
+        <p class="muted">Kan ta noen minutter (Gemini lager innhold + Word-fil).</p>
       </form>
     </div>
   `;
@@ -1877,7 +1899,8 @@ function bindAdminForms(): void {
         uke: result.uke ?? uke,
         kapittel: result.kapittel,
         sentTo: result.sentTo ?? (motaker ? [motaker] : []),
-        note: result.note
+        note: result.note,
+        status: result.status
       };
     }
     render();

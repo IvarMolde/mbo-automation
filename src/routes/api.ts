@@ -155,7 +155,6 @@ apiRouter.post("/hefte/send", async (req, res) => {
     await loadSchoolYearProfile();
 
     const kapittel = resolveKapittelFromRequest({ uke: body.uke });
-    const files = await genererFilerForKapittel(kapittel, body.uke);
 
     let emails: string[];
     if (body.mode === "one") {
@@ -172,12 +171,47 @@ apiRouter.post("/hefte/send", async (req, res) => {
       recipientState.recipients.map((r) => [r.email, r.unsubscribeToken] as const)
     );
 
-    for (const email of emails) {
-      await sendHefte(email, kapittel, files.word, body.uke, {
-        unsubscribeToken: tokenByEmail.get(email)
+    const runSend = async () => {
+      const files = await genererFilerForKapittel(kapittel, body.uke);
+      for (const email of emails) {
+        await sendHefte(email, kapittel, files.word, body.uke, {
+          unsubscribeToken: tokenByEmail.get(email)
+        });
+      }
+      return files;
+    };
+
+    // På Vercel: svar raskt så nettleseren ikke timeout'er mens Gemini+Word kjører.
+    // Jobben fortsetter via waitUntil innenfor maxDuration (vercel.json).
+    if (process.env.VERCEL) {
+      const { waitUntil } = await import("@vercel/functions");
+      waitUntil(
+        runSend()
+          .then((files) => {
+            console.log(
+              `[hefte/send] ferdig uke=${body.uke} kap=${kapittel.nummer} source=${files.contentSource} mottakere=${emails.length}`
+            );
+          })
+          .catch((err: unknown) => {
+            console.error(
+              "[hefte/send] bakgrunnsfeil:",
+              err instanceof Error ? err.message : err
+            );
+          })
+      );
+
+      sendValidatedJson(res, manueltSendResponseSchema, {
+        success: true,
+        message: `Generering er startet for skoleuke ${body.uke}. Heftet sendes på e-post når det er ferdig (ofte 1–3 minutter).`,
+        kapittel: kapittel.nummer,
+        uke: body.uke,
+        status: "accepted",
+        sentTo: emails
       });
+      return;
     }
 
+    const files = await runSend();
     sendValidatedJson(res, manueltSendResponseSchema, {
       success: true,
       message:
@@ -186,6 +220,7 @@ apiRouter.post("/hefte/send", async (req, res) => {
           : `Hefte for skoleuke ${body.uke} er sendt (fallback — Gemini feilet).`,
       kapittel: kapittel.nummer,
       uke: body.uke,
+      status: "sent",
       contentSource: files.contentSource,
       geminiError: files.contentSource === "fallback" ? sanitizeGeminiError(files.geminiError) : undefined,
       sentTo: emails

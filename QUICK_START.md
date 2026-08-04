@@ -73,7 +73,7 @@ git push -u origin main
 
 4. Deploy
 
-`vercel.json` setter `maxDuration: 60` for Gemini + Word/PPTX, og cron `0 11 * * 3` (onsdag 11:00 UTC; Vercel krever tall, ikke `WED`). Når `CRON_SECRET` er satt, sender Vercel Cron automatisk `Authorization: Bearer <CRON_SECRET>` til `/api/cron`.
+`vercel.json` setter `maxDuration: 300` (5 min) for Gemini + Word, og cron `0 11 * * 3` (onsdag 11:00 UTC; Vercel krever tall, ikke `WED`). Manuell `/api/hefte/send` svarer raskt på Vercel (`status: accepted`) og fullfører generering/e-post via `waitUntil`. Krever plan som tillater lang serverless-kjøring (f.eks. Vercel Pro) for at bakgrunnsjobben skal rekke å bli ferdig. Når `CRON_SECRET` er satt, sender Vercel Cron automatisk `Authorization: Bearer <CRON_SECRET>` til `/api/cron`.
 
 ### 3. Verifiser
 
@@ -136,7 +136,7 @@ POST /api/cron         Header: Authorization: Bearer <CRON_SECRET>
 1. **E-post?** → 2FA aktivert + App Password uten mellomrom
 2. **Gemini?** → Vertex AI API + rolle + gyldig `GOOGLE_SERVICE_ACCOUNT_JSON`
 3. **Deploy?** → Vercel Logs under Functions
-4. **Timeout?** → Sjekk at `maxDuration` er 60 i `vercel.json`
+4. **Timeout?** → Sjekk at `maxDuration` er 300 i `vercel.json` (og at Vercel-planen tillater det)
 5. **Cron?** → Settings → Crons → Active; `CRON_SECRET` satt
 
 Se `IMPLEMENTERING.md` for mer detaljert setup.
