@@ -36,6 +36,12 @@ let loadError: string | null = null;
 let planSource: "local" | "server" | "base" = "base";
 /** Statusmelding på Admin som overlever re-render */
 let adminFlash: string | null = null;
+/** Resultat etter «Send hefte» — egen boks i panelet */
+type SendHefteUiResult =
+  | { kind: "pending"; uke: number }
+  | { kind: "success"; uke: number; kapittel?: number; sentTo: string[]; note?: string }
+  | { kind: "error"; message: string };
+let sendHefteResult: SendHefteUiResult | null = null;
 /** Uken som er valgt i «Tilpass yrke og grammatikk», overlever re-render */
 let customizeUke: number | null = null;
 /** Skoleår-status fra API */
@@ -361,7 +367,13 @@ async function sendHefteManualWithMessage(input: {
   uke: number;
   mode: "all" | "one";
   motaker?: string;
-}): Promise<{ error: string | null; detail?: string }> {
+}): Promise<{
+  error: string | null;
+  uke?: number;
+  kapittel?: number;
+  sentTo?: string[];
+  note?: string;
+}> {
   try {
     const res = await fetch(`${API_BASE}/api/hefte/send`, {
       method: "POST",
@@ -378,6 +390,7 @@ async function sendHefteManualWithMessage(input: {
       sentTo?: string[];
       kapittel?: number;
       uke?: number;
+      contentSource?: string;
     };
     if (res.status === 401) {
       setSessionToken("");
@@ -386,10 +399,15 @@ async function sendHefteManualWithMessage(input: {
     if (!res.ok || !data.success) {
       return { error: data.error ?? `Sending feilet (${res.status})` };
     }
-    const to = data.sentTo?.join(", ") ?? "";
     return {
       error: null,
-      detail: `Sendt uke ${data.uke} (kap. ${data.kapittel}) til: ${to}`
+      uke: data.uke ?? input.uke,
+      kapittel: data.kapittel,
+      sentTo: data.sentTo ?? [],
+      note:
+        data.contentSource === "fallback"
+          ? "Innholdet ble laget med reservedeløsning (Gemini feilet)."
+          : undefined
     };
   } catch {
     return {
@@ -1125,6 +1143,7 @@ function renderVeiledning(): string {
       <div class="help-text">
         <p><strong>Når?</strong> Når du vil forberede deg i forkant, i stedet for å vente på den automatiske onsdagsutsendingen.</p>
         <p><strong>Hvordan?</strong> Velg skoleuke, velg om det skal sendes til bare deg eller alle aktive mottakere, og trykk «Send hefte». Det kan ta 1–2 minutter (KI lager innhold + Word-fil).</p>
+        <p><strong>Etter sending:</strong> Du får en tydelig bekreftelse med oversikten over hvilke e-postadresser som mottar heftet. Sjekk innboksen innen kort tid.</p>
         <p><strong>Innhold:</strong> Heftet inneholder norsk + hverdagsmatematikk (fagtekst og oppgaver nivå 1 og 2 knyttet til ukas yrke/tema). Fasit ligger bakerst.</p>
         <p class="muted">Den faste onsdagsutsendingen fortsetter uansett som normalt.</p>
       </div>
@@ -1354,9 +1373,73 @@ function defaultSendEmail(): string {
   return active?.email ?? "";
 }
 
+function recipientDisplay(email: string): { email: string; name?: string } {
+  const row = recipients.find((r) => r.email.toLowerCase() === email.toLowerCase());
+  return { email, name: row?.name };
+}
+
+function renderSendHefteResult(): string {
+  if (!sendHefteResult) return "";
+
+  if (sendHefteResult.kind === "pending") {
+    return `
+      <div class="send-result send-result-pending" role="status" aria-live="polite">
+        <p class="send-result-kicker">Sender…</p>
+        <h3 class="send-result-title">Genererer hefte for skoleuke ${sendHefteResult.uke}</h3>
+        <p class="send-result-lead">Dette kan ta 1–2 minutter. Vent til bekreftelsen kommer.</p>
+      </div>`;
+  }
+
+  if (sendHefteResult.kind === "error") {
+    return `
+      <div class="send-result send-result-error" role="alert">
+        <p class="send-result-kicker">Sending feilet</p>
+        <h3 class="send-result-title">Heftet ble ikke sendt</h3>
+        <p class="send-result-lead">${escapeHtml(sendHefteResult.message)}</p>
+      </div>`;
+  }
+
+  const { uke, kapittel, sentTo, note } = sendHefteResult;
+  const items = sentTo
+    .map((email) => {
+      const { name } = recipientDisplay(email);
+      return `<li>
+        <span class="send-recipient-email">${escapeHtml(email)}</span>
+        ${name ? `<span class="send-recipient-name">${escapeHtml(name)}</span>` : ""}
+      </li>`;
+    })
+    .join("");
+
+  const kapLine =
+    kapittel != null ? ` · kapittel ${kapittel}` : "";
+
+  return `
+    <div class="send-result send-result-success" role="status" aria-live="polite" id="send-hefte-result">
+      <p class="send-result-kicker">Sendt</p>
+      <h3 class="send-result-title">Heftet er sendt</h3>
+      <p class="send-result-lead">
+        Du mottar arbeidsheftet på e-post innen kort tid
+        (sjekk også søppelpost hvis det drøyer).
+      </p>
+      <p class="send-result-meta">Skoleuke ${uke}${kapLine}</p>
+      ${note ? `<p class="send-result-note">${escapeHtml(note)}</p>` : ""}
+      <div class="send-recipients">
+        <h4 class="send-recipients-title">Mottakere (${sentTo.length})</h4>
+        <ul class="send-recipients-list">
+          ${items || "<li class=\"muted\">Ingen adresser i svaret</li>"}
+        </ul>
+      </div>
+    </div>`;
+}
+
 function renderSendHeftePanel(): string {
   const ukeNow = getIsoWeekNumber();
+  const formUke =
+    sendHefteResult && "uke" in sendHefteResult && sendHefteResult.uke != null
+      ? sendHefteResult.uke
+      : ukeNow;
   const defaultEmail = escapeHtml(defaultSendEmail());
+  const busy = sendHefteResult?.kind === "pending";
   return `
     <div class="panel highlight" id="send-hefte-panel">
       <h2>Send hefte nå</h2>
@@ -1364,12 +1447,13 @@ function renderSendHeftePanel(): string {
         Generer og send arbeidsheftet for en valgt uke — f.eks. for å forberede deg i forkant.
         Den automatiske onsdagsutsendingen fortsetter som før.
       </p>
+      ${renderSendHefteResult()}
       <form id="send-hefte-form" class="admin-form send-hefte-form">
         <label for="send-uke">Skoleuke</label>
-        <input id="send-uke" name="uke" type="number" min="1" max="53" required value="${ukeNow}" />
-        <p class="muted" id="send-uke-preview">${escapeHtml(weekSendPreview(ukeNow))}</p>
+        <input id="send-uke" name="uke" type="number" min="1" max="53" required value="${formUke}" ${busy ? "disabled" : ""} />
+        <p class="muted" id="send-uke-preview">${escapeHtml(weekSendPreview(formUke))}</p>
 
-        <fieldset class="send-mode">
+        <fieldset class="send-mode" ${busy ? "disabled" : ""}>
           <legend>Hvem skal motta?</legend>
           <label class="radio-row">
             <input type="radio" name="mode" value="one" checked />
@@ -1383,7 +1467,7 @@ function renderSendHeftePanel(): string {
           </label>
         </fieldset>
 
-        <button type="submit" class="btn">Send hefte</button>
+        <button type="submit" class="btn" ${busy ? "disabled" : ""}>${busy ? "Sender…" : "Send hefte"}</button>
         <p class="muted">Kan ta 1–2 minutter (Gemini lager innhold + Word-fil).</p>
       </form>
     </div>
@@ -1711,15 +1795,28 @@ function bindAdminForms(): void {
     const mode = String(fd.get("mode") ?? "one") === "all" ? "all" : "one";
     const motaker = String(fd.get("motaker") ?? "").trim() || undefined;
     if (mode === "one" && !motaker) {
-      setFlash("Skriv inn e-postadressen du vil sende til.");
+      sendHefteResult = { kind: "error", message: "Skriv inn e-postadressen du vil sende til." };
       render();
+      document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
-    setFlash(`Genererer og sender hefte for uke ${uke}… Dette kan ta 1–2 minutter.`);
+    sendHefteResult = { kind: "pending", uke };
     render();
+    document.getElementById("send-hefte-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const result = await sendHefteManualWithMessage({ uke, mode, motaker });
-    setFlash(result.error ? `Sending feilet: ${result.error}` : (result.detail ?? "Hefte sendt."));
+    if (result.error) {
+      sendHefteResult = { kind: "error", message: result.error };
+    } else {
+      sendHefteResult = {
+        kind: "success",
+        uke: result.uke ?? uke,
+        kapittel: result.kapittel,
+        sentTo: result.sentTo ?? (motaker ? [motaker] : []),
+        note: result.note
+      };
+    }
     render();
+    document.getElementById("send-hefte-result")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   });
 
   app?.querySelectorAll<HTMLButtonElement>(".recipient-remove").forEach((btn) => {

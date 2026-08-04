@@ -479,6 +479,117 @@ a:hover {
   color: var(--marine);
 }
 
+.send-result {
+  margin: 0 0 1.1rem;
+  padding: 1rem 1.15rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.send-result-kicker {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.send-result-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.25rem;
+  color: var(--marine);
+  line-height: 1.25;
+}
+
+.send-result-lead {
+  margin: 0 0 0.65rem;
+  color: var(--night);
+  line-height: 1.45;
+}
+
+.send-result-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--teal);
+}
+
+.send-result-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #6b3a12;
+}
+
+.send-result-success {
+  background: linear-gradient(165deg, #eef8f1 0%, #f7fbf8 55%, #ffffff 100%);
+  border-color: #9cccaf;
+  box-shadow: 0 1px 0 rgba(27, 94, 59, 0.06);
+}
+
+.send-result-success .send-result-kicker {
+  color: #1b5e3b;
+}
+
+.send-result-pending {
+  background: #e7f3f6;
+  border-color: #9ec8d2;
+}
+
+.send-result-pending .send-result-kicker {
+  color: var(--teal);
+}
+
+.send-result-error {
+  background: #fdf2f0;
+  border-color: #e0a8a0;
+}
+
+.send-result-error .send-result-kicker {
+  color: #8b2e22;
+}
+
+.send-recipients {
+  margin-top: 0.35rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 48, 87, 0.12);
+}
+
+.send-recipients-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.95rem;
+  color: var(--marine);
+}
+
+.send-recipients-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.send-recipients-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 48, 87, 0.1);
+  border-radius: 8px;
+}
+
+.send-recipient-email {
+  font-weight: 700;
+  color: var(--marine);
+  word-break: break-all;
+}
+
+.send-recipient-name {
+  font-size: 0.9rem;
+  color: var(--teal);
+}
+
 .uke-card.is-locked .uke-title {
   color: #6b3a12;
 }
