@@ -1157,6 +1157,33 @@ a.cal-month-name:hover {
   gap: 0.4rem;
 }
 
+.break-summary {
+  margin-top: 0.85rem;
+}
+
+.break-summary-title {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.95rem;
+  color: var(--teal);
+  font-weight: 800;
+}
+
+.break-summary-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.break-summary-list li {
+  margin: 0.3rem 0;
+}
+
+.break-card {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
 .ekstra-panel h2 {
   margin: 0 0 0.5rem;
   font-family: var(--font-display);

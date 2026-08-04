@@ -80,6 +80,8 @@ planRouter.get("/plan", async (_req, res) => {
             startDate: schoolYear.startDate,
             endDate: schoolYear.endDate,
             holidayWeeks: schoolYear.holidayWeeks,
+            holidays: schoolYear.holidays,
+            breakSummary: schoolYear.breakSummary,
             appliedAt: schoolYear.appliedAt
           }
         : { configured: false }

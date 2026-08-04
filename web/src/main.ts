@@ -702,14 +702,64 @@ function renderEkstraPanel(uke: number): string {
     </section>`;
 }
 
+/** Antall ekstra fridag-rader i Skoleår-skjemaet (overlever re-render midlertidig) */
+let skolearExtraDayRows = 2;
+
+function renderBreakSummaryHtml(sy: NonNullable<PlanApiResponse["schoolYear"]>): string {
+  const summary = sy.breakSummary;
+  if (!summary) {
+    return `<p class="muted">Låste skoleuker (uten undervisning): ${(sy.holidayWeeks ?? [])
+      .map((w) => `uke ${w}`)
+      .join(", ") || "ingen"}</p>`;
+  }
+  const periodItems = summary.periods.length
+    ? `<ul class="break-summary-list">${summary.periods
+        .map((p) => `<li>${escapeHtml(p.label)}</li>`)
+        .join("")}</ul>`
+    : `<p class="muted">Ingen ferieperioder lagret.</p>`;
+  const dayItems = summary.days.length
+    ? `<ul class="break-summary-list">${summary.days
+        .map((d) => `<li>${escapeHtml(d.label)}</li>`)
+        .join("")}</ul>`
+    : `<p class="muted">Ingen ekstra fridager lagret.</p>`;
+
+  return `
+    <div class="break-summary">
+      <h3 class="break-summary-title">Ferieperioder (uker uten undervisning)</h3>
+      ${periodItems}
+      <h3 class="break-summary-title">Ekstra fridager (uken fortsetter med undervisning)</h3>
+      ${dayItems}
+    </div>`;
+}
+
 function renderSkolear(): string {
   const sy = schoolYearInfo;
-  const holidays = [
+  const savedPeriods =
+    sy?.holidays?.filter((h) => (h.kind ?? "period") === "period") ?? [];
+  const savedDays = sy?.holidays?.filter((h) => h.kind === "day") ?? [];
+
+  const defaultPeriods = [
     { name: "Høstferie", startDate: "", endDate: "" },
     { name: "Juleferie", startDate: "", endDate: "" },
     { name: "Vinterferie", startDate: "", endDate: "" },
     { name: "Påskeferie", startDate: "", endDate: "" }
   ];
+  const periods =
+    savedPeriods.length > 0
+      ? savedPeriods.map((h) => ({
+          name: h.name,
+          startDate: h.startDate,
+          endDate: h.endDate
+        }))
+      : defaultPeriods;
+
+  const dayRows =
+    savedDays.length > 0
+      ? savedDays.map((h) => ({ name: h.name, date: h.startDate }))
+      : Array.from({ length: Math.max(skolearExtraDayRows, 2) }, () => ({
+          name: "",
+          date: ""
+        }));
 
   const status = sy?.configured
     ? `<div class="panel plan-status" role="status">
@@ -717,16 +767,16 @@ function renderSkolear(): string {
           <span class="plan-status-pill">Aktivt skoleår</span>
           <p class="plan-status-lead">${escapeHtml(sy.label || plan.metadata.skolear || "Skoleår")} · ${escapeHtml(sy.startDate ?? "")} – ${escapeHtml(sy.endDate ?? "")}</p>
         </div>
-        <p class="muted">Ferieuker: ${(sy.holidayWeeks ?? []).map((w) => `uke ${w}`).join(", ") || "ingen"}</p>
+        ${renderBreakSummaryHtml(sy)}
       </div>`
-    : `<div class="panel note" role="status">Ingen skoleår-profil er lagret ennå. Fyll inn start, slutt og ferier, og generer planen.</div>`;
+    : `<div class="panel note" role="status">Ingen skoleår-profil er lagret ennå. Fyll inn start, slutt, ferieperioder og eventuelle ekstra fridager, og generer planen.</div>`;
 
   if (!isLoggedIn()) {
     return `
       ${status}
       <div class="panel">
         <h2>Sett opp skoleåret</h2>
-        <p>Logg inn under <a href="#/admin">Admin</a> for å lagre start, slutt og feriedager. Deretter genereres årsplanen automatisk.</p>
+        <p>Logg inn under <a href="#/admin">Admin</a> for å lagre start, slutt og fridager. Deretter genereres årsplanen automatisk.</p>
       </div>`;
   }
 
@@ -736,8 +786,10 @@ function renderSkolear(): string {
     <div class="panel">
       <h2>Generer plan for skoleåret</h2>
       <p class="help-text">
-        Oppgi når skoleåret starter og slutter, og hvilke ferieperioder som gjelder her.
-        Kapitlene fordeles automatisk på undervisningsukene. Ferier låses som skoleuker uten undervisning.
+        <strong>Ferieperioder</strong> (f.eks. høst- og juleferie) låser hele skoleuker uten undervisning
+        når perioden dekker minst tre ukedager.<br/>
+        <strong>Ekstra fridager</strong> (kurs, planlegging, 1. mai …) registreres på dato —
+        skoleuken fortsetter med undervisning de andre dagene.
       </p>
       <form id="skolear-form" class="admin-form">
         <label for="sy-label">Navn (valgfritt)</label>
@@ -749,24 +801,45 @@ function renderSkolear(): string {
         <label for="sy-end">Skoleåret slutter</label>
         <input id="sy-end" name="endDate" type="date" required value="${escapeHtml(sy?.endDate ?? "2027-06-18")}" />
 
-        <h3 class="custom-list-title">Feriedager / ferieuker</h3>
-        <p class="muted">Fyll inn datointervall. Tomme rader hoppes over.</p>
-        <div id="sy-holidays" class="admin-grid">
-          ${holidays
+        <h3 class="custom-list-title">Ferieperioder</h3>
+        <p class="muted">Hele ferier med fra–til. Tomme rader hoppes over.</p>
+        <div id="sy-periods" class="admin-grid">
+          ${periods
             .map(
               (h, i) => `
-            <div class="admin-form">
-              <label for="sy-h-name-${i}">Navn</label>
-              <input id="sy-h-name-${i}" name="hName" type="text" value="${escapeHtml(h.name)}" />
-              <label for="sy-h-start-${i}">Fra dato</label>
-              <input id="sy-h-start-${i}" name="hStart" type="date" />
-              <label for="sy-h-end-${i}">Til dato</label>
-              <input id="sy-h-end-${i}" name="hEnd" type="date" />
+            <div class="admin-form break-card">
+              <label for="sy-p-name-${i}">Navn</label>
+              <input id="sy-p-name-${i}" name="pName" type="text" value="${escapeHtml(h.name)}" />
+              <label for="sy-p-start-${i}">Fra dato</label>
+              <input id="sy-p-start-${i}" name="pStart" type="date" value="${escapeHtml(h.startDate)}" />
+              <label for="sy-p-end-${i}">Til dato</label>
+              <input id="sy-p-end-${i}" name="pEnd" type="date" value="${escapeHtml(h.endDate)}" />
             </div>`
             )
             .join("")}
         </div>
-        <button type="submit" class="btn">Lagre og generer plan</button>
+        <button type="button" class="btn btn-ghost" id="sy-add-period">+ Legg til ferieperiode</button>
+
+        <h3 class="custom-list-title">Ekstra fridager</h3>
+        <p class="muted">Kursdager, planleggingsdager og andre enkeltdager. Uken låses ikke.</p>
+        <div id="sy-days" class="admin-grid">
+          ${dayRows
+            .map(
+              (d, i) => `
+            <div class="admin-form break-card">
+              <label for="sy-d-name-${i}">Navn</label>
+              <input id="sy-d-name-${i}" name="dName" type="text" placeholder="Kursdag / Planlegging" value="${escapeHtml(d.name)}" />
+              <label for="sy-d-date-${i}">Dato</label>
+              <input id="sy-d-date-${i}" name="dDate" type="date" value="${escapeHtml(d.date)}" />
+            </div>`
+            )
+            .join("")}
+        </div>
+        <button type="button" class="btn btn-ghost" id="sy-add-day">+ Legg til fridag</button>
+
+        <div class="btn-row">
+          <button type="submit" class="btn">Lagre og generer plan</button>
+        </div>
       </form>
     </div>
   `;
@@ -943,7 +1016,7 @@ function renderVeiledning(): string {
       <h2>0. Sett opp skoleåret</h2>
       <div class="help-text">
         <p><strong>Når?</strong> Først i skoleåret, eller når stedet ditt har andre ferier enn standardplanen.</p>
-        <p><strong>Hvordan?</strong> Under <a href="#/skolear">Skoleår</a> fyller du inn start, slutt og ferieperioder. Trykk «Lagre og generer plan». Undervisningsukene får kapitler automatisk; ferieuker låses.</p>
+        <p><strong>Hvordan?</strong> Under <a href="#/skolear">Skoleår</a> fyller du inn start, slutt, <em>ferieperioder</em> (hele uker uten undervisning) og eventuelt <em>ekstra fridager</em> (kurs, planlegging — uken fortsetter). Trykk «Lagre og generer plan». Oppsummeringen viser tydelig hva som er hele ferieuker og hva som bare er enkeltdager.</p>
         <p><strong>Språk:</strong> Vi snakker om <em>skoleuke</em> (f.eks. skoleuke 34), ikke «ISO-uke».</p>
       </div>
     </div>
@@ -1718,25 +1791,79 @@ function bindAdminForms(): void {
 }
 
 function bindSkolearForm(): void {
+  document.getElementById("sy-add-period")?.addEventListener("click", () => {
+    const grid = document.getElementById("sy-periods");
+    if (!grid) return;
+    const i = grid.querySelectorAll(".break-card").length;
+    const wrap = document.createElement("div");
+    wrap.className = "admin-form break-card";
+    wrap.innerHTML = `
+      <label for="sy-p-name-${i}">Navn</label>
+      <input id="sy-p-name-${i}" name="pName" type="text" placeholder="Ferieperiode" />
+      <label for="sy-p-start-${i}">Fra dato</label>
+      <input id="sy-p-start-${i}" name="pStart" type="date" />
+      <label for="sy-p-end-${i}">Til dato</label>
+      <input id="sy-p-end-${i}" name="pEnd" type="date" />`;
+    grid.appendChild(wrap);
+  });
+
+  document.getElementById("sy-add-day")?.addEventListener("click", () => {
+    const grid = document.getElementById("sy-days");
+    if (!grid) return;
+    const i = grid.querySelectorAll(".break-card").length;
+    skolearExtraDayRows = i + 1;
+    const wrap = document.createElement("div");
+    wrap.className = "admin-form break-card";
+    wrap.innerHTML = `
+      <label for="sy-d-name-${i}">Navn</label>
+      <input id="sy-d-name-${i}" name="dName" type="text" placeholder="Kursdag / Planlegging" />
+      <label for="sy-d-date-${i}">Dato</label>
+      <input id="sy-d-date-${i}" name="dDate" type="date" />`;
+    grid.appendChild(wrap);
+  });
+
   document.getElementById("skolear-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const fd = new FormData(form);
-    const names = fd.getAll("hName").map(String);
-    const starts = fd.getAll("hStart").map(String);
-    const ends = fd.getAll("hEnd").map(String);
-    const holidays: Array<{ name: string; startDate: string; endDate: string }> = [];
-    for (let i = 0; i < names.length; i += 1) {
-      const name = names[i]?.trim() ?? "";
-      const startDate = starts[i]?.trim() ?? "";
-      const endDate = ends[i]?.trim() ?? "";
+
+    const holidays: Array<{
+      name: string;
+      startDate: string;
+      endDate: string;
+      kind: "period" | "day";
+    }> = [];
+
+    const pNames = fd.getAll("pName").map(String);
+    const pStarts = fd.getAll("pStart").map(String);
+    const pEnds = fd.getAll("pEnd").map(String);
+    for (let i = 0; i < pNames.length; i += 1) {
+      const name = pNames[i]?.trim() ?? "";
+      const startDate = pStarts[i]?.trim() ?? "";
+      const endDate = pEnds[i]?.trim() ?? "";
       if (!startDate && !endDate) continue;
       if (!name || !startDate || !endDate) {
-        schoolYearFlash = "Fyll inn navn, fra- og til-dato for hver ferie du bruker — eller la raden stå tom.";
+        schoolYearFlash =
+          "Fyll inn navn, fra- og til-dato for hver ferieperiode du bruker — eller la raden stå tom.";
         render();
         return;
       }
-      holidays.push({ name, startDate, endDate });
+      holidays.push({ name, startDate, endDate, kind: "period" });
+    }
+
+    const dNames = fd.getAll("dName").map(String);
+    const dDates = fd.getAll("dDate").map(String);
+    for (let i = 0; i < dNames.length; i += 1) {
+      const name = dNames[i]?.trim() ?? "";
+      const date = dDates[i]?.trim() ?? "";
+      if (!name && !date) continue;
+      if (!name || !date) {
+        schoolYearFlash =
+          "Fyll inn både navn og dato for ekstra fridager — eller la raden stå tom.";
+        render();
+        return;
+      }
+      holidays.push({ name, startDate: date, endDate: date, kind: "day" });
     }
 
     schoolYearFlash = "Genererer skoleårsplan…";
@@ -1770,7 +1897,7 @@ function bindSkolearForm(): void {
       await refreshPlanFromApi();
       schoolYearFlash =
         data.message ??
-        `Plan generert: ${data.teachingWeeks ?? "?"} undervisningsuker, ${data.holidayWeeks ?? "?"} ferieuker.`;
+        `Plan generert: ${data.teachingWeeks ?? "?"} undervisningsuker, ${data.holidayWeeks ?? "?"} hele ferieuker låst.`;
       render();
     } catch {
       schoolYearFlash = "Kunne ikke nå serveren.";

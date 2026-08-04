@@ -128,6 +128,16 @@ export interface PlanApiResponse {
     startDate?: string;
     endDate?: string;
     holidayWeeks?: number[];
+    holidays?: Array<{
+      name: string;
+      startDate: string;
+      endDate: string;
+      kind?: "period" | "day";
+    }>;
+    breakSummary?: {
+      periods: Array<{ name: string; startDate: string; endDate: string; lockedWeeks: number[]; label: string }>;
+      days: Array<{ name: string; date: string; uke: number; label: string }>;
+    };
     appliedAt?: string;
   };
 }

@@ -7,7 +7,7 @@ import { AdminAuthError, requireAdmin } from "../lib/requireAdmin.js";
 import {
   applyProfileToArsplan,
   generateSchoolYearPlan,
-  isoWeeksInRange
+  weekdayCoverageInRange
 } from "../lib/schoolYearGenerate.js";
 import { holidaySchema, type Holiday } from "../lib/schoolYearState.js";
 import {
@@ -36,10 +36,10 @@ const applySchema = z.object({
 
 function holidayNameForWeek(uke: number, holidays: Holiday[]): string {
   for (const h of holidays) {
+    if ((h.kind ?? "period") === "day") continue;
     try {
-      if (isoWeeksInRange(h.startDate, h.endDate).includes(uke)) {
-        return h.name;
-      }
+      const cov = weekdayCoverageInRange(h.startDate, h.endDate).find((c) => c.week === uke);
+      if (cov && cov.weekdayCount >= 3) return h.name;
     } catch {
       /* skip invalid */
     }
@@ -111,7 +111,8 @@ schoolYearRouter.post("/skolear/apply", async (req, res) => {
       profile,
       effective,
       teachingWeeks: profile.generatedUker.filter((u) => u.kapittel != null).length,
-      holidayWeeks: profile.holidayWeeks.length
+      holidayWeeks: profile.holidayWeeks.length,
+      breakSummary: profile.breakSummary
     });
   } catch (error) {
     handleError(res, error);

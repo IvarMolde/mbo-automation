@@ -1,6 +1,11 @@
 import type { ArsplanDokument } from "../schemas/planlegging.js";
 import { compareSchoolYear, schoolYearRank } from "./planSchedule.js";
-import type { GeneratedUke, Holiday, SchoolYearProfile } from "./schoolYearState.js";
+import type {
+  BreakSummary,
+  GeneratedUke,
+  Holiday,
+  SchoolYearProfile
+} from "./schoolYearState.js";
 
 const MONTH_NB = [
   "Januar",
@@ -17,6 +22,24 @@ const MONTH_NB = [
   "Desember"
 ] as const;
 
+const MONTH_SHORT = [
+  "jan.",
+  "feb.",
+  "mars",
+  "apr.",
+  "mai",
+  "juni",
+  "juli",
+  "aug.",
+  "sep.",
+  "okt.",
+  "nov.",
+  "des."
+] as const;
+
+/** Minimum ukedager (man–fre) i en ferieperiode før skoleuken låses helt. */
+const FULL_WEEK_WEEKDAY_THRESHOLD = 3;
+
 /** Parse YYYY-MM-DD as UTC midnight (stable across timezones). */
 export function parseDateOnly(iso: string): Date {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
@@ -29,6 +52,24 @@ export function parseDateOnly(iso: string): Date {
     throw new Error(`Ugyldig dato: ${iso}`);
   }
   return dt;
+}
+
+export function formatDateNb(iso: string): string {
+  const d = parseDateOnly(iso);
+  return `${d.getUTCDate()}. ${MONTH_SHORT[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+export function formatDateRangeNb(startIso: string, endIso: string): string {
+  if (startIso === endIso) return formatDateNb(startIso);
+  const a = parseDateOnly(startIso);
+  const b = parseDateOnly(endIso);
+  if (a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth()) {
+    return `${a.getUTCDate()}.–${b.getUTCDate()}. ${MONTH_SHORT[a.getUTCMonth()]} ${a.getUTCFullYear()}`;
+  }
+  if (a.getUTCFullYear() === b.getUTCFullYear()) {
+    return `${a.getUTCDate()}. ${MONTH_SHORT[a.getUTCMonth()]} – ${b.getUTCDate()}. ${MONTH_SHORT[b.getUTCMonth()]} ${a.getUTCFullYear()}`;
+  }
+  return `${formatDateNb(startIso)} – ${formatDateNb(endIso)}`;
 }
 
 export function getIsoWeekParts(date: Date): { year: number; week: number } {
@@ -45,6 +86,18 @@ function addDays(date: Date, days: number): Date {
   const next = new Date(date.getTime());
   next.setUTCDate(next.getUTCDate() + days);
   return next;
+}
+
+function toIsoDate(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function isWeekday(date: Date): boolean {
+  const dow = date.getUTCDay() || 7;
+  return dow >= 1 && dow <= 5;
 }
 
 /** All distinct ISO week numbers covered by [start, end] inclusive, school-year ordered. */
@@ -70,17 +123,109 @@ export function isoWeeksInRange(startIso: string, endIso: string): number[] {
   return ordered.sort(compareSchoolYear);
 }
 
+type WeekCoverage = { week: number; dates: string[]; weekdayCount: number };
+
+/** Ukedager (man–fre) per skoleuke innenfor et datointervall. */
+export function weekdayCoverageInRange(startIso: string, endIso: string): WeekCoverage[] {
+  const start = parseDateOnly(startIso);
+  const end = parseDateOnly(endIso);
+  if (end.getTime() < start.getTime()) {
+    throw new Error("Sluttdato må være etter startdato.");
+  }
+  const map = new Map<number, string[]>();
+  let cursor = start;
+  let guard = 0;
+  while (cursor.getTime() <= end.getTime() && guard < 450) {
+    if (isWeekday(cursor)) {
+      const { week } = getIsoWeekParts(cursor);
+      const list = map.get(week) ?? [];
+      list.push(toIsoDate(cursor));
+      map.set(week, list);
+    }
+    cursor = addDays(cursor, 1);
+    guard += 1;
+  }
+  return [...map.entries()]
+    .map(([week, dates]) => ({ week, dates, weekdayCount: dates.length }))
+    .sort((a, b) => compareSchoolYear(a.week, b.week));
+}
+
+/**
+ * Lås bare skoleuker der ferieperioden dekker nok ukedager (≥ 3 man–fre).
+ * Enkeltdager (kind=day) låser aldri uken.
+ */
 export function holidayWeekSet(holidays: Holiday[]): Set<number> {
   const set = new Set<number>();
   for (const h of holidays) {
+    if ((h.kind ?? "period") === "day") continue;
     if (parseDateOnly(h.endDate).getTime() < parseDateOnly(h.startDate).getTime()) {
       throw new Error(`Ferie «${h.name}»: sluttdato før startdato.`);
     }
-    for (const w of isoWeeksInRange(h.startDate, h.endDate)) {
-      set.add(w);
+    for (const cov of weekdayCoverageInRange(h.startDate, h.endDate)) {
+      if (cov.weekdayCount >= FULL_WEEK_WEEKDAY_THRESHOLD) {
+        set.add(cov.week);
+      }
     }
   }
   return set;
+}
+
+/** Presis oppsummering: hele ferieuker vs. enkeltdager / delvise dager. */
+export function summarizeBreaks(holidays: Holiday[]): BreakSummary {
+  const periods: BreakSummary["periods"] = [];
+  const days: BreakSummary["days"] = [];
+
+  for (const h of holidays) {
+    const kind = h.kind ?? "period";
+    if (kind === "day") {
+      const date = h.startDate;
+      const uke = getIsoWeekParts(parseDateOnly(date)).week;
+      days.push({
+        name: h.name,
+        date,
+        uke,
+        label: `${h.name} ${formatDateNb(date)} (skoleuke ${uke} — uken har fortsatt undervisning)`
+      });
+      continue;
+    }
+
+    const coverage = weekdayCoverageInRange(h.startDate, h.endDate);
+    const lockedWeeks = coverage
+      .filter((c) => c.weekdayCount >= FULL_WEEK_WEEKDAY_THRESHOLD)
+      .map((c) => c.week);
+    const partialWeeks = coverage
+      .filter((c) => c.weekdayCount > 0 && c.weekdayCount < FULL_WEEK_WEEKDAY_THRESHOLD)
+      .map((c) => ({ uke: c.week, weekdayCount: c.weekdayCount, dates: c.dates }));
+
+    const range = formatDateRangeNb(h.startDate, h.endDate);
+    const parts: string[] = [`${h.name} ${range}`];
+    if (lockedWeeks.length) {
+      parts.push(`låser skoleuke ${lockedWeeks.join(", ")} (hel uke uten undervisning)`);
+    }
+    if (partialWeeks.length) {
+      const partialText = partialWeeks
+        .map(
+          (p) =>
+            `skoleuke ${p.uke} (${p.weekdayCount} fridag${p.weekdayCount > 1 ? "er" : ""} — uken fortsetter)`
+        )
+        .join("; ");
+      parts.push(`delvis: ${partialText}`);
+    }
+    if (!lockedWeeks.length && !partialWeeks.length) {
+      parts.push("ingen ukedager i perioden");
+    }
+
+    periods.push({
+      name: h.name,
+      startDate: h.startDate,
+      endDate: h.endDate,
+      lockedWeeks,
+      partialWeeks,
+      label: parts.join(" · ")
+    });
+  }
+
+  return { periods, days };
 }
 
 function monthNameForWeek(week: number, startIso: string, endIso: string): string {
@@ -96,7 +241,6 @@ function monthNameForWeek(week: number, startIso: string, endIso: string): strin
     cursor = addDays(cursor, 7);
     guard += 1;
   }
-  // Fallback: Thursday of ISO week in start year
   const year = getIsoWeekParts(start).year;
   const jan4 = new Date(Date.UTC(year, 0, 4));
   const day = jan4.getUTCDay() || 7;
@@ -199,6 +343,7 @@ export function generateSchoolYearPlan(
   const holidayWeeks = [...holidaySet].sort(compareSchoolYear);
   const teachingWeeks = allWeeks.filter((w) => !holidaySet.has(w));
   const generatedUker = distributeChapters(teachingWeeks, plan, input.startDate, input.endDate);
+  const breakSummary = summarizeBreaks(input.holidays);
   const now = new Date().toISOString();
 
   return {
@@ -208,6 +353,7 @@ export function generateSchoolYearPlan(
     endDate: input.endDate,
     holidays: input.holidays,
     holidayWeeks,
+    breakSummary,
     generatedUker,
     applied: true,
     appliedAt: now,
@@ -267,19 +413,6 @@ export function applyProfileToArsplan(
     maned: u.maned,
     periodeFokus: u.periodeFokus
   }));
-  // Include holiday weeks as locked-ready slots without chapter (for calendar completeness)
-  const holidayRows = profile.holidayWeeks
-    .filter((w) => !uker.some((u) => u.uke === w))
-    .map((uke) => ({
-      uke,
-      kapittel: 0, // placeholder — locks will clear; use ensure via lock ops
-      maned: monthNameForWeek(uke, profile.startDate, profile.endDate),
-      periodeFokus: "Ferie"
-    }));
-
-  // Don't put kapittel:0 in base — only teaching weeks in uker array (matches original model)
-  // Holidays appear via lock operations.
-  void holidayRows;
 
   const perioder = buildPerioderFromGenerated(
     [

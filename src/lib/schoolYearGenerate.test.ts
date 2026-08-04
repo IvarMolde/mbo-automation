@@ -8,7 +8,8 @@ import {
   generateSchoolYearPlan,
   holidayWeekSet,
   isoWeeksInRange,
-  parseDateOnly
+  parseDateOnly,
+  summarizeBreaks
 } from "./schoolYearGenerate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -32,12 +33,30 @@ describe("schoolYearGenerate", () => {
     expect(weeks.at(-1)).toBeLessThanOrEqual(25);
   });
 
-  it("maps holiday date ranges to week numbers", () => {
+  it("maps holiday date ranges to week numbers only when enough weekdays", () => {
     const set = holidayWeekSet([
-      { name: "Høstferie", startDate: "2026-10-05", endDate: "2026-10-09" }
+      { name: "Høstferie", startDate: "2026-10-05", endDate: "2026-10-09", kind: "period" }
     ]);
     expect(set.size).toBeGreaterThanOrEqual(1);
     expect([...set].every((w) => w >= 40 && w <= 42)).toBe(true);
+  });
+
+  it("does not lock whole weeks for single free days", () => {
+    const set = holidayWeekSet([
+      { name: "Planleggingsdag", startDate: "2026-09-15", endDate: "2026-09-15", kind: "day" },
+      { name: "Kursdag", startDate: "2026-11-03", endDate: "2026-11-03", kind: "day" }
+    ]);
+    expect(set.size).toBe(0);
+  });
+
+  it("summarizes periods vs days precisely", () => {
+    const summary = summarizeBreaks([
+      { name: "Høstferie", startDate: "2026-10-05", endDate: "2026-10-09", kind: "period" },
+      { name: "Kursdag", startDate: "2026-11-03", endDate: "2026-11-03", kind: "day" }
+    ]);
+    expect(summary.periods[0]?.lockedWeeks.length).toBeGreaterThan(0);
+    expect(summary.days).toHaveLength(1);
+    expect(summary.days[0]?.label).toMatch(/fortsatt undervisning/);
   });
 
   it("distributes all chapters onto teaching weeks", () => {
