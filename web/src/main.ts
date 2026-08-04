@@ -6,6 +6,7 @@ import {
   saveLocalPlanState
 } from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
+import { matteKategoriLabelForKapittel } from "./hverdagsmatematikk";
 import { renderMonthCalendarHtml } from "./monthCalendar";
 import { computeEffectiveSchedule, setSchoolYearStartWeek, type PlanOperation, type PlanState } from "./schedule";
 import type { ArsplanDokument, EffectiveUke, PlanApiResponse, UkeVisning, ViewId } from "./types";
@@ -580,6 +581,7 @@ function renderWeekSummaryCard(
   }
   const k = u.kapittel;
   const gram = k ? escapeHtml(k.grammatikk) : "—";
+  const regning = k ? escapeHtml(matteKategoriLabelForKapittel(k.nummer)) : "";
   const kapLine = k ? `Kapittel ${k.nummer} · ${escapeHtml(k.tittel)}` : "";
   const jump = `#/oversikt?m=${encodeURIComponent(u.maned || "")}`;
   return `
@@ -588,6 +590,11 @@ function renderWeekSummaryCard(
       <p class="week-num">Uke ${u.uke}<span class="week-maned">${escapeHtml(u.maned || "")}</span></p>
       <h3 class="week-headline">${weekHeadline(u)}</h3>
       ${k ? `<p class="week-gram"><span class="week-gram-label">Grammatikk</span> ${gram}</p>` : ""}
+      ${
+        k
+          ? `<p class="week-gram"><span class="week-gram-label">Regning</span> ${regning} · nivå 1 og 2</p>`
+          : ""
+      }
       ${kapLine ? `<p class="muted week-kap">${kapLine}</p>` : ""}
       <p class="week-badges">${
         [
@@ -645,24 +652,31 @@ function renderCalendarGrid(uker: UkeVisning[]): string {
 
 function renderCalendarChip(u: UkeVisning): string {
   const jump = `#/oversikt?m=${encodeURIComponent(u.maned || "")}`;
-  const short =
+  const shortRaw =
     u.status === "locked"
       ? "Ferie"
       : u.status === "empty"
         ? "Innhenting"
         : u.kapittel
-          ? escapeHtml(u.kapittel.yrke || u.kapittel.tittel)
+          ? u.kapittel.yrke || u.kapittel.tittel
           : "—";
-  const title = `Uke ${u.uke}: ${short}`;
+  const regning =
+    u.status === "teaching" && u.kapittel
+      ? matteKategoriLabelForKapittel(u.kapittel.nummer)
+      : "";
+  const title = regning
+    ? `Uke ${u.uke}: ${shortRaw} · Regning: ${regning}`
+    : `Uke ${u.uke}: ${shortRaw}`;
   return `
     <a
       class="cal-week ${weekStatusClass(u)}${u.erDagensUke ? " is-current" : ""}"
       href="${jump}"
-      title="${title}"
+      title="${escapeHtml(title)}"
       ${u.erDagensUke ? 'aria-current="date"' : ""}
     >
       <span class="cal-week-num">Uke ${u.uke}</span>
-      <span class="cal-week-yrke">${short}</span>
+      <span class="cal-week-yrke">${escapeHtml(shortRaw)}</span>
+      ${regning ? `<span class="cal-week-regning">Regning: ${escapeHtml(regning)}</span>` : ""}
       ${u.erDagensUke ? `<span class="cal-week-here">Du er her</span>` : ""}
     </a>
   `;
@@ -992,8 +1006,9 @@ function renderOm(): string {
       <h3>3. Årsplan</h3>
       <p>
         <a href="#/oversikt">Årsplan</a> viser alle ukene med kapittel, yrke, grammatikk, nivå,
-        tematekster og oppgaver. Vil du hoppe rett til en måned? Klikk månedsnavnet i kalenderen
-        under <a href="#/denne-uken">Nå</a>.
+        hverdagsmatematikk-kategori (Tall / Måling / Statistikk), tematekster og oppgaver.
+        Vil du hoppe rett til en måned? Klikk månedsnavnet i kalenderen under
+        <a href="#/denne-uken">Nå</a>.
       </p>
 
       <h3>4. Automatisk ukehefte</h3>
@@ -1090,7 +1105,7 @@ function renderVeiledning(): string {
       <div class="help-text">
         <p><strong>Skoleår</strong> — første valg: start, slutt og ferier. Her genereres planen for stedet ditt.</p>
         <p><strong>Nå</strong> — månedskalender til venstre (dato + ukenummer, lys grønn sirkel på i dag), forrige/neste skoleuke, årskalender, og ekstraoppgaver ved behov.</p>
-        <p><strong>Årsplan</strong> — alle ukene med kapittel, yrke, grammatikk, nivå, tematekster og oppgaver. Åpne en uke for full detalj.</p>
+        <p><strong>Årsplan</strong> — alle ukene med kapittel, yrke, grammatikk, regning (hovedkategori), nivå, tematekster og oppgaver. Åpne en uke for full detalj.</p>
         <p><strong>Admin</strong> — logg inn for å endre planen og styre utsending.</p>
         <p><strong>Om</strong> — bakgrunn og hvordan verktøyet fungerer under panseret.</p>
       </div>

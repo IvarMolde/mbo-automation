@@ -1143,6 +1143,15 @@ a.cal-month-name:hover {
   white-space: nowrap;
 }
 
+.cal-week-regning {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--teal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .cal-week-here {
   margin-top: 0.15rem;
   font-size: 0.68rem;

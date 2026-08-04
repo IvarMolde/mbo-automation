@@ -1,5 +1,6 @@
 import type { UkeVisning, ViewId } from "./types";
 import { escapeHtml } from "./plan";
+import { matteKategoriLabelForKapittel } from "./hverdagsmatematikk";
 
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -36,6 +37,7 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
   const grammatikk = k ? escapeHtml(k.grammatikk) : "—";
   const tema = k?.arbeidsnorskTema ? escapeHtml(k.arbeidsnorskTema) : "—";
   const niva = k ? escapeHtml((k.standardNiva ?? k.cefrNivaa.join("/")) || "—") : "—";
+  const regning = k ? escapeHtml(matteKategoriLabelForKapittel(k.nummer)) : "—";
   const badges = statusBadges(uke);
   const cardClass = [
     "uke-card",
@@ -61,6 +63,7 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
         <div><dt>Nivå</dt><dd>${niva}</dd></div>
         <div><dt>Grammatikk</dt><dd>${grammatikk}</dd></div>
         <div><dt>Arbeidsnorsk</dt><dd>${tema}</dd></div>
+        <div><dt>Hverdagsmatematikk</dt><dd>${regning} · nivå 1 og 2 (samme yrke/tema)</dd></div>
       </dl>
       ${
         k.tematekster?.length
@@ -116,7 +119,7 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
           <span class="uke-main">
             <span class="uke-title">${title} ${badges}</span>
             <span class="uke-sub">${escapeHtml(uke.maned || "—")}${
-              k ? ` · ${grammatikk}` : ""
+              k ? ` · ${grammatikk} · Regning: ${regning}` : ""
             }</span>
           </span>
           <span class="uke-action">Åpne detaljer</span>
