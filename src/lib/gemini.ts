@@ -1,7 +1,7 @@
 import { VertexAI } from "@google-cloud/vertexai";
 import { env } from "./config.js";
 import { getServiceAccountCredentials } from "./gcpCredentials.js";
-import { arbeidshefteDataSchema } from "../schemas/planlegging.js";
+import { arbeidshefteDataSchema, hverdagsmatematikkSchema } from "../schemas/planlegging.js";
 import type {
   ArbeidshefteData,
   GrammatikkForklaring,
@@ -14,8 +14,8 @@ import { getCefrNivaMarkdownTekst } from "./cefrMarkdown.js";
 import {
   MATTE_KATEGORI_LABEL,
   buildMattePromptBlock,
-  matteKategoriForKapittel,
-  velgUkemal
+  createConcreteFallbackHverdagsmatematikk,
+  isPlaceholderMatte
 } from "./hverdagsmatematikk.js";
 
 export type GenererArbeidshefteOptions = {
@@ -82,51 +82,6 @@ function createFallbackGrammatikkForklaring(emne: string): GrammatikkForklaring 
   };
 }
 
-function createFallbackHverdagsmatematikk(kapittel: Kapittel): HverdagsmatematikkData {
-  const kategori = matteKategoriForKapittel(kapittel.nummer);
-  const mal = velgUkemal(kategori, kapittel.nummer);
-  const typer = [
-    "les_og_finn_tall",
-    "regneoppgave",
-    "flervalg",
-    "fyll_inn",
-    "overslag_vurder",
-    "tabell_eller_figur",
-    "kort_begrunnelse"
-  ];
-  const makeOppgaver = (niva: 1 | 2) =>
-    Array.from({ length: 6 }, (_, i) => ({
-      nummer: i + 1,
-      type: typer[i]!,
-      tittel: `Regning nivå ${niva} — oppgave ${i + 1}`,
-      innhold:
-        `M${niva}${String.fromCharCode(97 + i)} Bruk tallene i fagteksten om ${kapittel.yrke}. ` +
-        `Regn ut og svar kort. (Midlertidig fallback — erstattes av Gemini.)`
-    }));
-
-  return {
-    kategori,
-    kategoriLabel: MATTE_KATEGORI_LABEL[kategori],
-    tittel: `Hverdagsregning: ${kapittel.yrke} og ${kapittel.arbeidsnorskTema}`,
-    fagtekst:
-      `På jobb som ${kapittel.yrke.toLowerCase()} møter du tall hver dag. ` +
-      `Denne uken handler det om ${kapittel.arbeidsnorskTema.toLowerCase()}. ` +
-      `I løpet av en vanlig arbeidsdag bruker du 4 timer før lunsj og 3,5 timer etter lunsj. ` +
-      `Du kjøper inn materiell for 240 kroner, og arbeidsstedet har 12 rom som skal dekkes. ` +
-      `Halvparten av rommene er ferdige før pause. En kollega bruker 25 % av dagen på opplæring. ` +
-      `Prisen per liter rengjøringsmiddel er 36 kroner, og dere trenger 1,5 liter. ` +
-      `Les teksten nøye — oppgavene bruker disse tallene. ` +
-      `Målet er å øve praktisk regning knyttet til arbeidshverdagen din.`,
-    malNiva1: mal.niva1,
-    malNiva2: mal.niva2,
-    niva1: makeOppgaver(1),
-    niva2: makeOppgaver(2),
-    fasit:
-      "Fasit hverdagsmatematikk (fallback): M1a–M1f og M2a–M2f — regn ut fra tallene i fagteksten; " +
-      "lukkede svar skal være tall med enhet der det passer."
-  };
-}
-
 function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
   const tematekster = defaultTematekster(kapittel);
   const oppgavestruktur = defaultOppgavestruktur(kapittel);
@@ -164,7 +119,7 @@ function createFallbackArbeidshefte(kapittel: Kapittel): ArbeidshefteData {
     fasit:
       kapittel.fasitInstruks ??
       "Fasit: svar på lukkede oppgaver og eksempelsvar på åpne oppgaver (midlertidig fallback).",
-    hverdagsmatematikk: createFallbackHverdagsmatematikk(kapittel)
+    hverdagsmatematikk: createConcreteFallbackHverdagsmatematikk(kapittel)
   };
 }
 
@@ -368,9 +323,23 @@ function normalizeGeminiPayload(raw: unknown, kapittel?: Kapittel): unknown {
     }
   }
 
+  data.hverdagsmatematikk = normalizeHverdagsmatematikkPayload(
+    data.hverdagsmatematikk ?? data.hverdagsregning ?? data.matematikk,
+    kapittel,
+    data.fasitMatematikk
+  );
+
+  return data;
+}
+
+function normalizeHverdagsmatematikkPayload(
+  rawMatte: unknown,
+  kapittel?: Kapittel,
+  fasitMatematikkExtra?: unknown
+): HverdagsmatematikkData {
   const matteFallback = kapittel
-    ? createFallbackHverdagsmatematikk(kapittel)
-    : createFallbackHverdagsmatematikk({
+    ? createConcreteFallbackHverdagsmatematikk(kapittel)
+    : createConcreteFallbackHverdagsmatematikk({
         nummer: 1,
         yrke: "Arbeidstaker",
         grammatikk: "Presens",
@@ -379,63 +348,130 @@ function normalizeGeminiPayload(raw: unknown, kapittel?: Kapittel): unknown {
         cefrCanDo: { resepsjon: ["r"], samhandling: ["s"], produksjon: ["p"] }
       });
 
-  const rawMatte = data.hverdagsmatematikk ?? data.hverdagsregning ?? data.matematikk;
   if (!rawMatte || typeof rawMatte !== "object") {
-    data.hverdagsmatematikk = matteFallback;
-  } else {
-    const m = rawMatte as Record<string, unknown>;
-    const kategori =
-      m.kategori === "tall" || m.kategori === "maling_geometri" || m.kategori === "statistikk"
-        ? m.kategori
-        : matteFallback.kategori;
-    const normOppgaver = (arr: unknown, fallback: typeof matteFallback.niva1) => {
-      if (!Array.isArray(arr) || arr.length < 6) return fallback;
-      const mapped = arr.slice(0, 7).map((item, i) => {
-        if (!item || typeof item !== "object") {
-          return fallback[Math.min(i, fallback.length - 1)]!;
-        }
-        const o = item as Record<string, unknown>;
-        return {
-          nummer: typeof o.nummer === "number" ? o.nummer : i + 1,
-          type: String(o.type ?? "regneoppgave"),
-          tittel: String(o.tittel ?? `Oppgave ${i + 1}`),
-          innhold: String(o.innhold ?? "Regn ut og svar.").padEnd(15, ".")
-        };
-      });
-      while (mapped.length < 6) {
-        mapped.push(fallback[mapped.length]!);
-      }
-      return mapped;
-    };
-    let fagtekst = String(m.fagtekst ?? m.tekst ?? "");
-    if (fagtekst.length < 80) {
-      fagtekst = `${fagtekst} ${matteFallback.fagtekst}`.trim();
-    }
-    let fasitMatte = String(m.fasit ?? m.fasitMatematikk ?? data.fasitMatematikk ?? "");
-    if (fasitMatte.length < 20) {
-      fasitMatte = matteFallback.fasit;
-    }
-    const malNiva1 = Array.isArray(m.malNiva1)
-      ? m.malNiva1.map((x) => String(x)).filter((x) => x.length >= 5).slice(0, 8)
-      : matteFallback.malNiva1;
-    const malNiva2 = Array.isArray(m.malNiva2)
-      ? m.malNiva2.map((x) => String(x)).filter((x) => x.length >= 5).slice(0, 8)
-      : matteFallback.malNiva2;
-
-    data.hverdagsmatematikk = {
-      kategori,
-      kategoriLabel: String(m.kategoriLabel ?? MATTE_KATEGORI_LABEL[kategori]),
-      tittel: String(m.tittel ?? matteFallback.tittel).trim() || matteFallback.tittel,
-      fagtekst,
-      malNiva1: malNiva1.length ? malNiva1 : matteFallback.malNiva1,
-      malNiva2: malNiva2.length ? malNiva2 : matteFallback.malNiva2,
-      niva1: normOppgaver(m.niva1 ?? m.oppgaverNiva1, matteFallback.niva1),
-      niva2: normOppgaver(m.niva2 ?? m.oppgaverNiva2, matteFallback.niva2),
-      fasit: fasitMatte
-    };
+    return matteFallback;
   }
 
-  return data;
+  const m = rawMatte as Record<string, unknown>;
+  const kategori =
+    m.kategori === "tall" || m.kategori === "maling_geometri" || m.kategori === "statistikk"
+      ? m.kategori
+      : matteFallback.kategori;
+
+  const normOppgaver = (arr: unknown, fallback: typeof matteFallback.niva1) => {
+    // Behold delvis svar fra Gemini (≥4) og fyll opp — ikke kast alt for <6.
+    if (!Array.isArray(arr) || arr.length < 4) return fallback;
+    const mapped = arr.slice(0, 7).map((item, i) => {
+      if (!item || typeof item !== "object") {
+        return fallback[Math.min(i, fallback.length - 1)]!;
+      }
+      const o = item as Record<string, unknown>;
+      const innhold = String(o.innhold ?? "Regn ut og svar.");
+      if (/Midlertidig fallback|erstattes av Gemini/i.test(innhold) || innhold.length < 15) {
+        return fallback[Math.min(i, fallback.length - 1)]!;
+      }
+      return {
+        nummer: typeof o.nummer === "number" ? o.nummer : i + 1,
+        type: String(o.type ?? "regneoppgave"),
+        tittel: String(o.tittel ?? `Oppgave ${i + 1}`),
+        innhold: innhold.padEnd(15, ".")
+      };
+    });
+    while (mapped.length < 6) {
+      mapped.push(fallback[mapped.length]!);
+    }
+    return mapped;
+  };
+
+  let fagtekst = String(m.fagtekst ?? m.tekst ?? "");
+  if (fagtekst.length < 80) {
+    fagtekst = `${fagtekst} ${matteFallback.fagtekst}`.trim();
+  }
+  let fasitMatte = String(m.fasit ?? m.fasitMatematikk ?? fasitMatematikkExtra ?? "");
+  if (fasitMatte.length < 20) {
+    fasitMatte = matteFallback.fasit;
+  }
+  const malNiva1 = Array.isArray(m.malNiva1)
+    ? m.malNiva1.map((x) => String(x)).filter((x) => x.length >= 5).slice(0, 8)
+    : matteFallback.malNiva1;
+  const malNiva2 = Array.isArray(m.malNiva2)
+    ? m.malNiva2.map((x) => String(x)).filter((x) => x.length >= 5).slice(0, 8)
+    : matteFallback.malNiva2;
+
+  const result: HverdagsmatematikkData = {
+    kategori,
+    kategoriLabel: String(m.kategoriLabel ?? MATTE_KATEGORI_LABEL[kategori]),
+    tittel: String(m.tittel ?? matteFallback.tittel).trim() || matteFallback.tittel,
+    fagtekst,
+    malNiva1: malNiva1.length ? malNiva1 : matteFallback.malNiva1,
+    malNiva2: malNiva2.length ? malNiva2 : matteFallback.malNiva2,
+    niva1: normOppgaver(m.niva1 ?? m.oppgaverNiva1, matteFallback.niva1),
+    niva2: normOppgaver(m.niva2 ?? m.oppgaverNiva2, matteFallback.niva2),
+    fasit: fasitMatte
+  };
+
+  return isPlaceholderMatte(result) ? matteFallback : result;
+}
+
+/** Eget Gemini-kall for matte — mindre JSON, færre trunkeringer enn i hovedheftet. */
+async function genererHverdagsmatematikkMedGemini(
+  kapittel: Kapittel
+): Promise<HverdagsmatematikkData | null> {
+  try {
+    const vertex = createVertexClient();
+    const model = vertex.getGenerativeModel({ model: env.GEMINI_MODEL });
+    const prompt = `Du lager KUN hverdagsmatematikk til et MBO-arbeidshefte (voksne, A2–B1).
+Yrke: ${kapittel.yrke}. Tema: ${kapittel.arbeidsnorskTema}. Kapittel ${kapittel.nummer}.
+
+${buildMattePromptBlock(kapittel.nummer, kapittel.yrke, kapittel.arbeidsnorskTema)}
+
+Returner KUN gyldig JSON (ingen markdown) med nøyaktig denne formen:
+{
+  "kategori": "tall",
+  "kategoriLabel": "Tall",
+  "tittel": "kort tittel",
+  "fagtekst": "80-150 ord med konkrete tall elevene skal bruke",
+  "malNiva1": ["mål1", "mål2", "mål3"],
+  "malNiva2": ["mål1", "mål2", "mål3"],
+  "niva1": [
+    { "nummer": 1, "type": "les_og_finn_tall", "tittel": "…", "innhold": "M1a …\\nM1b …" },
+    { "nummer": 2, "type": "regneoppgave", "tittel": "…", "innhold": "M1c …" },
+    { "nummer": 3, "type": "flervalg", "tittel": "…", "innhold": "M1d …\\nA) … B) … C) …" },
+    { "nummer": 4, "type": "fyll_inn", "tittel": "…", "innhold": "M1e … _____ " },
+    { "nummer": 5, "type": "overslag_vurder", "tittel": "…", "innhold": "M1f …" },
+    { "nummer": 6, "type": "kort_begrunnelse", "tittel": "…", "innhold": "M1g …" }
+  ],
+  "niva2": [
+    { "nummer": 1, "type": "regneoppgave", "tittel": "…", "innhold": "M2a …" },
+    { "nummer": 2, "type": "regneoppgave", "tittel": "…", "innhold": "M2b …" },
+    { "nummer": 3, "type": "flervalg", "tittel": "…", "innhold": "M2c …" },
+    { "nummer": 4, "type": "fyll_inn", "tittel": "…", "innhold": "M2d …" },
+    { "nummer": 5, "type": "tabell_eller_figur", "tittel": "…", "innhold": "M2e …" },
+    { "nummer": 6, "type": "kort_begrunnelse", "tittel": "…", "innhold": "M2f …" }
+  ],
+  "fasit": "M1a … M1b … … M2a … M2f …"
+}
+Viktig: niva1 og niva2 skal hver ha 6 eller 7 oppgaver med konkrete tall/spørsmål — ikke generiske «bruk tallene»-setninger.`;
+
+    const response = await model.generateContent(prompt);
+    const text = response.response.candidates?.[0]?.content?.parts?.[0];
+    const content = typeof text === "object" && "text" in text ? text.text : "";
+    if (!content) {
+      console.error("[gemini] Tom matte-respons.");
+      return null;
+    }
+    const parsed = JSON.parse(extractJsonCandidate(content));
+    const normalized = normalizeHverdagsmatematikkPayload(parsed, kapittel);
+    const validated = hverdagsmatematikkSchema.parse(normalized);
+    if (isPlaceholderMatte(validated)) return null;
+    return validated;
+  } catch (error) {
+    console.error(
+      "[gemini] Matte-kall feilet:",
+      error instanceof Error ? error.message : error
+    );
+    return null;
+  }
 }
 
 export async function genererArbeidshefte(
@@ -458,7 +494,6 @@ export async function genererArbeidshefte(
     const cefrMdBlock = cefrMd
       ? `\nKort CEFR-kontekst (utdrag):\n${cefrMd}\n`
       : "";
-    // Skip huge CEFR dump for speed on serverless; short instruction below is enough.
     const laererNote = options?.laererTilleggsinstruks?.trim();
     const laererBlock = laererNote
       ? `\nTillegg fra lærer (følg når det ikke strider mot trygghet, faktasjekk eller likeverd):\n${laererNote}\n`
@@ -469,7 +504,8 @@ export async function genererArbeidshefte(
     const ordAntall = kapittel.ordlisteAntall ?? 20;
     const testAntall = kapittel.kapitteltestAntall ?? 10;
 
-    const prompt = `Du er fagutvikler i norskopplæring for voksne (MBO A2–B1) og skal lage et komplett arbeidshefte.
+    // Norsk og matte i parallell: mindre JSON per kall → færre trunkeringer/timeouts.
+    const norskPrompt = `Du er fagutvikler i norskopplæring for voksne (MBO A2–B1) og skal lage norskdelen av et arbeidshefte.
 Generer STRICT JSON for kapittel ${kapittel.nummer}.
 Yrke: ${kapittel.yrke}
 Arbeidsnorsk-tema: ${kapittel.arbeidsnorskTema}
@@ -483,8 +519,6 @@ Can-do:
 ${cefrMdBlock}${laererBlock}
 
 ${buildArsplanMalBlock(kapittel)}
-
-${buildMattePromptBlock(kapittel.nummer, kapittel.yrke, kapittel.arbeidsnorskTema)}
 
 Krav:
 - Lag nøyaktig ${tematekster.length} objekter i tekstSeksjoner (samme nummer, type og tittel som i årsplan-malen).
@@ -501,7 +535,7 @@ Krav:
   forklar HVA det er, NÅR vi bruker det, og HVORDAN formen lages; minst 4–8 konkrete eksempelsetninger
   (gjerne knyttet til yrket ${kapittel.yrke}); kort huskeregel; ingen akademisk sjargong.
 - Integrer grammatikk naturlig i tekster og oppgaver.
-- hverdagsmatematikk MÅ finnes (se blokken over). Pedagogikk for voksne: respektfullt, praktisk, tydelig.
+- IKKE lag hverdagsmatematikk her (kommer i eget kall). Utelat feltet hverdagsmatematikk.
 - Ikke bruk markdown eller tekst utenfor JSON.
 
 Returner kun gyldig JSON:
@@ -534,25 +568,21 @@ Returner kun gyldig JSON:
     { "ord": "en kollega", "forklaring": "substantiv: person du jobber med", "eksempel": "En kollega hjelper meg." }
   ],
   "kapitteltest": [{ "nummer": 1, "innhold": "string" }],
-  "fasit": "string (norsk-delen)",
-  "hverdagsmatematikk": {
-    "kategori": "tall",
-    "kategoriLabel": "Tall",
-    "tittel": "string",
-    "fagtekst": "80-150 ord med tall knyttet til yrket",
-    "malNiva1": ["string"],
-    "malNiva2": ["string"],
-    "niva1": [
-      { "nummer": 1, "type": "regneoppgave", "tittel": "string", "innhold": "M1a …" }
-    ],
-    "niva2": [
-      { "nummer": 1, "type": "regneoppgave", "tittel": "string", "innhold": "M2a …" }
-    ],
-    "fasit": "Fasit for M1… og M2…"
-  }
+  "fasit": "string (norsk-delen)"
 }`;
 
-    const response = await model.generateContent(prompt);
+    const [norskSettled, matteSettled] = await Promise.allSettled([
+      model.generateContent(norskPrompt),
+      genererHverdagsmatematikkMedGemini(kapittel)
+    ]);
+
+    if (norskSettled.status === "rejected") {
+      throw norskSettled.reason instanceof Error
+        ? norskSettled.reason
+        : new Error(String(norskSettled.reason));
+    }
+
+    const response = norskSettled.value;
     const text = response.response.candidates?.[0]?.content?.parts?.[0];
     const content = typeof text === "object" && "text" in text ? text.text : "";
     if (!content) {
@@ -565,15 +595,34 @@ Returner kun gyldig JSON:
     }
 
     const json = extractJsonCandidate(content);
-    const parsed = JSON.parse(json);
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    // Matte genereres separat — ikke stol på evt. stub i norsk-JSON.
+    delete parsed.hverdagsmatematikk;
+    delete parsed.hverdagsregning;
+    delete parsed.matematikk;
+
+    const matteFromGemini =
+      matteSettled.status === "fulfilled" ? matteSettled.value : null;
+    if (!matteFromGemini) {
+      console.warn("[gemini] Bruker konkrete reservedoppgaver for hverdagsmatematikk.");
+    }
+    parsed.hverdagsmatematikk =
+      matteFromGemini ?? createConcreteFallbackHverdagsmatematikk(kapittel);
+
     const normalized = normalizeGeminiPayload(parsed, kapittel);
     const validated = arbeidshefteDataSchema.parse(normalized);
     return { data: validated, source: "gemini" };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error("[gemini] Feilet, bruker fallback:", errorMessage);
+    // Prøv fortsatt eget matte-kall slik at regning ikke blir tom placeholder.
+    const fallback = createFallbackArbeidshefte(kapittel);
+    const matte = await genererHverdagsmatematikkMedGemini(kapittel);
+    if (matte) {
+      fallback.hverdagsmatematikk = matte;
+    }
     return {
-      data: createFallbackArbeidshefte(kapittel),
+      data: fallback,
       source: "fallback",
       errorMessage
     };
