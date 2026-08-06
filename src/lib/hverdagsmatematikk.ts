@@ -100,6 +100,47 @@ export function velgUkemal(
   };
 }
 
+/** Korte tematagger (speiler web-oversikten) — samme rotasjon som velgUkemal. */
+const TAG_NIVA1: Record<MatteKategori, string[]> = {
+  tall: ["Posisjonssystem", "Addisjon/subtraksjon", "Prosent", "Overslag", "Opptelling", "Dobling/halvering"],
+  maling_geometri: ["Enheter", "Geometri", "Tabeller/kart", "Kostnader"],
+  statistikk: ["Søylediagram", "Diagram", "Lage diagram"]
+};
+
+const TAG_NIVA2: Record<MatteKategori, string[]> = {
+  tall: [
+    "De fire regneartene",
+    "Multiplikasjon",
+    "Gange/dele med 10/100",
+    "Desimaltall",
+    "Brøk",
+    "Brøk/prosent/desimal",
+    "Prosentregning"
+  ],
+  maling_geometri: ["Omregning", "Omkrets/areal", "Skisser", "Bruksanvisning", "Overslag", "Målestokk"],
+  statistikk: ["Tolke diagram", "Gjennomsnitt", "Presentere data"]
+};
+
+export function matteTemataggerForKapittel(kapittelNummer: number): string[] {
+  const kategori = matteKategoriForKapittel(kapittelNummer);
+  const take = (list: string[], n: number, offset: number): string[] => {
+    if (list.length <= n) return [...list];
+    const start = offset % list.length;
+    const out: string[] = [];
+    for (let i = 0; i < n; i++) out.push(list[(start + i) % list.length]!);
+    return out;
+  };
+  const offset = Math.max(0, kapittelNummer - 1);
+  const tags = [...take(TAG_NIVA1[kategori], 4, offset), ...take(TAG_NIVA2[kategori], 4, offset + 1)];
+  return [...new Set(tags)];
+}
+
+export function matteRegningKortLinje(kapittelNummer: number): string {
+  const kategori = MATTE_KATEGORI_LABEL[matteKategoriForKapittel(kapittelNummer)];
+  const tagger = matteTemataggerForKapittel(kapittelNummer);
+  return tagger.length ? `${kategori} · ${tagger.join(", ")}` : kategori;
+}
+
 export const MATTE_OPPGAVETYPER = [
   "les_og_finn_tall",
   "regneoppgave",

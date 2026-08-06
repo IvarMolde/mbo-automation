@@ -6,7 +6,7 @@ import {
   saveLocalPlanState
 } from "./localPlan";
 import { buildUkeVisninger, escapeHtml, findUke, toArsplanDokument } from "./plan";
-import { matteKategoriLabelForKapittel } from "./hverdagsmatematikk";
+import { matteRegningKortLinje } from "./hverdagsmatematikk";
 import { renderMonthCalendarHtml } from "./monthCalendar";
 import { computeEffectiveSchedule, setSchoolYearStartWeek, type PlanOperation, type PlanState } from "./schedule";
 import type { ArsplanDokument, EffectiveUke, PlanApiResponse, UkeVisning, ViewId } from "./types";
@@ -625,7 +625,7 @@ function renderWeekSummaryCard(
   }
   const k = u.kapittel;
   const gram = k ? escapeHtml(k.grammatikk) : "—";
-  const regning = k ? escapeHtml(matteKategoriLabelForKapittel(k.nummer)) : "";
+  const regning = k ? escapeHtml(matteRegningKortLinje(k.nummer)) : "";
   const kapLine = k ? `Kapittel ${k.nummer} · ${escapeHtml(k.tittel)}` : "";
   const jump = `#/oversikt?m=${encodeURIComponent(u.maned || "")}`;
   const isActualNow = u.uke === todayUke;
@@ -639,7 +639,7 @@ function renderWeekSummaryCard(
       ${k ? `<p class="week-gram"><span class="week-gram-label">Grammatikk</span> ${gram}</p>` : ""}
       ${
         k
-          ? `<p class="week-gram"><span class="week-gram-label">Regning</span> ${regning} · nivå 1 og 2</p>`
+          ? `<p class="week-gram"><span class="week-gram-label">Regning</span> ${regning}</p>`
           : ""
       }
       ${kapLine ? `<p class="muted week-kap">${kapLine}</p>` : ""}
@@ -719,7 +719,7 @@ function renderCalendarChip(u: UkeVisning): string {
           : "—";
   const regning =
     u.status === "teaching" && u.kapittel
-      ? matteKategoriLabelForKapittel(u.kapittel.nummer)
+      ? matteRegningKortLinje(u.kapittel.nummer)
       : "";
   const title = regning
     ? `Uke ${u.uke}: ${shortRaw} · Regning: ${regning}`
@@ -1328,9 +1328,9 @@ function weekSendPreview(uke: number): string {
   const yrke = row.overrideYrke ?? kap.yrke;
   const gram = row.overrideGrammatikk ?? kap.grammatikk;
   const tema = row.overrideTema ?? kap.arbeidsnorskTema;
-  const regning = matteKategoriLabelForKapittel(kap.nummer);
+  const regning = matteRegningKortLinje(kap.nummer);
   const tip = row.tilpasset ? " · tilpasset" : "";
-  return `Kap. ${kap.nummer} — ${yrke} · ${gram} · Regning: ${regning} (nivå 1 og 2)${
+  return `Kap. ${kap.nummer} — ${yrke} · ${gram} · Regning: ${regning}${
     tema ? ` · Tema: ${tema}` : ""
   }${tip}`;
 }

@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import {
   MATTE_KATEGORI_LABEL,
   createConcreteFallbackHverdagsmatematikk,
   isPlaceholderMatte,
   matteKategoriForKapittel,
+  matteRegningKortLinje,
+  matteTemataggerForKapittel,
   velgUkemal
 } from "./hverdagsmatematikk.js";
 import type { Kapittel } from "./types.js";
@@ -31,6 +33,13 @@ describe("hverdagsmatematikk", () => {
     expect(mal.niva1.length).toBeGreaterThanOrEqual(3);
     expect(mal.niva2.length).toBeGreaterThanOrEqual(3);
     expect(mal.niva1[0]).toMatch(/posisjonssystemet|addisjon|prosent/i);
+  });
+
+  it("gir korte tematagger for oversikten", () => {
+    expect(matteTemataggerForKapittel(1)).toContain("Posisjonssystem");
+    expect(matteRegningKortLinje(1)).toMatch(/^Tall · /);
+    expect(matteRegningKortLinje(2)).toMatch(/^Måling og geometri · /);
+    expect(matteTemataggerForKapittel(2).some((t) => /Enheter|Geometri|Omkrets|Omregning/i.test(t))).toBe(true);
   });
 
   it("lager konkrete reservedoppgaver uten placeholder-tekst", () => {

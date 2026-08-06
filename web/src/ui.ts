@@ -1,6 +1,10 @@
 import type { UkeVisning, ViewId } from "./types";
 import { escapeHtml } from "./plan";
-import { matteKategoriLabelForKapittel } from "./hverdagsmatematikk";
+import {
+  matteKategoriLabelForKapittel,
+  matteRegningKortLinje,
+  matteTemataggerForKapittel
+} from "./hverdagsmatematikk";
 
 function humanizeTypeKey(type: string): string {
   const spaced = type.replace(/_/g, " ").trim();
@@ -43,7 +47,9 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
   const grammatikk = k ? escapeHtml(k.grammatikk) : "—";
   const tema = k?.arbeidsnorskTema ? escapeHtml(k.arbeidsnorskTema) : "—";
   const niva = k ? escapeHtml((k.standardNiva ?? k.cefrNivaa.join("/")) || "—") : "—";
-  const regning = k ? escapeHtml(matteKategoriLabelForKapittel(k.nummer)) : "—";
+  const regningKategori = k ? escapeHtml(matteKategoriLabelForKapittel(k.nummer)) : "—";
+  const regningKort = k ? escapeHtml(matteRegningKortLinje(k.nummer)) : "—";
+  const regningTagger = k ? matteTemataggerForKapittel(k.nummer) : [];
   const badges = statusBadges(uke);
   const cardClass = [
     "uke-card",
@@ -69,7 +75,14 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
         <div><dt>Nivå</dt><dd>${niva}</dd></div>
         <div><dt>Grammatikk</dt><dd>${grammatikk}</dd></div>
         <div><dt>Arbeidsnorsk</dt><dd>${tema}</dd></div>
-        <div><dt>Hverdagsmatematikk</dt><dd>${regning} · nivå 1 og 2 (samme yrke/tema)</dd></div>
+        <div><dt>Hverdagsmatematikk</dt><dd>${regningKategori} · nivå 1 og 2 (samme yrke/tema)</dd></div>
+        ${
+          regningTagger.length
+            ? `<div><dt>Regning — tema</dt><dd>${regningTagger
+                .map((t) => escapeHtml(t))
+                .join(" · ")}</dd></div>`
+            : ""
+        }
       </dl>
       ${
         k.tematekster?.length
@@ -125,7 +138,7 @@ export function renderUkeCard(uke: UkeVisning, open = false): string {
           <span class="uke-main">
             <span class="uke-title">${title} ${badges}</span>
             <span class="uke-sub">${escapeHtml(uke.maned || "—")}${
-              k ? ` · ${grammatikk} · Regning: ${regning}` : ""
+              k ? ` · ${grammatikk} · Regning: ${regningKort}` : ""
             }</span>
           </span>
           <span class="uke-action">Åpne detaljer</span>
