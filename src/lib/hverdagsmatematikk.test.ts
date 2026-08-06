@@ -38,7 +38,9 @@ describe("hverdagsmatematikk", () => {
     expect(matte.niva1).toHaveLength(6);
     expect(matte.niva2).toHaveLength(6);
     expect(isPlaceholderMatte(matte)).toBe(false);
-    expect(matte.niva1[0]!.innhold).toMatch(/M1a/);
-    expect(matte.fasit).toMatch(/M1a/);
+    expect(matte.niva1[0]!.innhold).toMatch(/\na\. /);
+    expect(matte.niva1[0]!.innhold).toMatch(/\nb\. /);
+    expect(matte.niva1[0]!.innhold).toMatch(/\nc\. /);
+    expect(matte.fasit).toMatch(/Oppgave 1:/);
   });
 });

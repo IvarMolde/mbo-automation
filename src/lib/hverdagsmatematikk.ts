@@ -124,23 +124,24 @@ HVERDAGSMATEMATIKK (obligatorisk del av heftet — voksne elever i MBO):
 - Én fagtekst (80–150 ord) på enkelt bokmål for voksne: realistisk arbeid/hverdag med tall.
   Teksten skal GI DATA elevene trenger til oppgavene (priser, mengder, tider, mål, tabellverdier osv.).
 - Velg innfallsvinkel innen ${label} — ikke bland inn andre hovedkategorier som hovedfokus.
-- Nivå 1: nøyaktig 6 eller 7 oppgaver (bruk 6 eller 7). Enkle, konkrete, kjente situasjoner.
-- Nivå 2: nøyaktig 6 eller 7 oppgaver. Samme situasjon/tallgrunnlag, men mer krevende regning.
+- Nivå 1: nøyaktig 6 oppgaver. Enkle, konkrete, kjente situasjoner.
+- Nivå 2: nøyaktig 6 oppgaver. Samme situasjon/tallgrunnlag, men mer krevende regning.
+- Hver oppgave har kort forklaring, deretter nøyaktig tre deloppgaver merket a. b. c. (punktum), hver på egen linje.
+- Ikke bruk M1a/M2a — bruk samme merking som norsk: a. b. c.
 - Varier oppgavetyper blant: ${typer}
-- Marker deloppgaver som M1a, M1b … for nivå 1 og M2a, M2b … for nivå 2 (eget prefiks så det ikke kolliderer med norsk).
 - Ingen kalkulator- eller regneark-oppgaver. Ingen barnslig tone.
 - Focal læringsmål nivå 1 (bruk flere av disse):
 ${mal.niva1.map((m) => `  • ${m}`).join("\n")}
 - Focal læringsmål nivå 2 (bruk flere av disse):
 ${mal.niva2.map((m) => `  • ${m}`).join("\n")}
-- Feltet fasit: klare svar for alle lukkede regneoppgaver + korte eksempelsvar der det er åpent.
-- niva1 og niva2 MÅ hver ha nøyaktig 6 eller 7 oppgaver (ikke færre).
+- Feltet fasit: svar merket «Oppgave 1: a. … b. … c. …» osv.
+- niva1 og niva2 MÅ hver ha nøyaktig 6 oppgaver (ikke færre).
 `.trim();
 }
 
 /**
  * Brukbare reservedoppgaver med konkrete tall (ikke «erstattes av Gemini»).
- * Brukes når Gemini-matte mangler eller feiler.
+ * Hver oppgave har tre deloppgaver: a. b. c.
  */
 export function createConcreteFallbackHverdagsmatematikk(kapittel: Kapittel): HverdagsmatematikkData {
   const kategori = matteKategoriForKapittel(kapittel.nummer);
@@ -149,299 +150,125 @@ export function createConcreteFallbackHverdagsmatematikk(kapittel: Kapittel): Hv
   const tema = kapittel.arbeidsnorskTema;
   const y = yrke.toLowerCase();
 
+  const oppgave = (
+    nummer: number,
+    type: string,
+    tittel: string,
+    intro: string,
+    a: string,
+    b: string,
+    c: string
+  ): Oppgave => ({
+    nummer,
+    type,
+    tittel,
+    innhold: `${intro}\na. ${a}\nb. ${b}\nc. ${c}`
+  });
+
   const packs: Record<
     MatteKategori,
-    {
-      fagtekst: string;
-      niva1: Oppgave[];
-      niva2: Oppgave[];
-      fasit: string;
-    }
+    { fagtekst: string; niva1: Oppgave[]; niva2: Oppgave[]; fasit: string }
   > = {
     tall: {
       fagtekst:
         `Som ${y} planlegger du en vanlig dag knyttet til ${tema.toLowerCase()}. ` +
         `Før pause jobber du 4 timer, etter pause 3,5 timer. Arbeidsstedet har 12 rom. ` +
-        `Halvparten av rommene er ferdige før lunsj. Du bruker 25 % av dagen på opplæring med en kollega. ` +
+        `Halvparten av rommene er ferdige før lunsj. Du bruker 25 % av dagen på opplæring. ` +
         `Rengjøringsmiddel koster 36 kroner per liter, og dere trenger 1,5 liter. ` +
         `Materiell til uka koster 240 kroner. En eske hansker koster 48 kroner, og dere kjøper 3 esker. ` +
-        `Sjekkliste: 8 punkter er gjort, 4 gjenstår. Les tallene nøye — oppgavene bruker dem.`,
+        `Sjekkliste: 8 punkter er gjort, 4 gjenstår.`,
       niva1: [
-        {
-          nummer: 1,
-          type: "les_og_finn_tall",
-          tittel: "Finn tall i teksten",
-          innhold:
-            "M1a Hvor mange timer jobber du før pause? Skriv tallet.\n" +
-            "M1b Hvor mange rom har arbeidsstedet?"
-        },
-        {
-          nummer: 2,
-          type: "regneoppgave",
-          tittel: "Addisjon og halvparten",
-          innhold:
-            "M1c Hvor mange timer jobber du totalt denne dagen (før + etter pause)?\n" +
-            "M1d Hvor mange rom er ferdige før lunsj?"
-        },
-        {
-          nummer: 3,
-          type: "flervalg",
-          tittel: "Prosent",
-          innhold:
-            "M1e Du bruker 25 % av dagen på opplæring. Hvilket tall passer best?\n" +
-            "A) 1/4 av dagen   B) 1/2 av dagen   C) 3/4 av dagen\nSkriv bokstav."
-        },
-        {
-          nummer: 4,
-          type: "fyll_inn",
-          tittel: "Pris",
-          innhold: "M1f Hva koster 1,5 liter rengjøringsmiddel når 1 liter koster 36 kroner? _____ kroner"
-        },
-        {
-          nummer: 5,
-          type: "overslag_vurder",
-          tittel: "Overslag",
-          innhold:
-            "M1g Materiell koster 240 kroner. Er 250 kroner et greit overslag? Svar ja/nei og én setning om hvorfor."
-        },
-        {
-          nummer: 6,
-          type: "kort_begrunnelse",
-          tittel: "Sammenlikne",
-          innhold:
-            "M1h 8 punkter er gjort og 4 gjenstår. Er mer enn halvparten gjort? Svar ja/nei og begrunn kort."
-        }
+        oppgave(1, "les_og_finn_tall", "Finn tall i teksten", "Les fagteksten og finn tallene.", "Hvor mange timer før pause?", "Hvor mange rom har arbeidsstedet?", "Hvor mange timer etter pause?"),
+        oppgave(2, "regneoppgave", "Addisjon og halvparten", "Regn ut ut fra tallene i teksten.", "Totalt antall arbeidstimer (før + etter pause)?", "Hvor mange rom er ferdige før lunsj?", "Hvor mange rom gjenstår da?"),
+        oppgave(3, "flervalg", "Prosent", "Kryss av for riktig svar.", "25 % av dagen er det samme som a) 1/4  b) 1/2  c) 3/4 — skriv bokstav for alternativet.", "Er 25 % mer enn 1/5? Ja eller nei.", "Skriv 25 % som desimaltall."),
+        oppgave(4, "fyll_inn", "Pris og mengde", "Fyll inn svarene.", "Hva koster 1,5 liter når 1 liter koster 36 kroner?", "Hva koster 3 esker hansker à 48 kroner?", "Hva koster materiell + middel (1,5 L)?"),
+        oppgave(5, "overslag_vurder", "Overslag", "Vurder tallene.", "Er 250 kroner et greit overslag for 240 kroner? Ja/nei.", "Avrund 3,5 timer til nærmeste hele time.", "Er 12 nærmere 10 eller 15?"),
+        oppgave(6, "kort_begrunnelse", "Sammenlikne", "Svar kort og begrunn.", "Er mer enn halvparten av sjekklisten gjort (8 av 12)?", "Hvor mange punkter gjenstår?", "Hvorfor er det nyttig å telle ferdige punkter?")
       ],
       niva2: [
-        {
-          nummer: 1,
-          type: "regneoppgave",
-          tittel: "Multiplikasjon",
-          innhold: "M2a Hva koster 3 esker hansker à 48 kroner?"
-        },
-        {
-          nummer: 2,
-          type: "regneoppgave",
-          tittel: "Desimaltall",
-          innhold: "M2b Du jobber 7,5 timer. Hvor mange timer er det hvis du jobber dobbelt så lenge?"
-        },
-        {
-          nummer: 3,
-          type: "flervalg",
-          tittel: "Brøk og prosent",
-          innhold:
-            "M2c 25 % er det samme som …\nA) 0,25 og 1/4   B) 0,5 og 1/2   C) 2,5 og 1/4\nSkriv bokstav."
-        },
-        {
-          nummer: 4,
-          type: "fyll_inn",
-          tittel: "Budsjett",
-          innhold:
-            "M2d Materiell 240 kr + 1,5 L middel (36 kr/L) + 3 esker hansker (48 kr). Totalt: _____ kroner"
-        },
-        {
-          nummer: 5,
-          type: "tabell_eller_figur",
-          tittel: "Enkel tabell",
-          innhold:
-            "M2e Lag en tabell med to kolonner (del / timer): før pause, etter pause, totalt. Fyll inn tallene fra teksten."
-        },
-        {
-          nummer: 6,
-          type: "kort_begrunnelse",
-          tittel: "Vurder svar",
-          innhold:
-            "M2f En kollega sier at halvparten av 12 rom er 5. Har kollegaen rett? Begrunn med regning."
-        }
+        oppgave(1, "regneoppgave", "Multiplikasjon og budsjett", "Regn nøyaktig.", "3 esker à 48 kroner = ?", "1,5 L à 36 kroner = ?", "240 + svarene over = totalt?"),
+        oppgave(2, "regneoppgave", "Desimaltall", "Bruk desimaltall fra teksten.", "Dobbelt så lang arbeidsdag som 7,5 timer?", "Halvparten av 7,5 timer?", "7,5 − 3,5 = ?"),
+        oppgave(3, "flervalg", "Brøk og prosent", "Kryss av riktig.", "25 % = ?  A) 0,25 og 1/4  B) 0,5 og 1/2  C) 2,5", "Halvparten av 12 er?  A) 5  B) 6  C) 7", "1,5 liter er det samme som?  A) 15/10 L  B) 3/2 L  C) begge"),
+        oppgave(4, "fyll_inn", "Budsjett", "Fyll inn.", "Materiell: _____ kr", "Middel 1,5 L: _____ kr", "Hansker 3 esker: _____ kr"),
+        oppgave(5, "tabell_eller_figur", "Enkel tabell", "Lag tabell på papir.", "Rad for «før pause» med timer", "Rad for «etter pause» med timer", "Rad for «totalt» med timer"),
+        oppgave(6, "kort_begrunnelse", "Vurder svar", "Begrunn med regning.", "En kollega sier at halvparten av 12 er 5. Har kollegaen rett?", "Hva er riktig svar?", "Hvorfor er det viktig å sjekke overslag?")
       ],
       fasit:
-        "M1a 4 timer. M1b 12 rom. M1c 7,5 timer. M1d 6 rom. M1e A. M1f 54 kroner. " +
-        "M1g Ja — 240 er nær 250. M1h Ja — 8 av 12 er mer enn halvparten. " +
-        "M2a 144 kroner. M2b 15 timer. M2c A. M2d 240 + 54 + 144 = 438 kroner. " +
-        "M2e før 4 / etter 3,5 / totalt 7,5. M2f Nei — halvparten av 12 er 6."
+        "Oppgave 1: a. 4 timer. b. 12 rom. c. 3,5 timer. " +
+        "Oppgave 2: a. 7,5 timer. b. 6 rom. c. 6 rom. " +
+        "Oppgave 3: a. a (1/4). b. Ja. c. 0,25. " +
+        "Oppgave 4: a. 54 kr. b. 144 kr. c. 294 kr. " +
+        "Oppgave 5: a. Ja. b. 4 timer. c. 10. " +
+        "Oppgave 6: a. Ja. b. 4. c. For å planlegge resten av arbeidet. " +
+        "Nivå 2 — Oppgave 1: a. 144. b. 54. c. 438. " +
+        "Oppgave 2: a. 15. b. 3,75. c. 4. " +
+        "Oppgave 3: a. A. b. B. c. C. " +
+        "Oppgave 4: a. 240. b. 54. c. 144. " +
+        "Oppgave 5: før 4 / etter 3,5 / totalt 7,5. " +
+        "Oppgave 6: a. Nei. b. 6. c. For å unngå feil."
     },
     maling_geometri: {
       fagtekst:
         `Som ${y} måler du ofte flater og mengder i arbeidet med ${tema.toLowerCase()}. ` +
-        `Et gulv er 5 m langt og 4 m bredt. Et vindu er 120 cm høyt. Pausevarighet er 30 minutter. ` +
+        `Et gulv er 5 m langt og 4 m bredt. Et vindu er 120 cm høyt. Pausen er 30 minutter. ` +
         `En spann rommer 10 liter. Du heller oppi 2,5 liter konsentrat. Temperaturen inne er 21 °C. ` +
-        `En rett vinkel er 90°. Et kvadratisk skilt er 40 cm på hver side. ` +
-        `Du går 80 meter langs korridoren. Bruk tallene i oppgavene — uten kalkulator.`,
+        `En rett vinkel er 90°. Et kvadratisk skilt er 40 cm på hver side. Du går 80 meter langs korridoren.`,
       niva1: [
-        {
-          nummer: 1,
-          type: "les_og_finn_tall",
-          tittel: "Finn mål",
-          innhold: "M1a Hvor langt er gulvet? M1b Hvor mange liter rommer spannet?"
-        },
-        {
-          nummer: 2,
-          type: "regneoppgave",
-          tittel: "Areal",
-          innhold: "M1c Hva er arealet av gulvet (lengde × bredde) i m²?"
-        },
-        {
-          nummer: 3,
-          type: "fyll_inn",
-          tittel: "Enheter",
-          innhold: "M1d Vinduet er 120 cm. Hvor mange meter er det? _____ m"
-        },
-        {
-          nummer: 4,
-          type: "flervalg",
-          tittel: "Volum",
-          innhold:
-            "M1e Du heller 2,5 L i et spann på 10 L. Hvor mye plass er ledig?\nA) 7,5 L  B) 12,5 L  C) 2,5 L"
-        },
-        {
-          nummer: 5,
-          type: "overslag_vurder",
-          tittel: "Tid",
-          innhold: "M1f Pausen er 30 minutter. Er det nærmere en halv time eller en hel time? Svar kort."
-        },
-        {
-          nummer: 6,
-          type: "kort_begrunnelse",
-          tittel: "Figur",
-          innhold: "M1g Et skilt er kvadratisk. Hva betyr det for sidene? Én setning."
-        }
+        oppgave(1, "les_og_finn_tall", "Finn mål", "Finn tallene i fagteksten.", "Hvor langt er gulvet?", "Hvor bredt er gulvet?", "Hvor mange liter rommer spannet?"),
+        oppgave(2, "regneoppgave", "Areal og omkrets", "Regn ut.", "Areal av gulvet (lengde × bredde) i m²?", "Omkrets av gulvet?", "Areal av skiltet 40 cm × 40 cm i cm²?"),
+        oppgave(3, "fyll_inn", "Enheter", "Fyll inn.", "120 cm = _____ m", "80 m = _____ cm", "30 minutter = _____ time (som brøk eller desimal)"),
+        oppgave(4, "flervalg", "Volum", "Kryss av riktig.", "2,5 L i 10 L spann — ledig plass? A) 7,5 L B) 12,5 L C) 2,5 L", "Er 10 L mer enn 2,5 L? Ja/nei", "Hvor mye er helt fullt spann?"),
+        oppgave(5, "overslag_vurder", "Tid og temperatur", "Vurder.", "Er pausen nærmere en halv eller en hel time?", "Er 21 °C typisk inne?", "Er 5 m × 4 m nærmere 20 m² eller 30 m²?"),
+        oppgave(6, "kort_begrunnelse", "Figur", "Svar kort.", "Hva betyr det at skiltet er kvadratisk?", "Hvor stor er en rett vinkel?", "Hvorfor måler vi gulv før vi vasker?")
       ],
       niva2: [
-        {
-          nummer: 1,
-          type: "regneoppgave",
-          tittel: "Omkrets",
-          innhold: "M2a Hva er omkretsen av gulvet 5 m × 4 m?"
-        },
-        {
-          nummer: 2,
-          type: "regneoppgave",
-          tittel: "Areal skilt",
-          innhold: "M2b Arealet av skiltet 40 cm × 40 cm i cm²?"
-        },
-        {
-          nummer: 3,
-          type: "fyll_inn",
-          tittel: "Omregning",
-          innhold: "M2c 80 meter = _____ cm"
-        },
-        {
-          nummer: 4,
-          type: "flervalg",
-          tittel: "Vinkel",
-          innhold: "M2d En rett vinkel er …\nA) 45°  B) 90°  C) 180°"
-        },
-        {
-          nummer: 5,
-          type: "tabell_eller_figur",
-          tittel: "Skisse",
-          innhold: "M2e Tegn et rektangel 5×4 (ikke i målestokk). Merk lengde og bredde."
-        },
-        {
-          nummer: 6,
-          type: "kort_begrunnelse",
-          tittel: "Vurder",
-          innhold: "M2f Er 21 °C typisk innetemperatur? Begrunn med én setning."
-        }
+        oppgave(1, "regneoppgave", "Omkrets og areal", "Regn nøyaktig.", "Omkrets 5 m × 4 m?", "Areal 5 m × 4 m?", "Areal skilt 40×40 cm?"),
+        oppgave(2, "regneoppgave", "Omregning", "Regn om.", "80 m i cm?", "1,2 m i cm?", "2,5 L + 7,5 L = ?"),
+        oppgave(3, "flervalg", "Vinkel", "Kryss av.", "Rett vinkel? A) 45° B) 90° C) 180°", "Har et kvadrat fire rette vinkler? Ja/nei", "Er 120 cm mer enn 1 m? Ja/nei"),
+        oppgave(4, "fyll_inn", "Mål", "Fyll inn.", "Lengde: _____ m", "Bredde: _____ m", "Vinduhøyde: _____ cm"),
+        oppgave(5, "tabell_eller_figur", "Skisse", "Tegn og merk.", "Tegn rektangel for gulvet", "Merk 5 m og 4 m", "Skriv arealet inni figuren"),
+        oppgave(6, "kort_begrunnelse", "Vurder", "Begrunn.", "Hvorfor er omkrets nyttig på jobb?", "Når bruker du liter?", "Når bruker du grader (°)?")
       ],
       fasit:
-        "M1a 5 m. M1b 10 L. M1c 20 m². M1d 1,2 m. M1e A. M1f Halv time. " +
-        "M1g Alle sider er like lange. M2a 18 m. M2b 1600 cm². M2c 8000 cm. M2d B. " +
-        "M2e Skisse med 5 og 4 merket. M2f Ja — vanlig romtemperatur rundt 20–22 °C."
+        "Oppgave 1: a. 5 m. b. 4 m. c. 10 L. Oppgave 2: a. 20 m². b. 18 m. c. 1600 cm². " +
+        "Oppgave 3: a. 1,2 m. b. 8000 cm. c. 0,5 time. Oppgave 4: a. A. b. Ja. c. 10 L. " +
+        "Oppgave 5: a. Halv. b. Ja. c. 20 m². Oppgave 6: a. Like sider. b. 90°. c. For å planlegge arbeid. " +
+        "Nivå 2 — Oppgave 1: a. 18 m. b. 20 m². c. 1600 cm². Oppgave 2: a. 8000 cm. b. 120 cm. c. 10 L. " +
+        "Oppgave 3: a. B. b. Ja. c. Ja. Oppgave 4: a. 5. b. 4. c. 120. " +
+        "Oppgave 5: skisse med mål. Oppgave 6: etter elevens begrunnelse."
     },
     statistikk: {
       fagtekst:
         `Som ${y} noterer dere tall om ${tema.toLowerCase()}. ` +
         `Mandag: 6 rom. Tirsdag: 8 rom. Onsdag: 5 rom. Torsdag: 9 rom. Fredag: 7 rom. ` +
-        `Tre kolleger svarte på en kort spørreundersøkelse om pause: 10 min, 20 min og 15 min. ` +
-        `På lageret teller dere esker: liten 4, middels 6, stor 2. ` +
-        `Bruk tallene til tabell, søylediagram og gjennomsnitt — på papir, uten regneark.`,
+        `Pauseundersøkelse: 10 min, 20 min og 15 min. Esker: liten 4, middels 6, stor 2.`,
       niva1: [
-        {
-          nummer: 1,
-          type: "les_og_finn_tall",
-          tittel: "Finn data",
-          innhold: "M1a Hvor mange rom ble gjort tirsdag? M1b Hvor mange esker «middels»?"
-        },
-        {
-          nummer: 2,
-          type: "tabell_eller_figur",
-          tittel: "Tabell",
-          innhold: "M1c Lag en tabell: ukedag | antall rom for man–fre med tallene fra teksten."
-        },
-        {
-          nummer: 3,
-          type: "regneoppgave",
-          tittel: "Opptelling",
-          innhold: "M1d Hvor mange rom totalt man–fre?"
-        },
-        {
-          nummer: 4,
-          type: "flervalg",
-          tittel: "Sammenlikne",
-          innhold: "M1e Hvilken dag hadde flest rom?\nA) Mandag  B) Torsdag  C) Onsdag"
-        },
-        {
-          nummer: 5,
-          type: "fyll_inn",
-          tittel: "Søyler",
-          innhold: "M1f Tegn et enkelt søylediagram for man, tir og ons (antall rom)."
-        },
-        {
-          nummer: 6,
-          type: "kort_begrunnelse",
-          tittel: "Les diagram",
-          innhold: "M1g Er tirsdag høyere enn onsdag i diagrammet ditt? Ja/nei og hvorfor."
-        }
+        oppgave(1, "les_og_finn_tall", "Finn data", "Finn tallene i teksten.", "Hvor mange rom tirsdag?", "Hvor mange esker «middels»?", "Hvor mange rom onsdag?"),
+        oppgave(2, "tabell_eller_figur", "Tabell", "Lag tabell på papir.", "Skriv ukedagene man–fre", "Skriv antall rom for hver dag", "Hvilken dag har høyest tall?"),
+        oppgave(3, "regneoppgave", "Opptelling", "Regn ut.", "Totalt antall rom man–fre?", "Differanse torsdag − onsdag?", "Sum esker (4+6+2)?"),
+        oppgave(4, "flervalg", "Sammenlikne", "Kryss av.", "Flest rom? A) Mandag B) Torsdag C) Onsdag", "Er tirsdag høyere enn onsdag? Ja/nei", "Er middels flest esker? Ja/nei"),
+        oppgave(5, "fyll_inn", "Søyler", "Tegn enkelt.", "Søyle for mandag (6)", "Søyle for tirsdag (8)", "Søyle for onsdag (5)"),
+        oppgave(6, "kort_begrunnelse", "Les diagram", "Svar kort.", "Er tirsdag høyere enn onsdag i diagrammet?", "Hvorfor tegner vi søyler?", "Hva viser tallene for uka?")
       ],
       niva2: [
-        {
-          nummer: 1,
-          type: "regneoppgave",
-          tittel: "Gjennomsnitt",
-          innhold: "M2a Hva er gjennomsnittlig pausetid for de tre kollegene (10, 20 og 15 min)?"
-        },
-        {
-          nummer: 2,
-          type: "regneoppgave",
-          tittel: "Gjennomsnitt rom",
-          innhold: "M2b Gjennomsnittlig antall rom per dag man–fre?"
-        },
-        {
-          nummer: 3,
-          type: "tabell_eller_figur",
-          tittel: "Esker",
-          innhold: "M2c Lag tabell for esker (liten/middels/stor) og et søylediagram."
-        },
-        {
-          nummer: 4,
-          type: "flervalg",
-          tittel: "Tolkning",
-          innhold:
-            "M2d Totalt antall esker er 12. Er «middels» halvparten av alle?\nA) Ja  B) Nei"
-        },
-        {
-          nummer: 5,
-          type: "fyll_inn",
-          tittel: "Differanse",
-          innhold: "M2e Hvor mange flere rom torsdag enn onsdag? _____"
-        },
-        {
-          nummer: 6,
-          type: "kort_begrunnelse",
-          tittel: "Vurder data",
-          innhold: "M2f Hvorfor er gjennomsnitt nyttig når dere planlegger uka? Én setning."
-        }
+        oppgave(1, "regneoppgave", "Gjennomsnitt pause", "Regn ut.", "Sum 10+20+15?", "Gjennomsnitt av de tre?", "Er gjennomsnittet over 15? Ja/nei"),
+        oppgave(2, "regneoppgave", "Gjennomsnitt rom", "Regn ut.", "Totalt man–fre?", "Gjennomsnitt per dag?", "Er gjennomsnittet nærmere 7 eller 8?"),
+        oppgave(3, "tabell_eller_figur", "Esker", "Lag tabell og søyler.", "Rad liten = 4", "Rad middels = 6", "Rad stor = 2"),
+        oppgave(4, "flervalg", "Tolkning", "Kryss av.", "Er middels halvparten av 12? A) Ja B) Nei", "Er stor færrest? Ja/nei", "Totalt esker? A) 10 B) 12 C) 14"),
+        oppgave(5, "fyll_inn", "Differanse", "Fyll inn.", "Torsdag − onsdag = _____", "Tirsdag − mandag = _____", "Fredag − onsdag = _____"),
+        oppgave(6, "kort_begrunnelse", "Vurder data", "Begrunn.", "Hvorfor er gjennomsnitt nyttig i planlegging?", "Når er tabell bedre enn bare liste?", "Hva kan tallene fortelle om arbeidsuka?")
       ],
       fasit:
-        "M1a 8. M1b 6. M1c man 6, tir 8, ons 5, tor 9, fre 7. M1d 35. M1e B. " +
-        "M1f Søyler 6/8/5. M1g Ja — 8 > 5. M2a 15 min. M2b 7. M2c tabell 4/6/2. M2d A (6 av 12). " +
-        "M2e 4. M2f Det viser et typisk nivå for planlegging."
+        "Oppgave 1: a. 8. b. 6. c. 5. Oppgave 2: man 6 … fre 7; høyest torsdag. " +
+        "Oppgave 3: a. 35. b. 4. c. 12. Oppgave 4: a. B. b. Ja. c. Ja. " +
+        "Oppgave 5: søyler 6/8/5. Oppgave 6: a. Ja. b. For å sammenlikne. c. Arbeidsmengde. " +
+        "Nivå 2 — Oppgave 1: a. 45. b. 15. c. Nei. Oppgave 2: a. 35. b. 7. c. 7. " +
+        "Oppgave 3: 4/6/2. Oppgave 4: a. A. b. Ja. c. B. Oppgave 5: a. 4. b. 2. c. 2. " +
+        "Oppgave 6: etter elevens begrunnelse."
     }
   };
 
   const pack = packs[kategori]!;
-
   return {
     kategori,
     kategoriLabel: MATTE_KATEGORI_LABEL[kategori],

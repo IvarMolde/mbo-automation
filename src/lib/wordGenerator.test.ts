@@ -70,37 +70,42 @@ const hefte: ArbeidshefteData = {
       nummer: i + 1,
       type: "regneoppgave",
       tittel: `N1-${i + 1}`,
-      innhold: "M1a Regn ut.".padEnd(20, ".")
+      innhold: "Regn ut.\na. Første spørsmål.\nb. Andre spørsmål.\nc. Tredje spørsmål."
     })),
     niva2: Array.from({ length: 6 }, (_, i) => ({
       nummer: i + 1,
       type: "regneoppgave",
       tittel: `N2-${i + 1}`,
-      innhold: "M2a Regn ut.".padEnd(20, ".")
+      innhold: "Regn ut.\na. Første spørsmål.\nb. Andre spørsmål.\nc. Tredje spørsmål."
     })),
     fasit: "b".repeat(30)
   }
 };
 
 describe("splitOppgaveInnhold", () => {
-  it("splitter a-e til egne linjer", () => {
+  it("splitter a-e til egne linjer med punktum", () => {
     const lines = splitOppgaveInnhold("Hva er tema? a) Hygiene b) Mat c) Sport d) Musikk e) Reise");
     expect(lines[0]).toMatch(/Hva er tema/);
-    expect(lines).toContain("a) Hygiene");
-    expect(lines).toContain("b) Mat");
-    expect(lines).toContain("e) Reise");
+    expect(lines).toContain("a. Hygiene");
+    expect(lines).toContain("b. Mat");
+    expect(lines).toContain("e. Reise");
   });
 
-  it("merker deloppgaver som 1a, 1b, 2a", () => {
+  it("normaliserer 1a/M1a til a. b. c.", () => {
     const lines1 = splitOppgaveInnhold("Hva er tema? a) Hygiene b) Mat c) Sport d) Musikk", 1);
-    expect(lines1).toContain("1a Hygiene");
-    expect(lines1).toContain("1b Mat");
-    expect(lines1).toContain("1d Musikk");
+    expect(lines1).toContain("a. Hygiene");
+    expect(lines1).toContain("b. Mat");
+    expect(lines1).toContain("d. Musikk");
 
     const lines2 = splitOppgaveInnhold("Velg riktig. 2a) Ja 2b) Nei 2c) Vet ikke", 2);
-    expect(lines2).toContain("2a Ja");
-    expect(lines2).toContain("2b Nei");
-    expect(lines2).toContain("2c Vet ikke");
+    expect(lines2).toContain("a. Ja");
+    expect(lines2).toContain("b. Nei");
+    expect(lines2).toContain("c. Vet ikke");
+
+    const lines3 = splitOppgaveInnhold("M1a Fire timer. M1b Tolv rom. M1c Sju komma fem.");
+    expect(lines3).toContain("a. Fire timer.");
+    expect(lines3).toContain("b. Tolv rom.");
+    expect(lines3).toContain("c. Sju komma fem.");
   });
 });
 

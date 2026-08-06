@@ -434,24 +434,24 @@ Returner KUN gyldig JSON (ingen markdown) med nøyaktig denne formen:
   "malNiva1": ["mål1", "mål2", "mål3"],
   "malNiva2": ["mål1", "mål2", "mål3"],
   "niva1": [
-    { "nummer": 1, "type": "les_og_finn_tall", "tittel": "…", "innhold": "M1a …\\nM1b …" },
-    { "nummer": 2, "type": "regneoppgave", "tittel": "…", "innhold": "M1c …" },
-    { "nummer": 3, "type": "flervalg", "tittel": "…", "innhold": "M1d …\\nA) … B) … C) …" },
-    { "nummer": 4, "type": "fyll_inn", "tittel": "…", "innhold": "M1e … _____ " },
-    { "nummer": 5, "type": "overslag_vurder", "tittel": "…", "innhold": "M1f …" },
-    { "nummer": 6, "type": "kort_begrunnelse", "tittel": "…", "innhold": "M1g …" }
+    { "nummer": 1, "type": "les_og_finn_tall", "tittel": "…", "innhold": "Bruk tallene i fagteksten.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 2, "type": "regneoppgave", "tittel": "…", "innhold": "Regn ut.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 3, "type": "flervalg", "tittel": "…", "innhold": "Kryss av.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 4, "type": "fyll_inn", "tittel": "…", "innhold": "Fyll inn.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 5, "type": "overslag_vurder", "tittel": "…", "innhold": "Vurder.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 6, "type": "kort_begrunnelse", "tittel": "…", "innhold": "Begrunn kort.\\na. …\\nb. …\\nc. …" }
   ],
   "niva2": [
-    { "nummer": 1, "type": "regneoppgave", "tittel": "…", "innhold": "M2a …" },
-    { "nummer": 2, "type": "regneoppgave", "tittel": "…", "innhold": "M2b …" },
-    { "nummer": 3, "type": "flervalg", "tittel": "…", "innhold": "M2c …" },
-    { "nummer": 4, "type": "fyll_inn", "tittel": "…", "innhold": "M2d …" },
-    { "nummer": 5, "type": "tabell_eller_figur", "tittel": "…", "innhold": "M2e …" },
-    { "nummer": 6, "type": "kort_begrunnelse", "tittel": "…", "innhold": "M2f …" }
+    { "nummer": 1, "type": "regneoppgave", "tittel": "…", "innhold": "Regn ut.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 2, "type": "regneoppgave", "tittel": "…", "innhold": "Regn ut.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 3, "type": "flervalg", "tittel": "…", "innhold": "Kryss av.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 4, "type": "fyll_inn", "tittel": "…", "innhold": "Fyll inn.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 5, "type": "tabell_eller_figur", "tittel": "…", "innhold": "Lag tabell/figur.\\na. …\\nb. …\\nc. …" },
+    { "nummer": 6, "type": "kort_begrunnelse", "tittel": "…", "innhold": "Begrunn.\\na. …\\nb. …\\nc. …" }
   ],
-  "fasit": "M1a … M1b … … M2a … M2f …"
+  "fasit": "Oppgave 1: a. … b. … c. … (osv. for alle oppgaver nivå 1 og 2)"
 }
-Viktig: niva1 og niva2 skal hver ha 6 eller 7 oppgaver med konkrete tall/spørsmål — ikke generiske «bruk tallene»-setninger.`;
+Viktig: hver oppgave skal ha nøyaktig tre deloppgaver a. b. c. med konkrete tall — ikke generiske «bruk tallene»-setninger.`;
 
     const response = await model.generateContent(prompt);
     const text = response.response.candidates?.[0]?.content?.parts?.[0];
@@ -524,8 +524,11 @@ Krav:
 - Lag nøyaktig ${tematekster.length} objekter i tekstSeksjoner (samme nummer, type og tittel som i årsplan-malen).
 - Hver tekst skal være 80–150 ord, realistisk og arbeidslivsnær, med naturlig bruk av grammatikkfokus.
 - Under hver tekst: nøyaktig ${oppgavestruktur.length} oppgaver (samme nummer/type som i malen).
-- Marker ALLE deloppgaver med oppgavenummer + bokstav: 1a, 1b, 1c, 1d, 2a, 2b, 2c osv. (ikke bare a) b) c)).
-- Hver deloppgave/alternativ på egen linje. Fasit skal bruke samme merking (1a, 1b, …).
+- Marker ALLE deloppgaver med bokstav og punktum på egen linje: a. b. c. d. … (ikke 1a, ikke a)).
+- Sant/usant: skriv tydelig «Sant eller usant» i tittel/type og lag påstander som a. b. c. …
+- Flervalg / kryss av: alternativer som a. b. c. …
+- Skriveoppgaver: kort instruks, deretter a. b. c. … (eleven får skrivelinjer i Word).
+- Hver deloppgave/alternativ på egen linje. Fasit skal bruke samme merking (Oppgave 1: a. …).
 - Ordliste: nøyaktig ${ordAntall} ord.
 - Ordliste «ord»-feltet MÅ være i lærbar form: verb som «å + infinitiv» (f.eks. «å rydde»); substantiv med riktig artikkel en/ei/et (f.eks. «en pause», «ei hylle», «et lager»); adjektiv uten artikkel.
 - Kapitteltest: nøyaktig ${testAntall} oppgaver.
