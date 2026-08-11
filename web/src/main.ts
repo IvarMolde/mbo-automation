@@ -1,5 +1,5 @@
 import planJson from "../../data/arsplan-2026-2027.json";
-import { getIsoWeekNumber, getIsoWeekYear } from "./isoWeek";
+import { getIsoWeekNumber, getIsoWeekYear, getUpcomingSchoolWeek } from "./isoWeek";
 import {
   getLocalEffectiveUker,
   loadLocalPlanState,
@@ -1108,8 +1108,10 @@ function renderOm(): string {
       <h3>Ukeheftet — hva elevene får</h3>
       <p>
         Hver onsdag sender systemet automatisk Word-heftet for
-        <strong>neste skoleuke</strong> (onsdag i uke 31 → hefte for uke 32),
-        slik at du kan forberede deg i forkant. Du kan også sende manuelt når du vil:
+        <strong>kommende skoleuke</strong> (alltid én uke på forskudd).
+        Ukenummeret er det samme som når du setter oppstart under
+        <a href="#/skolear">Skoleår</a> (f.eks. start uke 32 → onsdag i uke 31 sender heftet for uke 32).
+        Du kan også sende manuelt når du vil:
       </p>
       <ul>
         <li><strong>Norsk:</strong> tekster, grammatikkforklaring, oppgaver, ordliste og kapitteltest</li>
@@ -1528,18 +1530,20 @@ function renderSendHefteResult(): string {
 
 function renderSendHeftePanel(): string {
   const ukeNow = getIsoWeekNumber();
+  const upcomingUke = getUpcomingSchoolWeek();
   const formUke =
     sendHefteResult && "uke" in sendHefteResult && sendHefteResult.uke != null
       ? sendHefteResult.uke
-      : ukeNow;
+      : upcomingUke;
   const defaultEmail = escapeHtml(defaultSendEmail());
   const busy = sendHefteResult?.kind === "pending";
   return `
     <div class="panel highlight" id="send-hefte-panel">
       <h2>Send hefte nå</h2>
       <p class="lede">
-        Generer og send arbeidsheftet for en valgt uke — f.eks. hvis du trenger en ekstra kopi.
-        Den automatiske onsdagsutsendingen sender allerede <strong>neste</strong> ukes hefte.
+        Generer og send arbeidsheftet for en valgt uke. Standard er
+        <strong>kommende uke (${upcomingUke})</strong> — samme regel som onsdagsutsendingen
+        (knyttet til skoleårets ukenummerering). Nå er det uke ${ukeNow}.
       </p>
       ${renderSendHefteResult()}
       <form id="send-hefte-form" class="admin-form send-hefte-form">

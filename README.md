@@ -79,7 +79,7 @@ Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUEST
 
 - I [`vercel.json`](vercel.json) er uttrykket i **UTC** (standard for Vercel), f.eks. `0 11 * * 3` = onsdag 11:00 UTC (Vercel krever tall 0–6, ikke `WED`).
 - I **Norge** tilsvarer det **12:00 om vinteren (CET)** og **13:00 om sommeren (CEST)** med samme cron-uttrykk. Juster minutt/time i UTC ved behov, eller bruk ekstern scheduler med `Europe/Oslo` om du trenger fast lokal tid året rundt.
-- **Måluke:** Onsdagsjobben sender alltid heftet for **neste ISO-uke** (onsdag i uke 31 → hefte for uke 32), slik at lærere kan forberede seg i forkant.
+- **Måluke:** Onsdagsjobben sender alltid heftet for **kommende ISO-uke** (uke N+1). Samme ukenummerering som Skoleår (`startDate` → `startWeek`): starter skoleåret i uke 32, går heftet for uke 32 ut onsdag i uke 31 — og deretter alltid på forskudd.
 
 ## Sikkerhet
 

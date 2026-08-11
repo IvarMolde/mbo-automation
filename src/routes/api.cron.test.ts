@@ -123,8 +123,8 @@ describe("api cron", () => {
 
   it("GET /api/cron returns 200 with valid Bearer", async () => {
     const { resolveKapittelForIsoUke } = await import("../lib/arsplanResolve.js");
-    const { getNextIsoWeekNumber } = await import("../lib/week.js");
-    const expectedUke = getNextIsoWeekNumber();
+    const { getUpcomingSchoolWeek } = await import("../lib/week.js");
+    const expectedUke = getUpcomingSchoolWeek();
 
     const res = await request(app)
       .get("/api/cron")
@@ -146,11 +146,11 @@ describe("api cron", () => {
     expect(res.body.success).toBe(true);
   });
 
-  it("cron targets next ISO week (Wednesday of week N → send week N+1)", async () => {
-    const { getIsoWeekNumber, getNextIsoWeekNumber } = await import("../lib/week.js");
-    // Wednesday ISO week 31, 2026 → next week 32
+  it("cron targets upcoming school week aligned with Skoleår ISO weeks", async () => {
+    const { getIsoWeekNumber, getUpcomingSchoolWeek } = await import("../lib/week.js");
+    // Wednesday ISO week 31 → upcoming week 32 (same as Skoleår startWeek numbering)
     const wednesdayWeek31 = new Date("2026-07-29T12:00:00Z");
     expect(getIsoWeekNumber(wednesdayWeek31)).toBe(31);
-    expect(getNextIsoWeekNumber(wednesdayWeek31)).toBe(32);
+    expect(getUpcomingSchoolWeek(wednesdayWeek31)).toBe(32);
   });
 });
