@@ -5,7 +5,7 @@ import { sendEkstraOppgaver, sendHefte, sendMissingArsplanUkeEmail, sendTestEmai
 import { genererEkstraOppgaver } from "../lib/ekstraOppgaver.js";
 import { genererArbeidshefte } from "../lib/gemini.js";
 import { type Kapittel } from "../lib/types.js";
-import { getIsoWeekNumber } from "../lib/week.js";
+import { getNextIsoWeekNumber } from "../lib/week.js";
 import { resolveKapittelForIsoUke } from "../lib/arsplanResolve.js";
 import { loadPlanState } from "../lib/planStore.js";
 import { listActiveRecipientEmails, loadRecipientsState } from "../lib/recipientsStore.js";
@@ -102,7 +102,8 @@ const cronHandler = async (req: Request, res: Response): Promise<void> => {
       recipientState.recipients.map((r) => [r.email, r.unsubscribeToken] as const)
     );
 
-    const uke = getIsoWeekNumber(new Date());
+    // Onsdag i uke N → send hefte for uke N+1 (forberedelse uken før).
+    const uke = getNextIsoWeekNumber(new Date());
     await loadPlanState();
     await loadSchoolYearProfile();
     const resolution = resolveKapittelForIsoUke(uke);

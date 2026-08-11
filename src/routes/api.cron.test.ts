@@ -122,6 +122,10 @@ describe("api cron", () => {
   });
 
   it("GET /api/cron returns 200 with valid Bearer", async () => {
+    const { resolveKapittelForIsoUke } = await import("../lib/arsplanResolve.js");
+    const { getNextIsoWeekNumber } = await import("../lib/week.js");
+    const expectedUke = getNextIsoWeekNumber();
+
     const res = await request(app)
       .get("/api/cron")
       .set("Authorization", `Bearer ${cronSecret}`);
@@ -129,8 +133,9 @@ describe("api cron", () => {
     expect(res.body).toMatchObject({
       success: true,
       kapittel: expect.any(Number),
-      uke: expect.any(Number)
+      uke: expectedUke
     });
+    expect(resolveKapittelForIsoUke).toHaveBeenCalledWith(expectedUke);
   });
 
   it("POST /api/cron returns 200 with valid Bearer", async () => {
@@ -139,5 +144,13 @@ describe("api cron", () => {
       .set("Authorization", `Bearer ${cronSecret}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+  });
+
+  it("cron targets next ISO week (Wednesday of week N → send week N+1)", async () => {
+    const { getIsoWeekNumber, getNextIsoWeekNumber } = await import("../lib/week.js");
+    // Wednesday ISO week 31, 2026 → next week 32
+    const wednesdayWeek31 = new Date("2026-07-29T12:00:00Z");
+    expect(getIsoWeekNumber(wednesdayWeek31)).toBe(31);
+    expect(getNextIsoWeekNumber(wednesdayWeek31)).toBe(32);
   });
 });

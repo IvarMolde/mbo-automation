@@ -22,7 +22,7 @@ const SESSION_KEY = "mbo-admin-session-v1";
  * Vedlikehold: Oppdater DOCS_UPDATED hver gang «Om»-teksten endres,
  * og hold forklaringen i tråd med nye funksjoner i appen.
  */
-const DOCS_UPDATED = "4. august 2026";
+const DOCS_UPDATED = "11. august 2026";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -1107,7 +1107,9 @@ function renderOm(): string {
 
       <h3>Ukeheftet — hva elevene får</h3>
       <p>
-        Hver onsdag (og når du sender manuelt) lager systemet et Word-hefte for ukas kapittel:
+        Hver onsdag sender systemet automatisk Word-heftet for
+        <strong>neste skoleuke</strong> (onsdag i uke 31 → hefte for uke 32),
+        slik at du kan forberede deg i forkant. Du kan også sende manuelt når du vil:
       </p>
       <ul>
         <li><strong>Norsk:</strong> tekster, grammatikkforklaring, oppgaver, ordliste og kapitteltest</li>
@@ -1189,7 +1191,8 @@ function renderOm(): string {
 
       <h3>Send hefte manuelt</h3>
       <div class="help-text">
-        <p><strong>Når?</strong> Du vil forberede deg før den faste onsdagsutsendingen.</p>
+        <p><strong>Når?</strong> Du vil sende en bestemt uke utenom den faste onsdagsutsendingen
+          (som allerede går én uke i forkant).</p>
         <p><strong>Hvordan?</strong> Admin → Send hefte: velg skoleuke og mottaker(e), trykk Send.
           Det kan ta noen minutter.</p>
         <p><strong>Etter sending:</strong> Du får bekreftelse med liste over e-postadresser.
@@ -1255,7 +1258,7 @@ function renderOm(): string {
         </li>
         <li>
           <strong>Utsending</strong> — Word-filen sendes på e-post til aktive mottakere.
-          Det skjer automatisk hver onsdag, og når du trykker «Send hefte» i Admin.
+          Det skjer automatisk hver onsdag for <em>neste</em> skoleuke, og når du trykker «Send hefte» i Admin.
         </li>
       </ol>
       <p>
@@ -1304,7 +1307,7 @@ function renderRecipientsPanel(): string {
   return `
     <div class="panel highlight" id="recipients-panel">
       <h2>E-postmottakere (${active.length} aktive)</h2>
-      <p class="lede">Onsdagens hefte sendes til alle aktive adresser under. Hver e-post har også avmeldingslenke.</p>
+      <p class="lede">Onsdagens hefte (for neste skoleuke) sendes til alle aktive adresser under. Hver e-post har også avmeldingslenke.</p>
       ${recipientsError ? `<p class="admin-flash" role="status">${escapeHtml(recipientsError)}</p>` : ""}
       ${rows}
       <form id="recipient-add-form" class="admin-form recipient-add">
@@ -1535,8 +1538,8 @@ function renderSendHeftePanel(): string {
     <div class="panel highlight" id="send-hefte-panel">
       <h2>Send hefte nå</h2>
       <p class="lede">
-        Generer og send arbeidsheftet for en valgt uke — f.eks. for å forberede deg i forkant.
-        Den automatiske onsdagsutsendingen fortsetter som før.
+        Generer og send arbeidsheftet for en valgt uke — f.eks. hvis du trenger en ekstra kopi.
+        Den automatiske onsdagsutsendingen sender allerede <strong>neste</strong> ukes hefte.
       </p>
       ${renderSendHefteResult()}
       <form id="send-hefte-form" class="admin-form send-hefte-form">

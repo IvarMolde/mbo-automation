@@ -73,12 +73,13 @@ Rate limiting kan justeres med `RATE_LIMIT_WINDOW_MS` og `RATE_LIMIT_MAX_REQUEST
 - `POST /api/generer` - generer Word-hefte (uten e-post)
 - `POST /api/send` - generer og send vedlegg på e-post
 - `POST /api/test-email` - test SMTP-oppsett
-- `GET /api/cron` og `POST /api/cron` - ukentlig jobb (Bearer `CRON_SECRET`). **Vercel Cron** kaller med **GET** og setter `Authorization: Bearer`-header når `CRON_SECRET` er konfigurert i prosjektet.
+- `GET /api/cron` og `POST /api/cron` - ukentlig jobb (Bearer `CRON_SECRET`). Sender heftet for **neste** ISO-uke. **Vercel Cron** kaller med **GET** og setter `Authorization: Bearer`-header når `CRON_SECRET` er konfigurert i prosjektet.
 
 ## Cron og tidssone
 
 - I [`vercel.json`](vercel.json) er uttrykket i **UTC** (standard for Vercel), f.eks. `0 11 * * 3` = onsdag 11:00 UTC (Vercel krever tall 0–6, ikke `WED`).
 - I **Norge** tilsvarer det **12:00 om vinteren (CET)** og **13:00 om sommeren (CEST)** med samme cron-uttrykk. Juster minutt/time i UTC ved behov, eller bruk ekstern scheduler med `Europe/Oslo` om du trenger fast lokal tid året rundt.
+- **Måluke:** Onsdagsjobben sender alltid heftet for **neste ISO-uke** (onsdag i uke 31 → hefte for uke 32), slik at lærere kan forberede seg i forkant.
 
 ## Sikkerhet
 

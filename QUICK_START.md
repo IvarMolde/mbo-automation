@@ -98,9 +98,11 @@ curl -X POST https://DIN-APP.vercel.app/api/cron \
 Hver **onsdag 11:00 UTC** (12:00/13:00 norsk tid avhengig av sommertid):
 
 ```
-Uke beregnes → kapittel fra årsplan → Gemini genererer innhold
-→ Word-hefte + PowerPoint → e-post til RECIPIENT_EMAIL
+Neste ISO-uke beregnes (uke N+1) → kapittel fra årsplan → Gemini genererer innhold
+→ Word-hefte → e-post til aktive mottakere
 ```
+
+Eksempel: onsdag i uke 31 sender heftet for **uke 32**.
 
 ---
 
