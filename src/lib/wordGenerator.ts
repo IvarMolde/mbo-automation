@@ -913,6 +913,9 @@ export async function genererWordHefte(
     }
   }
 
+  children.push(headingParagraph("Ordliste"));
+  children.push(ordlisteTable(arbeidshefte.ordliste));
+
   const doc = new Document({
     sections: [
       {
