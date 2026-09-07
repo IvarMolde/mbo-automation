@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { genererWordHefte, splitOppgaveInnhold } from "./wordGenerator.js";
+import JSZip from "jszip";
+import { formatOppgaveTekst, genererWordHefte, splitOppgaveInnhold } from "./wordGenerator.js";
 import type { ArbeidshefteData, Kapittel } from "./types.js";
 
 const kapittel: Kapittel = {
@@ -35,6 +36,12 @@ const hefte: ArbeidshefteData = {
           type: "skriveoppgave",
           tittel: "Skriv",
           innhold: "Skriv fem setninger om deg selv."
+        },
+        {
+          nummer: 3,
+          type: "leseforstaelse",
+          tittel: "Sant eller usant",
+          innhold: "Les påstandene. Sant eller usant.\na. Hygiene er viktig på jobben.\nb. Vi vasker aldri gulvet."
         }
       ]
     }
@@ -114,5 +121,37 @@ describe("wordGenerator", () => {
     const buf = await genererWordHefte(kapittel, hefte, 34);
     expect(buf.byteLength).toBeGreaterThan(2000);
     expect(buf.subarray(0, 2).toString("utf8")).toBe("PK");
+  });
+
+  it("bruker svart Arial 12, lys bakgrunn, tynne sorte linjer og loddrett sant/usant", async () => {
+    const buf = await genererWordHefte(kapittel, hefte, 34);
+    const zip = await JSZip.loadAsync(buf);
+    const xml = await zip.file("word/document.xml")!.async("string");
+    const textColors = [...xml.matchAll(/w:color w:val="([^"]+)"/g)].map((m) => m[1]);
+    const fills = [...xml.matchAll(/w:fill="([^"]+)"/g)].map((m) => m[1]);
+
+    expect(xml).toContain("Arial");
+    expect(xml).toContain('w:sz w:val="24"');
+    expect(xml).toContain('w:line="360"');
+    expect(new Set(textColors)).toEqual(new Set(["000000"]));
+    expect(fills.every((fill) => fill === "FFFFFF" || fill === "EAF2FF" || fill === "F5F7FB")).toBe(
+      true
+    );
+    expect(xml).toContain("□ Sant");
+    expect(xml).toContain("□ Usant");
+    expect(xml).not.toMatch(/Sant.{0,40}Usant ☐/);
+    expect(xml).toContain('w:sz="8"');
+    expect(xml).toContain('w:color="000000"');
+    expect(xml).not.toMatch(/w:pBdr>[\s\S]*?w:sz="24"/);
+  });
+});
+
+describe("formatOppgaveTekst", () => {
+  it("legger Sant og Usant under hverandre", () => {
+    expect(formatOppgaveTekst("Er dette riktig? Sant / Usant")).toEqual([
+      "Er dette riktig?",
+      "□ Sant",
+      "□ Usant"
+    ]);
   });
 });

@@ -22,7 +22,7 @@ const SESSION_KEY = "mbo-admin-session-v1";
  * Vedlikehold: Oppdater DOCS_UPDATED hver gang «Om»-teksten endres,
  * og hold forklaringen i tråd med nye funksjoner i appen.
  */
-const DOCS_UPDATED = "11. august 2026";
+const DOCS_UPDATED = "7. september 2026";
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -1255,7 +1255,9 @@ function renderOm(): string {
           <strong>Gemini 2.5 Flash</strong> (modell-id: <code>gemini-2.5-flash</code>, via Vertex AI).
           Det er denne modellen som genererer tekstene og oppgavene i heftet — både norskdelen og
           hverdagsmatematikk (fagtekst + nivå 1 og 2) — ut fra årsplan-malen, på språk tilpasset
-          voksne A2–B1. Resultatet pakkes i samme Word-design hver uke. Hvis KI midlertidig feiler,
+          voksne A2–B1. Resultatet pakkes i samme Word-design hver uke: Arial 12 punkt,
+          svart tekst, 1,5 linjeavstand, lys bakgrunn og luft til å skrive svar — uten tykke skrivelinjer.
+          Sant/usant står under hverandre med avkrysningsboks. Hvis KI midlertidig feiler,
           brukes en reservedeløsning slik at utsendingen ikke stopper helt.
         </li>
         <li>

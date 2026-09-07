@@ -5,6 +5,7 @@ import {
   Footer,
   Header,
   HeadingLevel,
+  LineRuleType,
   Packer,
   PageNumber,
   Paragraph,
@@ -16,6 +17,16 @@ import {
   VerticalAlign,
   WidthType
 } from "docx";
+import {
+  DEFAULT_HEADING_STYLE,
+  DEFAULT_PARAGRAPH_SPACING,
+  DEFAULT_TEXT_STYLE,
+  LEFT_INDENT,
+  LIGHT_HEADER_BACKGROUND,
+  LIGHT_TABLE_BACKGROUND,
+  TASK_INDENT,
+  THIN_BLACK_BORDER_SIZE
+} from "./documentStyles.js";
 import type {
   ArbeidshefteData,
   GrammatikkForklaring,
@@ -29,42 +40,95 @@ import {
   type EkstraOppgaverData
 } from "./ekstraOppgaverTypes.js";
 
-/** MBO design tokens (pedagogisk Word-mal 2026). WCAG: mørkere amber for hvit tekst. */
-const C = {
-  marine: "003057",
-  teal: "005F73",
-  amber: "A65C00",
-  amberSoft: "EE9B00",
-  night: "001219",
-  softTeal: "E6F2F4",
-  softAmber: "FFF6E5",
-  softGray: "F5F7F8",
-  white: "FFFFFF",
-  line: "D0D7DE"
-} as const;
-
-/** Hele dokumentet: Arial 12 pt (docx size = halvpoint). */
-const FONT = "Arial";
-const SZ = 24;
+const FONT = DEFAULT_TEXT_STYLE.font;
+const SZ = DEFAULT_TEXT_STYLE.size;
+const BLACK = DEFAULT_TEXT_STYLE.color;
 
 const PAGE_WIDTH = 11906; // A4 twips
 const MARGIN = 1134; // ~2 cm
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+const BOX_WIDTH = CONTENT_WIDTH - LEFT_INDENT;
+/** Ekstra luft under oppgave til håndskrift (ingen skrivelinje). */
+const ANSWER_SPACE_AFTER = 560;
 
-const noBorder = { style: BorderStyle.NONE, size: SZ, color: "FFFFFF" };
-const thinLine = { style: BorderStyle.SINGLE, size: SZ, color: C.line };
-const tealLeft = { style: BorderStyle.SINGLE, size: SZ, color: C.teal };
-const amberLeft = { style: BorderStyle.SINGLE, size: SZ, color: C.amber };
+const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+const thinBlack = {
+  style: BorderStyle.SINGLE,
+  size: THIN_BLACK_BORDER_SIZE,
+  color: BLACK
+};
 
-function run(
-  text: string,
-  opts?: { bold?: boolean; color?: string; size?: number }
-): TextRun {
+function textSpacing(opts?: { before?: number; after?: number }): {
+  before: number;
+  after: number;
+  line: number;
+  lineRule: typeof LineRuleType.AUTO;
+} {
+  return {
+    before: opts?.before ?? DEFAULT_PARAGRAPH_SPACING.before,
+    after: opts?.after ?? DEFAULT_PARAGRAPH_SPACING.after,
+    line: DEFAULT_PARAGRAPH_SPACING.line,
+    lineRule: LineRuleType.AUTO
+  };
+}
+
+const DOCUMENT_STYLES = {
+  default: {
+    document: {
+      run: {
+        font: FONT,
+        size: SZ,
+        color: BLACK
+      },
+      paragraph: {
+        spacing: {
+          line: DEFAULT_PARAGRAPH_SPACING.line,
+          lineRule: LineRuleType.AUTO
+        }
+      }
+    }
+  },
+  paragraphStyles: [
+    {
+      id: "Heading1",
+      name: "Heading 1",
+      basedOn: "Normal",
+      next: "Normal",
+      quickStyle: true,
+      run: {
+        font: DEFAULT_HEADING_STYLE.font,
+        size: DEFAULT_HEADING_STYLE.size,
+        bold: true,
+        color: DEFAULT_HEADING_STYLE.color
+      },
+      paragraph: {
+        spacing: {
+          before: 280,
+          after: 140,
+          line: DEFAULT_PARAGRAPH_SPACING.line,
+          lineRule: LineRuleType.AUTO
+        }
+      }
+    }
+  ]
+};
+
+function run(text: string, opts?: { bold?: boolean }): TextRun {
   return new TextRun({
     text,
-    bold: opts?.bold,
-    color: opts?.color ?? C.night,
-    size: opts?.size ?? SZ,
+    bold: opts?.bold ?? DEFAULT_TEXT_STYLE.bold,
+    color: BLACK,
+    size: SZ,
+    font: FONT
+  });
+}
+
+function headingRun(text: string): TextRun {
+  return new TextRun({
+    text,
+    bold: true,
+    color: BLACK,
+    size: SZ,
     font: FONT
   });
 }
@@ -76,28 +140,25 @@ function spacer(after = 120): Paragraph {
 function sectionTitle(text: string): Paragraph {
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
-    spacing: { before: 280, after: 140 },
+    spacing: textSpacing({ before: 280, after: 140 }),
     border: {
-      bottom: { style: BorderStyle.SINGLE, size: SZ, color: C.teal, space: 4 }
+      bottom: { style: BorderStyle.SINGLE, size: THIN_BLACK_BORDER_SIZE, color: BLACK, space: 4 }
     },
-    children: [run(text, { bold: true, color: C.marine })]
+    children: [headingRun(text)]
   });
 }
 
-function bodyText(text: string, opts?: { bold?: boolean; color?: string }): Paragraph {
+function bodyText(text: string, opts?: { bold?: boolean }): Paragraph {
   return new Paragraph({
-    spacing: { after: 120, line: 276 },
-    children: [run(text, { bold: opts?.bold, color: opts?.color ?? C.night })]
+    spacing: textSpacing(),
+    children: [run(text, { bold: opts?.bold })]
   });
 }
 
 function metaLabel(label: string, value: string): Paragraph {
   return new Paragraph({
-    spacing: { after: 60 },
-    children: [
-      run(`${label}: `, { bold: true, color: C.teal }),
-      run(value, { color: C.night })
-    ]
+    spacing: textSpacing({ after: 60 }),
+    children: [run(`${label}: `, { bold: true }), run(value)]
   });
 }
 
@@ -129,26 +190,34 @@ function cell(
   width: number,
   opts?: {
     shading?: string;
-    borders?: Partial<
-      Record<
-        "top" | "bottom" | "left" | "right",
-        { style: (typeof BorderStyle)[keyof typeof BorderStyle]; size: number; color: string }
-      >
-    >;
+    borders?: boolean;
     align?: typeof VerticalAlign.CENTER | typeof VerticalAlign.TOP;
+    margins?: { top?: number; bottom?: number; left?: number; right?: number };
   }
 ): TableCell {
+  const edge = opts?.borders ? thinBlack : noBorder;
   return new TableCell({
     width: { size: width, type: WidthType.DXA },
     shading: opts?.shading ? { type: ShadingType.CLEAR, fill: opts.shading } : undefined,
     borders: {
-      top: opts?.borders?.top ?? noBorder,
-      bottom: opts?.borders?.bottom ?? noBorder,
-      left: opts?.borders?.left ?? noBorder,
-      right: opts?.borders?.right ?? noBorder
+      top: edge,
+      bottom: edge,
+      left: edge,
+      right: edge
     },
+    margins: opts?.margins,
     verticalAlign: opts?.align ?? VerticalAlign.CENTER,
     children
+  });
+}
+
+function contentTable(columnWidths: number[], rows: TableRow[]): Table {
+  const width = columnWidths.reduce((sum, w) => sum + w, 0);
+  return new Table({
+    indent: { size: LEFT_INDENT, type: WidthType.DXA },
+    width: { size: width, type: WidthType.DXA },
+    columnWidths,
+    rows
   });
 }
 
@@ -165,59 +234,38 @@ function headerBar(kapittel: Kapittel, uke: number): Table {
           cell(
             [
               new Paragraph({
-                children: [
-                  new TextRun({
-                    text: "Molde voksenopplæringssenter",
-                    bold: true,
-                    color: C.white,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
+                spacing: textSpacing({ after: 40 }),
+                children: [headingRun("Molde voksenopplæringssenter")]
               }),
               new Paragraph({
-                children: [
-                  new TextRun({
-                    text: "Arbeid og norsk – MBO",
-                    color: C.white,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
+                spacing: textSpacing({ after: 40 }),
+                children: [run("Arbeid og norsk – MBO")]
               })
             ],
             w1,
-            { shading: C.marine }
+            { shading: LIGHT_HEADER_BACKGROUND, borders: true }
           ),
           cell(
             [
               new Paragraph({
                 alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: `Skoleuke ${uke}`, bold: true, color: C.white, size: SZ, font: FONT })
-                ]
+                spacing: textSpacing(),
+                children: [headingRun(`Skoleuke ${uke}`)]
               })
             ],
             w2,
-            { shading: C.teal }
+            { shading: LIGHT_TABLE_BACKGROUND, borders: true }
           ),
           cell(
             [
               new Paragraph({
                 alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({
-                    text: `CEFR ${kapittel.cefrNivaa}`,
-                    bold: true,
-                    color: C.night,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
+                spacing: textSpacing(),
+                children: [headingRun(`CEFR ${kapittel.cefrNivaa}`)]
               })
             ],
             w3,
-            { shading: C.softAmber }
+            { shading: LIGHT_HEADER_BACKGROUND, borders: true }
           )
         ]
       })
@@ -229,28 +277,12 @@ function titleBlock(kapittel: Kapittel): Paragraph[] {
   return [
     spacer(200),
     new Paragraph({
-      spacing: { after: 80 },
-      children: [
-        new TextRun({
-          text: `Kapittel ${kapittel.nummer}`,
-          bold: true,
-          color: C.teal,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ after: 80 }),
+      children: [headingRun(`Kapittel ${kapittel.nummer}`)]
     }),
     new Paragraph({
-      spacing: { after: 160 },
-      children: [
-        new TextRun({
-          text: kapittel.yrke,
-          bold: true,
-          color: C.marine,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ after: 160 }),
+      children: [headingRun(kapittel.yrke)]
     }),
     metaLabel("Tema", kapittel.arbeidsnorskTema),
     metaLabel("Grammatikk", kapittel.grammatikk),
@@ -269,29 +301,38 @@ function learningGoals(kapittel: Kapittel): Array<Paragraph | Table> {
   return [
     sectionTitle("Læringsmål"),
     new Paragraph({
-      spacing: { after: 100 },
-      children: [
-        new TextRun({
-          text: "Etter dette kapittelet skal du kunne:",
-          color: C.teal,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ after: 100 }),
+      children: [run("Etter dette kapittelet skal du kunne:")]
     }),
     ...goals.map(
       (g) =>
         new Paragraph({
-          spacing: { after: 80 },
-          indent: { left: 120 },
-          children: [
-            new TextRun({ text: "▸  ", color: C.amber, size: SZ, font: FONT }),
-            new TextRun({ text: g, color: C.night, size: SZ, font: FONT })
-          ]
+          spacing: textSpacing({ after: 80 }),
+          indent: { left: LEFT_INDENT },
+          children: [run(`▸  ${g}`)]
         })
     ),
     spacer(120)
   ];
+}
+
+function boxedSection(paragraphs: Paragraph[]): Table {
+  return contentTable(
+    [BOX_WIDTH],
+    [
+      new TableRow({
+        cantSplit: true,
+        children: [
+          cell(paragraphs, BOX_WIDTH, {
+            shading: LIGHT_TABLE_BACKGROUND,
+            borders: true,
+            align: VerticalAlign.TOP,
+            margins: { top: 120, bottom: 120, left: LEFT_INDENT, right: 200 }
+          })
+        ]
+      })
+    ]
+  );
 }
 
 function grammatikkSection(g: GrammatikkForklaring): Array<Paragraph | Table> {
@@ -302,177 +343,87 @@ function grammatikkSection(g: GrammatikkForklaring): Array<Paragraph | Table> {
     .map(
       (p) =>
         new Paragraph({
-          spacing: { after: 120, line: 300 },
+          spacing: textSpacing(),
           keepLines: true,
-          children: [new TextRun({ text: p, color: C.night, size: SZ, font: FONT })]
+          children: [run(p)]
         })
     );
 
   const eksempelParas = g.eksempler.map(
     (ex, i) =>
       new Paragraph({
-        spacing: { after: 80, line: 276 },
-        indent: { left: 120 },
+        spacing: textSpacing({ after: 80 }),
+        indent: { left: LEFT_INDENT },
         keepLines: true,
-        children: [
-          new TextRun({ text: `${i + 1}. `, bold: true, color: C.teal, size: SZ, font: FONT }),
-          new TextRun({ text: ex, color: C.night, size: SZ, font: FONT })
-        ]
+        children: [run(`${i + 1}. `, { bold: true }), run(ex)]
       })
   );
 
   const tipParas = g.huskeregel
     ? [
         new Paragraph({
-          spacing: { before: 120, after: 60 },
+          spacing: textSpacing({ before: 120, after: 60 }),
           keepNext: true,
-          children: [
-            new TextRun({ text: "Huskeregel", bold: true, color: C.amber, size: SZ, font: FONT })
-          ]
+          children: [headingRun("Huskeregel")]
         }),
         new Paragraph({
-          spacing: { after: 40 },
+          spacing: textSpacing({ after: 40 }),
           keepLines: true,
-          children: [new TextRun({ text: g.huskeregel, color: C.night, size: SZ, font: FONT })]
+          children: [run(g.huskeregel)]
         })
       ]
     : [];
 
   return [
     sectionTitle("Grammatikk"),
-    new Table({
-      width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-      columnWidths: [CONTENT_WIDTH],
-      rows: [
-        new TableRow({
-          cantSplit: true,
-          children: [
-            cell(
-              [
-                new Paragraph({
-                  spacing: { after: 100 },
-                  keepNext: true,
-                  children: [
-                    new TextRun({
-                      text: g.tittel,
-                      bold: true,
-                      color: C.marine,
-                      size: SZ,
-                      font: FONT
-                    })
-                  ]
-                }),
-                ...forklaringParas,
-                new Paragraph({
-                  spacing: { before: 80, after: 80 },
-                  keepNext: true,
-                  children: [
-                    new TextRun({
-                      text: "Eksempler",
-                      bold: true,
-                      color: C.teal,
-                      size: SZ,
-                      font: FONT
-                    })
-                  ]
-                }),
-                ...eksempelParas,
-                ...tipParas,
-                spacer(60)
-              ],
-              CONTENT_WIDTH,
-              {
-                shading: C.softTeal,
-                borders: {
-                  top: thinLine,
-                  bottom: thinLine,
-                  left: tealLeft,
-                  right: thinLine
-                },
-                align: VerticalAlign.TOP
-              }
-            )
-          ]
-        })
-      ]
-    }),
+    boxedSection([
+      new Paragraph({
+        spacing: textSpacing({ after: 100 }),
+        keepNext: true,
+        children: [headingRun(g.tittel)]
+      }),
+      ...forklaringParas,
+      new Paragraph({
+        spacing: textSpacing({ before: 80, after: 80 }),
+        keepNext: true,
+        children: [headingRun("Eksempler")]
+      }),
+      ...eksempelParas,
+      ...tipParas,
+      spacer(60)
+    ]),
     spacer(160)
   ];
 }
 
 function textBox(seksjon: TekstSeksjon): Table {
-  return new Table({
-    width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-    columnWidths: [CONTENT_WIDTH],
-    rows: [
-      new TableRow({
-        cantSplit: true,
-        children: [
-          cell(
-            [
-              new Paragraph({
-                spacing: { after: 80 },
-                children: [
-                  new TextRun({
-                    text: typeLabel(seksjon.type).toUpperCase(),
-                    bold: true,
-                    color: C.teal,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
-              }),
-              new Paragraph({
-                spacing: { after: 120 },
-                keepNext: true,
-                children: [
-                  new TextRun({
-                    text: `Tekst ${seksjon.nummer}: ${seksjon.tittel}`,
-                    bold: true,
-                    color: C.marine,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
-              }),
-              ...seksjon.tekst.split(/\n+/).filter(Boolean).map((line) =>
-                new Paragraph({
-                  spacing: { after: 100, line: 300 },
-                  keepLines: true,
-                  children: [
-                    new TextRun({ text: line.trim(), color: C.night, size: SZ, font: FONT })
-                  ]
-                })
-              )
-            ],
-            CONTENT_WIDTH,
-            {
-              shading: C.softTeal,
-              borders: {
-                top: thinLine,
-                bottom: thinLine,
-                left: tealLeft,
-                right: thinLine
-              },
-              align: VerticalAlign.TOP
-            }
-          )
-        ]
-      })
-    ]
-  });
+  return boxedSection([
+    new Paragraph({
+      spacing: textSpacing({ after: 80 }),
+      children: [headingRun(typeLabel(seksjon.type).toUpperCase())]
+    }),
+    new Paragraph({
+      spacing: textSpacing({ after: 120 }),
+      keepNext: true,
+      children: [headingRun(`Tekst ${seksjon.nummer}: ${seksjon.tittel}`)]
+    }),
+    ...seksjon.tekst.split(/\n+/).filter(Boolean).map(
+      (line) =>
+        new Paragraph({
+          spacing: textSpacing({ after: 100 }),
+          keepLines: true,
+          children: [run(line.trim())]
+        })
+    )
+  ]);
 }
 
-function writingLines(count: number): Paragraph[] {
-  return Array.from({ length: count }, () =>
-    new Paragraph({
-      spacing: { before: 80, after: 80 },
-      border: {
-        bottom: { style: BorderStyle.SINGLE, size: SZ, color: C.night, space: 1 }
-      },
-      children: [run(" ")]
-    })
-  );
+function answerSpace(): Paragraph {
+  return new Paragraph({
+    spacing: textSpacing({ before: 80, after: ANSWER_SPACE_AFTER }),
+    indent: { left: TASK_INDENT },
+    children: [run(" ")]
+  });
 }
 
 export function formatOppgaveTekst(raw: string): string[] {
@@ -540,41 +491,64 @@ function isSkrivOppgave(oppgave: Oppgave): boolean {
   );
 }
 
+function isSantUsantChoiceLine(line: string): boolean {
+  return /^[□☐]\s*(Sant|Usant)\s*$/i.test(line);
+}
+
+function stripSantUsantLabel(text: string): string {
+  return text
+    .replace(/\s*sant\s*\/\s*usant\s*$/i, "")
+    .replace(/\s*sant\s*eller\s*usant\s*$/i, "")
+    .replace(/\s*true\s*\/\s*false\s*$/i, "")
+    .trim();
+}
+
+function expandOppgaveLines(oppgave: Oppgave): string[] {
+  const split = splitOppgaveInnhold(oppgave.innhold, oppgave.nummer);
+  const santUsant = isSantUsantOppgave(oppgave);
+
+  return split.flatMap((line) => {
+    const formatted = formatOppgaveTekst(line);
+    if (formatted.length > 1) {
+      return formatted;
+    }
+    if (santUsant && isDeloppgaveLine(line)) {
+      return [stripSantUsantLabel(line), "□ Sant", "□ Usant"];
+    }
+    return [line];
+  });
+}
+
 function deloppgaveParagraph(line: string, opts?: { keepNext?: boolean }): Paragraph {
   return new Paragraph({
-    spacing: { after: 100, line: 276 },
-    indent: { left: 120 },
+    spacing: textSpacing({ after: 100 }),
+    indent: { left: TASK_INDENT },
     keepLines: true,
     keepNext: opts?.keepNext,
     children: [run(line, { bold: true })]
   });
 }
 
-function santUsantRow(line: string): Paragraph {
-  const rest = line.replace(/^[a-g]\.\s*/, "").trim();
-  const letter = line.match(/^([a-g])\./)?.[1] ?? "";
+function santUsantChoiceParagraph(line: string): Paragraph {
   return new Paragraph({
-    spacing: { after: 120, line: 276 },
-    indent: { left: 120 },
+    spacing: textSpacing({ after: 80 }),
+    indent: { left: TASK_INDENT },
     keepLines: true,
-    children: [
-      run(`${letter}. ${rest}    `, { bold: true }),
-      run("Sant ☐    Usant ☐")
-    ]
+    children: [run(line)]
   });
 }
 
 function checkboxOptionRow(line: string): Paragraph {
   return new Paragraph({
-    spacing: { after: 100, line: 276 },
-    indent: { left: 120 },
+    spacing: textSpacing({ after: 100 }),
+    indent: { left: TASK_INDENT },
     keepLines: true,
     children: [run(`${line}    ☐`, { bold: true })]
   });
 }
 
 function oppgaveContentParagraphs(oppgave: Oppgave): Paragraph[] {
-  const lines = splitOppgaveInnhold(oppgave.innhold, oppgave.nummer);
+  const lines = expandOppgaveLines(oppgave);
   const santUsant = isSantUsantOppgave(oppgave);
   const checkbox = isCheckboxOppgave(oppgave);
   const skriv = isSkrivOppgave(oppgave) && !checkbox;
@@ -585,10 +559,16 @@ function oppgaveContentParagraphs(oppgave: Oppgave): Paragraph[] {
     const isOption = isDeloppgaveLine(line);
     const isLast = i === lines.length - 1;
 
+    if (isSantUsantChoiceLine(line)) {
+      out.push(santUsantChoiceParagraph(line));
+      continue;
+    }
+
     if (!isOption) {
       out.push(
         new Paragraph({
-          spacing: { after: 120, line: 276 },
+          spacing: textSpacing({ after: 120 }),
+          indent: { left: TASK_INDENT },
           keepLines: true,
           keepNext: !isLast,
           children: [run(line, { bold: /^(les|skriv|kryss|bruk|regn)/i.test(line) })]
@@ -598,7 +578,7 @@ function oppgaveContentParagraphs(oppgave: Oppgave): Paragraph[] {
     }
 
     if (santUsant) {
-      out.push(santUsantRow(line));
+      out.push(deloppgaveParagraph(line, { keepNext: true }));
       continue;
     }
     if (checkbox) {
@@ -608,14 +588,12 @@ function oppgaveContentParagraphs(oppgave: Oppgave): Paragraph[] {
 
     out.push(deloppgaveParagraph(line, { keepNext: skriv || !isLast }));
     if (skriv) {
-      // Én svarlinje per deloppgave (skriveoppgaver: selve linjen er svaret).
-      out.push(...writingLines(/skriv/i.test(oppgave.type) ? 1 : 1));
+      out.push(answerSpace());
     }
   }
 
-  // Skriveoppgave uten bokstavdeler: legg til linjer under instruksen.
   if (skriv && !lines.some(isDeloppgaveLine)) {
-    out.push(...writingLines(4));
+    out.push(answerSpace(), answerSpace());
   }
 
   return out;
@@ -623,13 +601,14 @@ function oppgaveContentParagraphs(oppgave: Oppgave): Paragraph[] {
 
 function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
   const num = String(oppgave.nummer).padStart(2, "0");
+  const numW = 720;
+  const textW = BOX_WIDTH - numW;
 
   const block: Array<Paragraph | Table> = [
     spacer(280),
-    new Table({
-      width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-      columnWidths: [720, CONTENT_WIDTH - 720],
-      rows: [
+    contentTable(
+      [numW, textW],
+      [
         new TableRow({
           cantSplit: true,
           children: [
@@ -637,45 +616,42 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
               [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [run(num, { bold: true, color: C.white })]
+                  spacing: textSpacing(),
+                  children: [headingRun(num)]
                 })
               ],
-              720,
-              { shading: C.amber }
+              numW,
+              { shading: LIGHT_HEADER_BACKGROUND, borders: true }
             ),
             cell(
               [
                 new Paragraph({
-                  spacing: { after: 60 },
+                  spacing: textSpacing({ after: 60 }),
                   keepNext: true,
                   keepLines: true,
-                  children: [run(oppgave.tittel, { bold: true, color: C.marine })]
+                  children: [headingRun(oppgave.tittel)]
                 }),
                 new Paragraph({
-                  spacing: { after: 120 },
+                  spacing: textSpacing({ after: 120 }),
                   keepNext: true,
                   keepLines: true,
-                  children: [run(typeLabel(oppgave.type), { color: C.teal })]
+                  children: [run(typeLabel(oppgave.type))]
                 }),
                 ...oppgaveContentParagraphs(oppgave),
                 spacer(80)
               ],
-              CONTENT_WIDTH - 720,
+              textW,
               {
-                shading: C.softGray,
-                borders: {
-                  top: thinLine,
-                  bottom: thinLine,
-                  left: amberLeft,
-                  right: thinLine
-                },
-                align: VerticalAlign.TOP
+                shading: LIGHT_TABLE_BACKGROUND,
+                borders: true,
+                align: VerticalAlign.TOP,
+                margins: { top: 100, bottom: 120, left: 200, right: 160 }
               }
             )
           ]
         })
       ]
-    }),
+    ),
     spacer(160)
   ];
 
@@ -683,59 +659,56 @@ function oppgaveBlock(oppgave: Oppgave): Array<Paragraph | Table> {
 }
 
 function vocabularyTable(arbeidshefte: ArbeidshefteData): Table {
-  const c1 = Math.floor(CONTENT_WIDTH * 0.22);
-  const c2 = Math.floor(CONTENT_WIDTH * 0.38);
-  const c3 = CONTENT_WIDTH - c1 - c2;
+  const c1 = Math.floor(BOX_WIDTH * 0.22);
+  const c2 = Math.floor(BOX_WIDTH * 0.38);
+  const c3 = BOX_WIDTH - c1 - c2;
+  const vocMargins = { top: 60, bottom: 60, left: 80, right: 80 };
 
   const header = new TableRow({
     children: [
       cell(
-        [new Paragraph({ children: [new TextRun({ text: "Ord", bold: true, color: C.white, size: SZ, font: FONT })] })],
+        [new Paragraph({ spacing: textSpacing(), children: [headingRun("Ord")] })],
         c1,
-        { shading: C.marine, borders: { top: thinLine, bottom: thinLine, left: thinLine, right: thinLine } }
+        { shading: LIGHT_HEADER_BACKGROUND, borders: true, margins: vocMargins }
       ),
       cell(
-        [new Paragraph({ children: [new TextRun({ text: "Forklaring", bold: true, color: C.white, size: SZ, font: FONT })] })],
+        [new Paragraph({ spacing: textSpacing(), children: [headingRun("Forklaring")] })],
         c2,
-        { shading: C.marine, borders: { top: thinLine, bottom: thinLine, left: thinLine, right: thinLine } }
+        { shading: LIGHT_HEADER_BACKGROUND, borders: true, margins: vocMargins }
       ),
       cell(
-        [new Paragraph({ children: [new TextRun({ text: "Eksempel", bold: true, color: C.white, size: SZ, font: FONT })] })],
+        [new Paragraph({ spacing: textSpacing(), children: [headingRun("Eksempel")] })],
         c3,
-        { shading: C.marine, borders: { top: thinLine, bottom: thinLine, left: thinLine, right: thinLine } }
+        { shading: LIGHT_HEADER_BACKGROUND, borders: true, margins: vocMargins }
       )
     ]
   });
 
   const rows = arbeidshefte.ordliste.map((o, i) => {
-    const fill = i % 2 === 0 ? C.white : C.softGray;
+    const fill = i % 2 === 0 ? "FFFFFF" : LIGHT_TABLE_BACKGROUND;
     return new TableRow({
       cantSplit: true,
       children: [
         cell(
-          [new Paragraph({ children: [new TextRun({ text: o.ord, bold: true, color: C.marine, size: SZ, font: FONT })] })],
+          [new Paragraph({ spacing: textSpacing(), children: [run(o.ord, { bold: true })] })],
           c1,
-          { shading: fill, borders: { top: thinLine, bottom: thinLine, left: thinLine, right: thinLine }, align: VerticalAlign.TOP }
+          { shading: fill, borders: true, align: VerticalAlign.TOP, margins: vocMargins }
         ),
         cell(
-          [new Paragraph({ children: [new TextRun({ text: o.forklaring, color: C.night, size: SZ, font: FONT })] })],
+          [new Paragraph({ spacing: textSpacing(), children: [run(o.forklaring)] })],
           c2,
-          { shading: fill, borders: { top: thinLine, bottom: thinLine, left: thinLine, right: thinLine }, align: VerticalAlign.TOP }
+          { shading: fill, borders: true, align: VerticalAlign.TOP, margins: vocMargins }
         ),
         cell(
-          [new Paragraph({ children: [new TextRun({ text: o.eksempel, color: C.night, size: SZ, font: FONT })] })],
+          [new Paragraph({ spacing: textSpacing(), children: [run(o.eksempel)] })],
           c3,
-          { shading: fill, borders: { top: thinLine, bottom: thinLine, left: thinLine, right: thinLine }, align: VerticalAlign.TOP }
+          { shading: fill, borders: true, align: VerticalAlign.TOP, margins: vocMargins }
         )
       ]
     });
   });
 
-  return new Table({
-    width: { size: CONTENT_WIDTH, type: WidthType.DXA },
-    columnWidths: [c1, c2, c3],
-    rows: [header, ...rows]
-  });
+  return contentTable([c1, c2, c3], [header, ...rows]);
 }
 
 function pageBreak(): Paragraph {
@@ -745,20 +718,15 @@ function pageBreak(): Paragraph {
 function matteMalList(label: string, mal: string[]): Array<Paragraph | Table> {
   return [
     new Paragraph({
-      spacing: { before: 80, after: 60 },
-      children: [
-        new TextRun({ text: label, bold: true, color: C.teal, size: SZ, font: FONT })
-      ]
+      spacing: textSpacing({ before: 80, after: 60 }),
+      children: [headingRun(label)]
     }),
     ...mal.map(
       (m) =>
         new Paragraph({
-          spacing: { after: 40 },
-          indent: { left: 120 },
-          children: [
-            new TextRun({ text: "▸  ", color: C.amber, size: SZ, font: FONT }),
-            new TextRun({ text: m, color: C.night, size: SZ, font: FONT })
-          ]
+          spacing: textSpacing({ after: 40 }),
+          indent: { left: LEFT_INDENT },
+          children: [run(`▸  ${m}`)]
         })
     )
   ];
@@ -776,26 +744,18 @@ function hverdagsmatematikkSection(matte: HverdagsmatematikkData): Array<Paragra
   const out: Array<Paragraph | Table> = [
     spacer(200),
     sectionTitle("Hverdagsmatematikk"),
-    bodyText(`Hovedkategori denne uken: ${matte.kategoriLabel}. Samme tema som norsk-delen. Les fagteksten først — tallene der brukes i oppgavene.`, { color: C.teal }),
+    bodyText(
+      `Hovedkategori denne uken: ${matte.kategoriLabel}. Samme tema som norsk-delen. Les fagteksten først — tallene der brukes i oppgavene.`
+    ),
     ...matteMalList("Denne uken øver du (nivå 1) på å:", matte.malNiva1),
     ...matteMalList("Og (nivå 2) på å:", matte.malNiva2),
     spacer(80),
     textBox(fagtekstSeksjon),
     new Paragraph({
-      spacing: { before: 160, after: 80 },
-      children: [
-        new TextRun({
-          text: "Oppgaver — nivå 1",
-          bold: true,
-          color: C.marine,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ before: 160, after: 80 }),
+      children: [headingRun("Oppgaver — nivå 1")]
     }),
-    bodyText("Enkle, konkrete oppgaver. Bruk tallene i fagteksten.", {
-      color: C.teal
-    })
+    bodyText("Enkle, konkrete oppgaver. Bruk tallene i fagteksten.")
   ];
 
   for (const oppgave of matte.niva1) {
@@ -804,20 +764,10 @@ function hverdagsmatematikkSection(matte: HverdagsmatematikkData): Array<Paragra
 
   out.push(
     new Paragraph({
-      spacing: { before: 160, after: 80 },
-      children: [
-        new TextRun({
-          text: "Oppgaver — nivå 2",
-          bold: true,
-          color: C.marine,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ before: 160, after: 80 }),
+      children: [headingRun("Oppgaver — nivå 2")]
     }),
-    bodyText("Samme situasjon, mer krevende regning. Fortsett å bruke fagteksten.", {
-      color: C.teal
-    })
+    bodyText("Samme situasjon, mer krevende regning. Fortsett å bruke fagteksten.")
   );
 
   for (const oppgave of matte.niva2) {
@@ -825,6 +775,61 @@ function hverdagsmatematikkSection(matte: HverdagsmatematikkData): Array<Paragra
   }
 
   return out;
+}
+
+function documentSection(
+  children: Array<Paragraph | Table>,
+  headerText: string
+): Document {
+  return new Document({
+    styles: DOCUMENT_STYLES,
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: MARGIN,
+              bottom: MARGIN,
+              left: MARGIN,
+              right: MARGIN
+            }
+          }
+        },
+        headers: {
+          default: new Header({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                spacing: textSpacing(),
+                children: [run(headerText)]
+              })
+            ]
+          })
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: textSpacing(),
+                children: [
+                  run("Side "),
+                  new TextRun({
+                    children: [PageNumber.CURRENT],
+                    color: BLACK,
+                    size: SZ,
+                    font: FONT
+                  }),
+                  run(" · Molde voksenopplæringssenter")
+                ]
+              })
+            ]
+          })
+        },
+        children
+      }
+    ]
+  });
 }
 
 export async function genererWordHefte(
@@ -844,16 +849,8 @@ export async function genererWordHefte(
     children.push(textBox(seksjon));
     children.push(
       new Paragraph({
-        spacing: { before: 160, after: 80 },
-        children: [
-          new TextRun({
-            text: `Oppgaver til tekst ${seksjon.nummer}`,
-            bold: true,
-            color: C.marine,
-            size: SZ,
-            font: FONT
-          })
-        ]
+        spacing: textSpacing({ before: 160, after: 80 }),
+        children: [headingRun(`Oppgaver til tekst ${seksjon.nummer}`)]
       })
     );
     for (const oppgave of seksjon.oppgaver) {
@@ -863,26 +860,23 @@ export async function genererWordHefte(
 
   children.push(sectionTitle("Ordliste"));
   children.push(
-    bodyText("Viktige ord fra kapittelet. Verb står med «å», substantiv med riktig artikkel (en/ei/et).", {
-      color: C.teal
-    })
+    bodyText(
+      "Viktige ord fra kapittelet. Verb står med «å», substantiv med riktig artikkel (en/ei/et)."
+    )
   );
   children.push(vocabularyTable(arbeidshefte));
 
   children.push(sectionTitle("Kapitteltest"));
-  children.push(
-    bodyText("Svar på oppgavene. Hver oppgave gir 1 poeng.", { color: C.teal })
-  );
+  children.push(bodyText("Svar på oppgavene. Hver oppgave gir 1 poeng."));
   for (const t of arbeidshefte.kapitteltest) {
     children.push(
       new Paragraph({
-        spacing: { after: 140, line: 276 },
-        children: [
-          new TextRun({ text: `${t.nummer}. `, bold: true, color: C.amber, size: SZ, font: FONT }),
-          new TextRun({ text: t.innhold, color: C.night, size: SZ, font: FONT })
-        ]
+        spacing: textSpacing({ after: 140 }),
+        indent: { left: LEFT_INDENT },
+        children: [run(`${t.nummer}. `, { bold: true }), run(t.innhold)]
       })
     );
+    children.push(answerSpace());
   }
 
   children.push(...hverdagsmatematikkSection(arbeidshefte.hverdagsmatematikk));
@@ -890,14 +884,12 @@ export async function genererWordHefte(
   children.push(pageBreak());
   children.push(sectionTitle("Fasit"));
   children.push(
-    bodyText("Til lærer / egenkontroll. Elevene bør ikke se denne delen før oppgavene er gjort.", { color: C.teal })
+    bodyText("Til lærer / egenkontroll. Elevene bør ikke se denne delen før oppgavene er gjort.")
   );
   children.push(
     new Paragraph({
-      spacing: { before: 80, after: 60 },
-      children: [
-        new TextRun({ text: "Norsk", bold: true, color: C.marine, size: SZ, font: FONT })
-      ]
+      spacing: textSpacing({ before: 80, after: 60 }),
+      children: [headingRun("Norsk")]
     })
   );
   for (const line of arbeidshefte.fasit.split(/\n+/)) {
@@ -907,16 +899,8 @@ export async function genererWordHefte(
   }
   children.push(
     new Paragraph({
-      spacing: { before: 160, after: 60 },
-      children: [
-        new TextRun({
-          text: "Hverdagsmatematikk",
-          bold: true,
-          color: C.marine,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ before: 160, after: 60 }),
+      children: [headingRun("Hverdagsmatematikk")]
     })
   );
   for (const line of arbeidshefte.hverdagsmatematikk.fasit.split(/\n+/)) {
@@ -925,55 +909,7 @@ export async function genererWordHefte(
     }
   }
 
-  const doc = new Document({
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: {
-              top: MARGIN,
-              bottom: MARGIN,
-              left: MARGIN,
-              right: MARGIN
-            }
-          }
-        },
-        headers: {
-          default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({
-                    text: `MBO · Kap. ${kapittel.nummer} · ${kapittel.yrke}`,
-                    color: C.teal,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
-              })
-            ]
-          })
-        },
-        footers: {
-          default: new Footer({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: "Side ", color: C.teal, size: SZ, font: FONT }),
-                  new TextRun({ children: [PageNumber.CURRENT], color: C.teal, size: SZ, font: FONT }),
-                  new TextRun({ text: " · Molde voksenopplæringssenter", color: C.teal, size: SZ, font: FONT })
-                ]
-              })
-            ]
-          })
-        },
-        children
-      }
-    ]
-  });
-
+  const doc = documentSection(children, `MBO · Kap. ${kapittel.nummer} · ${kapittel.yrke}`);
   return Buffer.from(await Packer.toBuffer(doc));
 }
 
@@ -988,36 +924,19 @@ export async function genererWordEkstra(
     headerBar(kapittel, uke),
     spacer(160),
     new Paragraph({
-      spacing: { after: 60 },
-      children: [
-        new TextRun({
-          text: `Ekstraoppgaver · ${nivaLabel}`,
-          bold: true,
-          color: C.amber,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ after: 60 }),
+      children: [headingRun(`Ekstraoppgaver · ${nivaLabel}`)]
     }),
     new Paragraph({
-      spacing: { after: 120 },
-      children: [
-        new TextRun({
-          text: kapittel.yrke,
-          bold: true,
-          color: C.marine,
-          size: SZ,
-          font: FONT
-        })
-      ]
+      spacing: textSpacing({ after: 120 }),
+      children: [headingRun(kapittel.yrke)]
     }),
     metaLabel("Skoleuke", String(uke)),
     metaLabel("Kapittel", `${kapittel.nummer}`),
     metaLabel("Grammatikk", kapittel.grammatikk),
     metaLabel("Nivå", nivaLabel),
     bodyText(
-      "Dette er ekstra trening i tillegg til hovedheftet. Oppgavene følger samme oppsett, tilpasset nivået.",
-      { color: C.teal }
+      "Dette er ekstra trening i tillegg til hovedheftet. Oppgavene følger samme oppsett, tilpasset nivået."
     ),
     spacer(80)
   ];
@@ -1027,16 +946,8 @@ export async function genererWordEkstra(
     children.push(textBox(seksjon));
     children.push(
       new Paragraph({
-        spacing: { before: 140, after: 80 },
-        children: [
-          new TextRun({
-            text: `Oppgaver til tekst ${seksjon.nummer}`,
-            bold: true,
-            color: C.marine,
-            size: SZ,
-            font: FONT
-          })
-        ]
+        spacing: textSpacing({ before: 140, after: 80 }),
+        children: [headingRun(`Oppgaver til tekst ${seksjon.nummer}`)]
       })
     );
     for (const oppgave of seksjon.oppgaver) {
@@ -1047,8 +958,7 @@ export async function genererWordEkstra(
   if (data.grammatikk) {
     children.push(
       bodyText(
-        "Grammatikk: Les forklaringen først. Den forteller hva grammatikken gjør, og hvorfor den er nyttig i norsk.",
-        { color: C.teal }
+        "Grammatikk: Les forklaringen først. Den forteller hva grammatikken gjør, og hvorfor den er nyttig i norsk."
       )
     );
     children.push(...grammatikkSection(data.grammatikk.forklaring));
@@ -1064,16 +974,8 @@ export async function genererWordEkstra(
     );
     children.push(
       new Paragraph({
-        spacing: { before: 140, after: 80 },
-        children: [
-          new TextRun({
-            text: "Oppgaver til grammatikk",
-            bold: true,
-            color: C.marine,
-            size: SZ,
-            font: FONT
-          })
-        ]
+        spacing: textSpacing({ before: 140, after: 80 }),
+        children: [headingRun("Oppgaver til grammatikk")]
       })
     );
     for (const oppgave of data.grammatikk.oppgaver) {
@@ -1083,61 +985,14 @@ export async function genererWordEkstra(
 
   children.push(pageBreak());
   children.push(sectionTitle("Fasit"));
-  children.push(
-    bodyText("Til lærer / egenkontroll.", { color: C.teal })
-  );
+  children.push(bodyText("Til lærer / egenkontroll."));
   for (const line of data.fasit.split(/\n+/)) {
     if (line.trim()) children.push(bodyText(line.trim()));
   }
 
-  const doc = new Document({
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: { top: MARGIN, bottom: MARGIN, left: MARGIN, right: MARGIN }
-          }
-        },
-        headers: {
-          default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  new TextRun({
-                    text: `MBO · Ekstra · ${nivaLabel} · Kap. ${kapittel.nummer}`,
-                    color: C.teal,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
-              })
-            ]
-          })
-        },
-        footers: {
-          default: new Footer({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.CENTER,
-                children: [
-                  new TextRun({ text: "Side ", color: C.teal, size: SZ, font: FONT }),
-                  new TextRun({ children: [PageNumber.CURRENT], color: C.teal, size: SZ, font: FONT }),
-                  new TextRun({
-                    text: " · Molde voksenopplæringssenter",
-                    color: C.teal,
-                    size: SZ,
-                    font: FONT
-                  })
-                ]
-              })
-            ]
-          })
-        },
-        children
-      }
-    ]
-  });
-
+  const doc = documentSection(
+    children,
+    `MBO · Ekstra · ${nivaLabel} · Kap. ${kapittel.nummer}`
+  );
   return Buffer.from(await Packer.toBuffer(doc));
 }

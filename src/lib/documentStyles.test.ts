@@ -7,6 +7,7 @@ import {
   LIGHT_HEADER_BACKGROUND,
   LIGHT_TABLE_BACKGROUND,
   TASK_INDENT,
+  THIN_BLACK_BORDER_SIZE,
 } from "./documentStyles.js";
 import { formatOppgaveTekst } from "./wordGenerator.js";
 
@@ -37,6 +38,7 @@ describe("document styles", () => {
     expect(TASK_INDENT).toBe(1440);
     expect(LIGHT_TABLE_BACKGROUND).toBe("F5F7FB");
     expect(LIGHT_HEADER_BACKGROUND).toBe("EAF2FF");
+    expect(THIN_BLACK_BORDER_SIZE).toBe(8);
   });
 
   it("formats sant/usant as vertical checkbox choices", () => {

@@ -26,7 +26,7 @@ export async function genererPPTX(
       fontFace: DEFAULT_HEADING_STYLE.font,
       fontSize: DEFAULT_HEADING_STYLE.size / 2,
       bold: DEFAULT_HEADING_STYLE.bold,
-      color: "003057"
+      color: DEFAULT_HEADING_STYLE.color
     });
     slide.addText(s.innhold, {
       x: 0.8,
@@ -35,7 +35,7 @@ export async function genererPPTX(
       h: 4.5,
       fontFace: DEFAULT_TEXT_STYLE.font,
       fontSize: DEFAULT_TEXT_STYLE.size / 2,
-      color: "001219"
+      color: DEFAULT_TEXT_STYLE.color
     });
   });
 

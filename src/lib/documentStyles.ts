@@ -15,6 +15,8 @@ export const LEFT_INDENT = 720;
 export const TASK_INDENT = 1440;
 export const LIGHT_TABLE_BACKGROUND = "F5F7FB";
 export const LIGHT_HEADER_BACKGROUND = "EAF2FF";
+/** 1 pt in docx (size is 1/8 pt). Tynne, synlige tabelllinjer. */
+export const THIN_BLACK_BORDER_SIZE = 8;
 
 export const DEFAULT_PARAGRAPH_SPACING = {
   line: LINE_SPACING_ONE_AND_HALF,
