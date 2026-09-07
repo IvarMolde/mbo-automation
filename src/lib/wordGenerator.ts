@@ -475,6 +475,18 @@ function writingLines(count: number): Paragraph[] {
   );
 }
 
+export function formatOppgaveTekst(raw: string): string[] {
+  const text = raw.replace(/\s+/g, " ").trim();
+  const match = text.match(/^(.*?)([?!.]?)\s*(Sant\s*(?:\/|eller)\s*Usant)\s*$/i);
+
+  if (!match) {
+    return [text];
+  }
+
+  const question = `${match[1]?.trim() ?? ""}${match[2] ?? ""}`.trim();
+  return [question || "", "□ Sant", "□ Usant"];
+}
+
 /**
  * Split task body so deloppgaver always start on their own line as «a. …», «b. …».
  * Also normalizes older «1a» / «M1a» / «a)» markers.
@@ -912,9 +924,6 @@ export async function genererWordHefte(
       children.push(bodyText(line.trim()));
     }
   }
-
-  children.push(headingParagraph("Ordliste"));
-  children.push(ordlisteTable(arbeidshefte.ordliste));
 
   const doc = new Document({
     sections: [

@@ -36,6 +36,15 @@ export interface Kapittel {
   fasitInstruks?: string;
 }
 
+export interface PresentasjonSlide {
+  tittel: string;
+  innhold: string;
+}
+
+export interface PresentasjonData {
+  slides: PresentasjonSlide[];
+}
+
 export interface Oppgave {
   nummer: number;
   type: string;
